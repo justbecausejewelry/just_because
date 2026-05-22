@@ -12,7 +12,7 @@ export default function Home() {
       </h1>
 
       <p className="font-body text-base text-verde-stone">
-        Phase 1 verification — Verde palette and fonts
+        Phase 1 verification â€” Verde palette and fonts
       </p>
 
       <div className="flex gap-6 mt-4">

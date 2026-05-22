@@ -12,6 +12,7 @@ Before doing ANYTHING in this project, **read the file `PROJECT_CONTEXT.md`** in
 - Product customization options
 - Sample data and naming conventions
 
+
 ## Critical rules
 
 1. **This is a LOCAL PROTOTYPE only.** No real payments, no real authentication, no live hosting. Everything runs on localhost:3000.
