@@ -1,0 +1,13 @@
+   ▲ Next.js 15.5.18 (Turbopack)
+   - Local:        http://localhost:3000
+   - Network:      http://10.187.97.149:3000
+
+ ✓ Starting...
+Creating turbopack project { dir: 'D:\\LAB_Grown\\Just_Becuase', testMode: true }
+ ✓ Ready in 1207ms
+ ○ Compiling / ...
+ ✓ Compiled / in 3.6s
+ GET / 200 in 3977ms
+ GET / 200 in 152ms
+ ✓ Compiled /favicon.ico in 253ms
+ GET /favicon.ico?favicon.0b3bf435.ico 200 in 565ms

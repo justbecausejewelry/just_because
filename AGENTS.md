@@ -3,69 +3,67 @@
 ## Project briefing
 This is a luxury lab-grown diamond jewelry website prototype called **Just Because**.
 
-Before doing ANYTHING in this project, **read the file `PROJECT_CONTEXT.md`** in the project root. It contains the complete brief including:
-- Tech stack decisions (locked)
-- Verde color palette (locked)
-- Typography system
-- Page structure and folder structure
-- Brand voice and design principles
-- Product customization options
-- Sample data and naming conventions
-
+Before doing ANYTHING in this project, **read PROJECT_CONTEXT.md** in the project root.
+It contains the complete brief: tech stack, Lumière palette, typography, pages, structure.
 
 ## Critical rules
 
-1. **This is a LOCAL PROTOTYPE only.** No real payments, no real authentication, no live hosting. Everything runs on localhost:3000.
+1. **LOCAL PROTOTYPE ONLY.** No real payments, no real auth, no live hosting. localhost:3000.
 
-2. **Tech stack is LOCKED.** Do not propose alternatives:
+2. **Tech stack is LOCKED:**
    - Next.js 15 (App Router)
-   - TypeScript (strict mode, no `any` types)
+   - TypeScript (strict, no `any`)
    - Tailwind CSS
    - shadcn/ui (New York style, Neutral base)
-   - Framer Motion (subtle animations only)
+   - Framer Motion (subtle animations, 400-600ms)
    - Lucide React (icons)
 
-3. **Brand palette is LOCKED.** Use ONLY the Verde palette:
-   - Cream `#F4ECE2` (primary background)
-   - Deep Emerald `#2D5246` (primary accent)
-   - Champagne Gold `#C9A961` (metallic decorative)
-   - Velvet Ink `#1A1A14` (text)
-   - Warm Stone `#B5A88F` (secondary text)
-   - Plus supporting tones defined in PROJECT_CONTEXT.md
+3. **Lumière palette is LOCKED. Use ONLY these:**
+   - Pearl White   #FBF5F0  → primary background (60% of every page)
+   - Champagne Gold #C9A961 → primary accent (logo, decorative, badges)
+   - Blush Pink    #E8C4D0  → signature romantic accent (max 3x per page)
+   - Velvet Noir   #1A1014  → all text + dark sections (never pure #000000)
+   - Warm Taupe    #B8A090  → secondary text, captions
+   - Warm Ivory    #FDF8F2  → elevated card backgrounds
+   - Petal Tint    #FCF0F4  → soft section backgrounds
+   - Rose Mist     #F5E8ED  → alternating section backgrounds
+   - Gold Tint     #EDD9AF  → decorative highlights, borders
+   NEVER use pure white #FFFFFF or pure black #000000 anywhere.
 
-4. **Typography is LOCKED.** Playfair Display (serif headings) + Inter (sans-serif body) loaded via `next/font/google`. Optional script font for logo: Italianno or Pinyon Script.
+4. **Fonts are LOCKED:**
+   - Headings: Playfair Display (serif)
+   - Body: Inter (sans-serif)
+   - Logo accent: Italianno (script)
+   All loaded via next/font/google.
 
-5. **Always show your plan BEFORE executing.** Never make code changes without telling me what you'll do first. Wait for approval.
+5. **Show plan BEFORE writing code. Wait for approval.**
 
-6. **Build in phases.** Complete one phase at a time. Wait for me to say "proceed" before starting the next phase.
+6. **One phase at a time. Wait for "proceed" before next phase.**
 
-7. **Create git commits at meaningful checkpoints.** After each major feature or phase, commit with a clear message.
+7. **Windows encoding rule — CRITICAL:**
+   NEVER use PowerShell Set-Content to write .tsx/.ts files.
+   Always write files via VS Code directly or via the Codex extension.
+   PowerShell Set-Content causes UTF-16 encoding that breaks Next.js.
 
-8. **Every component must be responsive.** Design mobile-first, then enhance for tablet (768px+) and desktop (1024px+).
+8. **PowerShell commands:** always use npm.cmd and npx.cmd (not npm/npx).
 
-9. **Use Server Components by default.** Only add `"use client"` directive when the component genuinely needs interactivity (forms, state, animations, event handlers).
+9. **Every component must be responsive:** mobile-first, then 768px tablet, 1024px desktop.
 
-10. **Reference PROJECT_CONTEXT.md** for any decisions about palette, fonts, structure, naming, or data shape. Never guess.
+10. **Use Server Components by default.** Only add "use client" when truly needed.
 
-## Working style
-
-- Plan first, code second.
-- Show diffs before applying changes.
-- One phase at a time.
-- If uncertain, ask before assuming.
-- Use TypeScript strict mode — never use `any`.
-- Prefer composition over duplication — build small reusable components.
-- Keep components under 200 lines when possible — split if larger.
+## Design principles
+- Sharp corners (0-4px border-radius) — luxury editorial feel
+- 0.5px borders only, color #EDD9AF (gold tint)
+- Slow animations: 400-600ms, cubic-bezier(0.4, 0, 0.2, 1)
+- Generous whitespace: 80-120px section padding desktop, 40-60px mobile
+- Section eyebrow labels: ALL CAPS, letter-spacing 0.3em, color #C9A961
+- Two font weights only: 400 regular, 500 medium
+- Think Vogue editorial, not generic e-commerce
+- Blush pink #E8C4D0 is the emotional signature — use sparingly so it stays special
 
 ## What NOT to do
-
-- Do not install packages outside the locked tech stack without asking.
-- Do not deviate from the Verde palette colors.
-- Do not use emojis in UI (use Lucide icons instead).
-- Do not use pure white `#FFFFFF` or pure black `#000000` anywhere.
-- Do not use border-radius values larger than 8px (luxury = sharp corners).
-- Do not skip reading PROJECT_CONTEXT.md before making decisions.
-
-## Current phase
-
-The project starts at **Phase 1: Project Initialization**. Do not jump ahead to building pages or components until I explicitly approve moving past Phase 1.
+- Never deviate from the Lumière palette
+- Never use pure white #FFFFFF or pure black #000000
+- Never install packages outside the locked stack without asking
+- Never use border-radius larger than 8px
+- Never use PowerShell Set-Content for .tsx/.ts files

@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Just Because — Homepage Reference (Lumière Palette)</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&family=Italianno&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --pearl:    #FBF5F0;
+    --gold:     #C9A961;
+    --blush:    #E8C4D0;
+    --noir:     #1A1014;
+    --taupe:    #B8A090;
+    --ivory:    #FDF8F2;
+    --petal:    #FCF0F4;
+    --rose:     #F5E8ED;
+    --goldtint: #EDD9AF;
+    --deepnoir: #2A1E24;
+  }
+
+  body { font-family: 'Inter', sans-serif; background: var(--pearl); color: var(--noir); }
+  .serif { font-family: 'Playfair Display', serif; }
+  .script { font-family: 'Italianno', cursive; }
+
+  /* PROMO BAR */
+  .promo-bar {
+    background: var(--noir);
+    padding: 8px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: var(--taupe);
+  }
+  .promo-bar .center { color: var(--gold); font-weight: 500; }
+
+  /* NAVBAR */
+  nav {
+    background: var(--pearl);
+    border-bottom: 0.5px solid var(--goldtint);
+    padding: 18px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo { display: flex; align-items: baseline; gap: 4px; }
+  .logo-script { font-family: 'Italianno', cursive; font-size: 26px; color: var(--gold); }
+  .logo-word { font-size: 13px; letter-spacing: 0.28em; color: var(--noir); font-weight: 500; }
+  .nav-links { display: flex; gap: 24px; font-size: 11px; letter-spacing: 0.06em; }
+  .nav-links a { text-decoration: none; color: var(--noir); transition: color 0.3s; }
+  .nav-links a:hover { color: var(--gold); }
+  .nav-icons { display: flex; gap: 16px; align-items: center; }
+  .nav-icons span { font-size: 18px; cursor: pointer; color: var(--noir); }
+  .cart-wrap { position: relative; }
+  .cart-badge {
+    position: absolute; top: -7px; right: -8px;
+    background: var(--blush); color: #6B2D44;
+    border-radius: 50%; width: 15px; height: 15px;
+    font-size: 8px; display: flex; align-items: center;
+    justify-content: center; font-weight: 500;
+  }
+
+  /* HERO */
+  .hero {
+    background: var(--pearl);
+    padding: 80px 40px;
+    display: grid;
+    grid-template-columns: 1fr 1.3fr;
+    gap: 60px;
+    align-items: center;
+    min-height: 85vh;
+  }
+  .hero-eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.32em;
+    color: var(--gold);
+    margin-bottom: 20px;
+  }
+  .hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 58px;
+    line-height: 1.05;
+    color: var(--noir);
+    margin-bottom: 20px;
+    font-weight: 400;
+  }
+  .hero h1 em { color: var(--blush); font-style: italic; }
+  .hero-sub {
+    font-size: 14px;
+    color: var(--taupe);
+    line-height: 1.7;
+    max-width: 380px;
+    margin-bottom: 32px;
+  }
+  .hero-ctas { display: flex; gap: 12px; }
+  .btn-primary {
+    background: var(--noir);
+    color: var(--pearl);
+    padding: 14px 28px;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    border: none;
+    cursor: pointer;
+    transition: background 0.4s;
+  }
+  .btn-primary:hover { background: #2A1E24; }
+  .btn-outline {
+    background: transparent;
+    color: var(--noir);
+    padding: 14px 28px;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    border: 1px solid var(--goldtint);
+    cursor: pointer;
+    transition: border-color 0.4s, background 0.4s;
+  }
+  .btn-outline:hover { border-color: var(--gold); background: #FDF8F2; }
+  .hero-image {
+    background: var(--rose);
+    aspect-ratio: 4/3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    border-radius: 2px;
+  }
+  .hero-badge {
+    position: absolute; top: 16px; left: 16px;
+    background: rgba(253,248,242,0.92);
+    color: var(--gold);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    padding: 5px 10px;
+  }
+  .hero-price {
+    position: absolute; bottom: 16px; right: 16px;
+    background: rgba(253,248,242,0.92);
+    color: var(--noir);
+    font-size: 10px;
+    padding: 5px 10px;
+  }
+  .diamond-svg { opacity: 0.25; }
+
+  /* SHAPES */
+  .shapes-section {
+    background: var(--petal);
+    padding: 72px 40px;
+    text-align: center;
+  }
+  .section-eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.32em;
+    color: var(--gold);
+    margin-bottom: 12px;
+  }
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    color: var(--noir);
+    margin-bottom: 40px;
+    font-weight: 400;
+  }
+  .shapes-grid {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .shape-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 12px;
+    cursor: pointer;
+    border: 0.5px solid transparent;
+    border-radius: 4px;
+    transition: all 0.35s;
+    width: 80px;
+  }
+  .shape-item:hover, .shape-item.active {
+    background: var(--ivory);
+    border-color: var(--goldtint);
+  }
+  .shape-item svg { stroke: var(--taupe); transition: stroke 0.35s; }
+  .shape-item:hover svg, .shape-item.active svg { stroke: var(--gold); }
+  .shape-name { font-size: 10px; color: var(--taupe); letter-spacing: 0.05em; }
+
+  /* CATEGORIES */
+  .categories-section { background: var(--pearl); padding: 72px 40px; }
+  .categories-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 40px; }
+  .category-card {
+    background: var(--ivory);
+    border: 0.5px solid var(--goldtint);
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
+  }
+  .category-card:hover { transform: translateY(-6px); }
+  .category-img {
+    background: var(--rose);
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .category-count {
+    position: absolute; top: 10px; right: 10px;
+    background: var(--gold);
+    color: #3A2810;
+    font-size: 9px;
+    padding: 3px 8px;
+    letter-spacing: 0.1em;
+  }
+  .category-info { padding: 14px 16px; }
+  .category-name { font-family: 'Playfair Display', serif; font-size: 16px; color: var(--noir); }
+  .category-price { font-size: 10px; color: var(--taupe); margin-top: 3px; }
+  .category-card.dark { background: var(--noir); border-color: var(--noir); }
+  .category-card.dark .category-img { background: #2A1E24; }
+  .category-card.dark .category-name { color: var(--pearl); }
+  .category-card.dark .category-price { color: var(--gold); }
+
+  /* VIDEO SECTION */
+  .video-section {
+    background: var(--noir);
+    padding: 80px 40px;
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 60px;
+    align-items: center;
+  }
+  .video-placeholder {
+    background: var(--deepnoir);
+    aspect-ratio: 16/10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    border-radius: 2px;
+  }
+  .play-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(251,245,240,0.92);
+    padding: 8px 16px;
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    font-size: 10px;
+    color: var(--noir);
+    letter-spacing: 0.1em;
+    cursor: pointer;
+  }
+  .play-dot {
+    width: 0; height: 0;
+    border-style: solid;
+    border-width: 5px 0 5px 9px;
+    border-color: transparent transparent transparent var(--gold);
+  }
+  .video-content .section-eyebrow { color: var(--gold); }
+  .video-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 32px;
+    color: var(--pearl);
+    line-height: 1.1;
+    margin-bottom: 16px;
+    font-weight: 400;
+  }
+  .video-body { font-size: 13px; color: var(--taupe); line-height: 1.7; margin-bottom: 24px; }
+  .video-stats {
+    display: flex;
+    gap: 28px;
+    padding-top: 20px;
+    border-top: 0.5px solid rgba(201,169,97,0.25);
+  }
+  .stat-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 26px;
+    color: var(--gold);
+  }
+  .stat-label { font-size: 9px; color: var(--taupe); letter-spacing: 0.15em; margin-top: 2px; }
+
+  /* BEST SELLERS */
+  .bestsellers-section { background: var(--pearl); padding: 72px 40px; }
+  .section-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 32px; }
+  .view-all { font-size: 11px; color: var(--gold); letter-spacing: 0.12em; cursor: pointer; }
+  .products-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+  .product-card {
+    background: var(--ivory);
+    border: 0.5px solid var(--goldtint);
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.4s cubic-bezier(0.4,0,0.2,1), box-shadow 0.4s;
+  }
+  .product-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 32px rgba(26,16,20,0.10);
+  }
+  .product-img {
+    background: var(--rose);
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .badge {
+    position: absolute; top: 8px; left: 8px;
+    font-size: 8px; padding: 3px 7px; letter-spacing: 0.1em; font-weight: 500;
+  }
+  .badge-new { background: var(--goldtint); color: #6B4A10; }
+  .badge-sale { background: var(--blush); color: #6B2D44; }
+  .product-info { padding: 10px 12px; }
+  .product-name { font-family: 'Playfair Display', serif; font-size: 13px; color: var(--noir); margin-bottom: 2px; }
+  .product-price { font-size: 12px; color: var(--noir); font-weight: 500; }
+
+  /* REVIEWS */
+  .reviews-section { background: var(--rose); padding: 72px 40px; text-align: center; }
+  .stars { font-size: 18px; color: var(--gold); margin: 12px 0 4px; }
+  .review-count { font-size: 11px; color: var(--taupe); margin-bottom: 40px; }
+  .reviews-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; text-align: left; }
+  .review-card {
+    background: var(--pearl);
+    border: 0.5px solid var(--goldtint);
+    border-radius: 4px;
+    padding: 20px 22px;
+  }
+  .review-stars { font-size: 13px; color: var(--gold); margin-bottom: 10px; }
+  .review-quote {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-size: 13px;
+    color: var(--noir);
+    line-height: 1.6;
+    margin-bottom: 12px;
+  }
+  .review-author { font-size: 10px; color: var(--taupe); }
+
+  /* FOOTER */
+  footer {
+    background: var(--noir);
+    padding: 56px 40px 28px;
+    color: var(--taupe);
+  }
+  .footer-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 40px; margin-bottom: 40px; }
+  .footer-logo-script { font-family: 'Italianno', cursive; font-size: 28px; color: var(--gold); }
+  .footer-tagline { font-size: 11px; line-height: 1.7; margin-top: 8px; color: var(--taupe); max-width: 220px; }
+  .footer-socials { display: flex; gap: 14px; margin-top: 16px; font-size: 18px; color: var(--blush); }
+  .footer-col-title { font-size: 9px; letter-spacing: 0.22em; color: var(--pearl); margin-bottom: 14px; }
+  .footer-link { font-size: 11px; line-height: 2.2; color: var(--taupe); cursor: pointer; }
+  .footer-link:hover { color: var(--gold); }
+  .footer-bottom {
+    border-top: 0.5px solid rgba(201,169,97,0.2);
+    padding-top: 20px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+  }
+  .trust-seals { color: var(--gold); letter-spacing: 0.05em; }
+
+  /* SVG ring icon placeholder */
+  .ring-icon { opacity: 0.3; }
+</style>
+</head>
+<body>
+
+<!-- PROMO BAR -->
+<div class="promo-bar">
+  <span>☎ +91 91284 87999</span>
+  <span class="center">Sign up and receive 30% off your first piece</span>
+  <span>✦ Free shipping over $200</span>
+</div>
+
+<!-- NAVBAR -->
+<nav>
+  <div class="logo">
+    <span class="logo-script">just</span>
+    <span class="logo-word">BECAUSE</span>
+  </div>
+  <div class="nav-links">
+    <a href="#">Engagement rings</a>
+    <a href="#">Rings</a>
+    <a href="#">Earrings</a>
+    <a href="#">Necklaces</a>
+    <a href="#">Bracelets</a>
+    <a href="#">Diamonds</a>
+    <a href="#" style="color: var(--gold);">Gifts</a>
+  </div>
+  <div class="nav-icons">
+    <span>⌕</span>
+    <span>◯</span>
+    <span>♡</span>
+    <div class="cart-wrap">
+      <span>⊠</span>
+      <div class="cart-badge">2</div>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div>
+    <div class="hero-eyebrow">DESIGN YOUR RING</div>
+    <h1 class="serif">A reason,<br><em>in itself.</em></h1>
+    <p class="hero-sub">Lab-grown diamonds and 18k recycled gold, crafted for the moments that don't ask for an occasion.</p>
+    <div class="hero-ctas">
+      <button class="btn-primary">Shop the collection →</button>
+      <button class="btn-outline">Build a ring</button>
+    </div>
+  </div>
+  <div class="hero-image">
+    <div class="hero-badge">ULTRA HD</div>
+    <svg width="180" height="180" viewBox="0 0 180 180" fill="none" class="diamond-svg">
+      <circle cx="90" cy="90" r="70" stroke="#C9A961" stroke-width="1"/>
+      <polygon points="90,40 130,75 125,120 90,140 55,120 50,75" fill="#E8C4D0" stroke="#C9A961" stroke-width="1.5" opacity="0.6"/>
+      <line x1="90" y1="40" x2="90" y2="140" stroke="#C9A961" stroke-width="0.5"/>
+      <line x1="50" y1="75" x2="130" y2="75" stroke="#C9A961" stroke-width="0.5"/>
+    </svg>
+    <div class="hero-price">Etoile Solitaire — from $4,200</div>
+  </div>
+</section>
+
+<!-- DIAMOND SHAPES -->
+<section class="shapes-section">
+  <div class="section-eyebrow">SHOP BY SHAPE</div>
+  <h2 class="serif section-title">Find your diamond's silhouette</h2>
+  <div class="shapes-grid">
+
+    <div class="shape-item active">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke-width="1.5">
+        <circle cx="18" cy="18" r="13"/>
+        <circle cx="18" cy="18" r="6" stroke-opacity="0.4"/>
+      </svg>
+      <span class="shape-name">Round</span>
+    </div>
+
+    <div class="shape-item">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke-width="1.5">
+        <ellipse cx="18" cy="18" rx="9" ry="14"/>
+      </svg>
+      <span class="shape-name">Oval</span>
+    </div>
+
+    <div class="shape-item">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke-width="1.5">
+        <rect x="5" y="5" width="26" height="26" rx="6"/>
+      </svg>
+      <span class="shape-name">Cushion</span>
+    </div>
+
+    <div class="shape-item">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke-width="1.5">
+        <polygon points="9,5 27,5 31,10 31,26 27,31 9,31 5,26 5,10"/>
+      </svg>
+      <span class="shape-name">Emerald</span>
+    </div>
+
+    <div class="shape-item">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke-width="1.5">
+        <rect x="6" y="6" width="24" height="24"/>
+      </svg>
+      <span class="shape-name">Princess</span>
+    </div>
+
+    <div class="shape-item">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke-width="1.5">
+        <path d="M18 5 C10 5, 6 14, 6 20 C6 27, 11 32, 18 32 C25 32, 30 27, 30 20 C30 14, 26 5, 18 5 Z"/>
+      </svg>
+      <span class="shape-name">Pear</span>
+    </div>
+
+    <div class="shape-item">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke-width="1.5">
+        <path d="M5 18 Q 18 5, 31 18 Q 18 31, 5 18 Z"/>
+      </svg>
+      <span class="shape-name">Marquise</span>
+    </div>
+
+    <div class="shape-item">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke-width="1.5">
+        <polygon points="12,5 24,5 31,12 31,24 24,31 12,31 5,24 5,12"/>
+        <rect x="11" y="11" width="14" height="14" stroke-opacity="0.4"/>
+      </svg>
+      <span class="shape-name">Asscher</span>
+    </div>
+
+    <div class="shape-item">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke-width="1.5">
+        <path d="M18 31 C18 31, 5 21, 5 13 C5 8, 9 5, 13 5 C15 5, 18 7, 18 10 C18 7, 21 5, 23 5 C27 5, 31 8, 31 13 C31 21, 18 31, 18 31 Z"/>
+      </svg>
+      <span class="shape-name">Heart</span>
+    </div>
+
+  </div>
+</section>
+
+<!-- CATEGORIES -->
+<section class="categories-section">
+  <div style="text-align:center;">
+    <div class="section-eyebrow">CATEGORIES</div>
+    <h2 class="serif section-title">Explore the collection</h2>
+  </div>
+  <div class="categories-grid">
+
+    <div class="category-card">
+      <div class="category-img">
+        <svg width="52" height="52" viewBox="0 0 52 52" fill="none" stroke="#C9A961" stroke-width="1.5" class="ring-icon">
+          <circle cx="26" cy="32" r="16"/>
+          <polygon points="26,12 32,22 29,32 23,32 20,22" fill="#E8C4D0" stroke="#C9A961" stroke-width="1.2"/>
+        </svg>
+        <div class="category-count">120</div>
+      </div>
+      <div class="category-info">
+        <div class="category-name">Rings</div>
+        <div class="category-price">From $980</div>
+      </div>
+    </div>
+
+    <div class="category-card">
+      <div class="category-img">
+        <svg width="52" height="52" viewBox="0 0 52 52" fill="none" stroke="#C9A961" stroke-width="1.5" class="ring-icon">
+          <path d="M10 26 Q 26 16, 42 26 Q 26 36, 10 26 Z"/>
+          <circle cx="16" cy="26" r="2.5" fill="#C9A961"/>
+          <circle cx="26" cy="23" r="3" fill="#C9A961"/>
+          <circle cx="36" cy="26" r="2.5" fill="#C9A961"/>
+        </svg>
+        <div class="category-count">48</div>
+      </div>
+      <div class="category-info">
+        <div class="category-name">Bracelets</div>
+        <div class="category-price">From $1,400</div>
+      </div>
+    </div>
+
+    <div class="category-card">
+      <div class="category-img">
+        <svg width="52" height="52" viewBox="0 0 52 52" fill="none" stroke="#C9A961" stroke-width="1.5" class="ring-icon">
+          <path d="M12 12 Q 26 40, 40 12"/>
+          <circle cx="26" cy="32" r="5" fill="#E8C4D0" stroke="#C9A961" stroke-width="1.2"/>
+        </svg>
+        <div class="category-count">76</div>
+      </div>
+      <div class="category-info">
+        <div class="category-name">Necklaces</div>
+        <div class="category-price">From $620</div>
+      </div>
+    </div>
+
+    <div class="category-card dark">
+      <div class="category-img" style="justify-content:center; align-items:center;">
+        <span style="font-size:36px; color: var(--gold);">→</span>
+      </div>
+      <div class="category-info">
+        <div class="category-name">Shop all</div>
+        <div class="category-price">244 pieces</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- VIDEO STORY -->
+<section class="video-section">
+  <div class="video-placeholder">
+    <svg width="100" height="100" viewBox="0 0 100 100" fill="none" opacity="0.2">
+      <circle cx="50" cy="50" r="40" stroke="#C9A961" stroke-width="1"/>
+      <polygon points="50,25 68,45 63,68 37,68 32,45" fill="#E8C4D0" stroke="#C9A961" stroke-width="1.5"/>
+    </svg>
+    <div class="play-btn">
+      <div class="play-dot"></div>
+      Watch the process
+    </div>
+  </div>
+  <div class="video-content">
+    <div class="section-eyebrow" style="margin-bottom:12px;">CULTIVATED, NOT COMPROMISED</div>
+    <h2 class="video-title">This is the future<br>of jewelry.</h2>
+    <p class="video-body">Every diamond is grown in our solar-powered foundry over 6–10 weeks. Same carbon, same brilliance, zero mining. Watch how a single crystal becomes the ring you'll wear forever.</p>
+    <div class="video-stats">
+      <div>
+        <div class="stat-num serif">0</div>
+        <div class="stat-label">MINING</div>
+      </div>
+      <div>
+        <div class="stat-num serif">100%</div>
+        <div class="stat-label">RENEWABLE</div>
+      </div>
+      <div>
+        <div class="stat-num serif">IGI</div>
+        <div class="stat-label">CERTIFIED</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BEST SELLERS -->
+<section class="bestsellers-section">
+  <div class="section-header">
+    <div>
+      <div class="section-eyebrow">BEST SELLERS</div>
+      <h2 class="serif section-title" style="margin-bottom:0;">Loved by everyone</h2>
+    </div>
+    <span class="view-all">View all →</span>
+  </div>
+  <div class="products-grid">
+
+    <div class="product-card">
+      <div class="product-img">
+        <div class="badge badge-new">NEW</div>
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="#C9A961" stroke-width="1.3" opacity="0.5">
+          <circle cx="20" cy="20" r="13"/>
+        </svg>
+      </div>
+      <div class="product-info">
+        <div class="product-name">Solis</div>
+        <div class="product-price">$4,200</div>
+      </div>
+    </div>
+
+    <div class="product-card">
+      <div class="product-img">
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="#C9A961" stroke-width="1.3" opacity="0.5">
+          <ellipse cx="20" cy="20" rx="8" ry="12"/>
+        </svg>
+      </div>
+      <div class="product-info">
+        <div class="product-name">Vela</div>
+        <div class="product-price">$2,800</div>
+      </div>
+    </div>
+
+    <div class="product-card">
+      <div class="product-img">
+        <div class="badge badge-sale">−15%</div>
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="#C9A961" stroke-width="1.3" opacity="0.5">
+          <rect x="7" y="7" width="26" height="26" rx="5"/>
+        </svg>
+      </div>
+      <div class="product-info">
+        <div class="product-name">Lumi</div>
+        <div class="product-price">$3,400</div>
+      </div>
+    </div>
+
+    <div class="product-card">
+      <div class="product-img">
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="#C9A961" stroke-width="1.3" opacity="0.5">
+          <path d="M6 20 Q 20 7, 34 20 Q 20 33, 6 20 Z"/>
+        </svg>
+      </div>
+      <div class="product-info">
+        <div class="product-name">Orla</div>
+        <div class="product-price">$5,100</div>
+      </div>
+    </div>
+
+    <div class="product-card">
+      <div class="product-img">
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="#C9A961" stroke-width="1.3" opacity="0.5">
+          <path d="M20 32 C20 32, 8 22, 8 14 C8 9, 12 7, 15 7 C17 7, 20 9, 20 12 C20 9, 23 7, 25 7 C28 7, 32 9, 32 14 C32 22, 20 32, 20 32 Z"/>
+        </svg>
+      </div>
+      <div class="product-info">
+        <div class="product-name">Coeur</div>
+        <div class="product-price">$3,900</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- REVIEWS -->
+<section class="reviews-section">
+  <div class="section-eyebrow">REVIEWS</div>
+  <h2 class="serif section-title">Words from real wearers</h2>
+  <div class="stars">★★★★★</div>
+  <div class="review-count">4.9 / 5 · 2,847 verified reviews</div>
+  <div class="reviews-grid">
+
+    <div class="review-card">
+      <div class="review-stars">★★★★★</div>
+      <p class="review-quote serif">"I bought this for myself on a Tuesday. No occasion. Just because. Best decision of the year."</p>
+      <div class="review-author">Priya M. · Mumbai</div>
+    </div>
+
+    <div class="review-card">
+      <div class="review-stars">★★★★★</div>
+      <p class="review-quote serif">"The packaging alone made me cry. The diamond? It outshines my old one — and it cost half."</p>
+      <div class="review-author">Sarah K. · Brooklyn</div>
+    </div>
+
+    <div class="review-card">
+      <div class="review-stars">★★★★★</div>
+      <p class="review-quote serif">"Customer service walked me through every step. It felt less like e-commerce, more like a friend."</p>
+      <div class="review-author">Aaron L. · Toronto</div>
+    </div>
+
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-grid">
+    <div>
+      <div class="footer-logo-script">just because</div>
+      <p class="footer-tagline">Lab-grown diamonds and recycled gold, crafted for every moment that doesn't need a name.</p>
+      <div class="footer-socials">
+        <span>◈</span><span>◈</span><span>◈</span>
+      </div>
+    </div>
+    <div>
+      <div class="footer-col-title">SHOP</div>
+      <div class="footer-link">Engagement</div>
+      <div class="footer-link">Rings</div>
+      <div class="footer-link">Necklaces</div>
+      <div class="footer-link">Earrings</div>
+    </div>
+    <div>
+      <div class="footer-col-title">LEARN</div>
+      <div class="footer-link">Our process</div>
+      <div class="footer-link">The 4 Cs</div>
+      <div class="footer-link">Education</div>
+      <div class="footer-link">Journal</div>
+    </div>
+    <div>
+      <div class="footer-col-title">SUPPORT</div>
+      <div class="footer-link">Contact</div>
+      <div class="footer-link">Returns</div>
+      <div class="footer-link">Sizing</div>
+      <div class="footer-link">Care</div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <div>© 2026 Just Because. All rights reserved.</div>
+    <div class="trust-seals">IGI Certified · GCAL Verified · Carbon Neutral</div>
+  </div>
+</footer>
+
+</body>
+</html>
