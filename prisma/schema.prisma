@@ -1,0 +1,226 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── PRODUCT TYPE ENUM ───────────────────────────────
+// Top level categories
+// engagement_ring, wedding_ring, diamond, earring,
+// necklace, bracelet, gemstone
+
+// ─── MAIN PRODUCT TABLE ──────────────────────────────
+model Product {
+  id          String  @id @default(cuid())
+  sku         String  @unique
+
+  // Classification
+  productType String  // engagement_ring | wedding_ring | diamond | earring | necklace | bracelet | gemstone
+  category    String  // solitaire | pave | halo | three_stone | tennis | choker | etc.
+
+  // Customer-facing
+  title       String
+  description String?
+  basePrice   Float
+
+  // Pricing modifiers stored as JSON
+  // Format: { "White Gold": { "enabled": true, "modifier": 0 }, ... }
+  metalPricing    Json @default("{}")
+  caratPricing    Json @default("{}")
+  shapePricing    Json @default("{}")
+  colorPricing    Json @default("{}")
+  clarityPricing  Json @default("{}")
+  cutPricing      Json @default("{}")
+
+  // Available options for this product
+  availableMetals    String[]
+  availableCarats    Float[]
+  availableShapes    String[]
+  availableColors    String[]
+  availableClarities String[]
+  availableCuts      String[]
+  availableSizes     String[]
+  engravingAllowed   Boolean @default(true)
+  engravingMaxChars  Int     @default(20)
+
+  // Media
+  images         String[]
+  hoverImage     String?
+  videos         String[]
+  certificateUrl String?
+  modelUrl       String?   // for 3D viewer later
+
+  // Admin controls
+  isActive      Boolean @default(true)
+  isFeatured    Boolean @default(false)
+  isNewArrival  Boolean @default(false)
+  internalNotes String?
+  tags          String[]
+  sortOrder     Int     @default(0)
+
+  // SEO
+  seoTitle       String?
+  seoDescription String?
+  slug           String  @unique
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  reviews      Review[]
+  cartItems    CartItem[]
+  orderItems   OrderItem[]
+}
+
+// ─── DIAMOND INVENTORY ───────────────────────────────
+model Diamond {
+  id                String  @id @default(cuid())
+  sku               String  @unique
+  shape             String
+  carat             Float
+  color             String  // D | E | F | G | H | I | J | Fancy Pink | etc.
+  clarity           String  // IF | VVS1 | VVS2 | VS1 | VS2
+  cut               String? // Excellent | Very Good | Good
+  polish            String?
+  symmetry          String?
+  fluorescence      String?
+  certificateNumber String?
+  certificateType   String  @default("IGI") // IGI | GIA | GCAL
+  certificateUrl    String?
+  price             Float
+  isAvailable       Boolean @default(true)
+  isLabGrown        Boolean @default(true)
+  videoUrl          String?
+  imageUrl          String?
+  measurements      String? // e.g. "6.5 x 6.4 x 4.0 mm"
+  depthPercent      Float?
+  tablePercent      Float?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+// ─── CUSTOMER ORDERS ─────────────────────────────────
+model Order {
+  id             String      @id @default(cuid())
+  orderNumber    String      @unique
+  customerName   String
+  customerEmail  String
+  customerPhone  String?
+  status         String      @default("received")
+  // received | cad_design | casting | setting | polishing | shipped | delivered | cancelled
+
+  subtotal       Float
+  taxAmount      Float       @default(0)
+  shippingAmount Float       @default(0)
+  discountAmount Float       @default(0)
+  total          Float
+
+  shippingAddress Json?
+  billingAddress  Json?
+  trackingNumber  String?
+  internalNotes   String?
+
+  items          OrderItem[]
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// ─── ORDER ITEMS ──────────────────────────────────────
+model OrderItem {
+  id            String  @id @default(cuid())
+  orderId       String
+  order         Order   @relation(fields: [orderId], references: [id])
+  productId     String
+  product       Product @relation(fields: [productId], references: [id])
+
+  selectedMetal   String?
+  selectedCarat   Float?
+  selectedShape   String?
+  selectedColor   String?
+  selectedClarity String?
+  selectedCut     String?
+  ringSize        String?
+  engraving       String?
+  quantity        Int     @default(1)
+  unitPrice       Float
+
+  priceBreakdown  Json?
+  // { base: 2000, metal: 0, carat: 5500, shape: 0, color: 500, clarity: 0, total: 8000 }
+}
+
+// ─── CART ─────────────────────────────────────────────
+model CartItem {
+  id            String  @id @default(cuid())
+  sessionId     String
+  productId     String
+  product       Product @relation(fields: [productId], references: [id])
+
+  selectedMetal   String?
+  selectedCarat   Float?
+  selectedShape   String?
+  selectedColor   String?
+  selectedClarity String?
+  selectedCut     String?
+  ringSize        String?
+  engraving       String?
+  quantity        Int     @default(1)
+  unitPrice       Float
+  priceBreakdown  Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── REVIEWS ──────────────────────────────────────────
+model Review {
+  id           String  @id @default(cuid())
+  productId    String
+  product      Product @relation(fields: [productId], references: [id])
+  customerName String
+  customerEmail String?
+  rating       Int
+  title        String?
+  comment      String?
+  isVerified   Boolean @default(false)
+  isApproved   Boolean @default(true)
+  isHidden     Boolean @default(false)
+  createdAt    DateTime @default(now())
+}
+
+// ─── ADMIN USERS ──────────────────────────────────────
+model AdminUser {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  role      String   @default("admin") // admin | super_admin
+  createdAt DateTime @default(now())
+}
+
+// ─── PRICE CALCULATION LOG ────────────────────────────
+model PriceLog {
+  id          String   @id @default(cuid())
+  productId   String
+  sessionId   String?
+  selections  Json
+  breakdown   Json
+  total       Float
+  createdAt   DateTime @default(now())
+}
+
+// ─── DISCOUNT CODES ───────────────────────────────────
+model DiscountCode {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  type        String   // percentage | fixed
+  value       Float
+  minOrderAmt Float    @default(0)
+  maxUses     Int?
+  usedCount   Int      @default(0)
+  isActive    Boolean  @default(true)
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+}

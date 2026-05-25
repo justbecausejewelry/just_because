@@ -1,5 +1,9 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Playfair_Display, Inter, Italianno } from 'next/font/google'
+import { AppShell } from '@/components/layout/AppShell'
+import { CartProvider } from '@/context/CartContext'
+import { ToastProvider } from '@/context/ToastContext'
+import { WishlistProvider } from '@/context/WishlistContext'
 import './globals.css'
 
 const playfair = Playfair_Display({
@@ -26,6 +30,11 @@ export const metadata: Metadata = {
   description: 'Lab-grown diamonds for the moments that do not need an occasion.',
 }
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+}
+
 export default function RootLayout({
   children,
 }: {
@@ -34,9 +43,16 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${playfair.variable} ${inter.variable} ${italianno.variable} font-body bg-verde-cream text-verde-ink antialiased`}
+        className={`${playfair.variable} ${inter.variable} ${italianno.variable} antialiased`}
+        style={{ backgroundColor: '#FBF5F0', color: '#1A1014' }}
       >
-        {children}
+        <CartProvider>
+          <WishlistProvider>
+            <ToastProvider>
+              <AppShell>{children}</AppShell>
+            </ToastProvider>
+          </WishlistProvider>
+        </CartProvider>
       </body>
     </html>
   )
