@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -233,7 +233,7 @@ function ProductCard({ product }: { product: Product }) {
   )
 }
 
-export default function ProductsPage() {
+function ProductsContent() {
   const searchParams = useSearchParams()
   const initialType = searchParams.get('type') || searchParams.get('category') || 'all'
   const initialShape = searchParams.get('shape') || ''
@@ -523,5 +523,35 @@ export default function ProductsPage() {
         </main>
       </div>
     </motion.div>
+  )
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div
+          style={{
+            minHeight: '100vh',
+            background: '#FBF5F0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <div
+            style={{
+              fontFamily: 'var(--font-playfair)',
+              fontSize: '18px',
+              color: '#B8A090',
+            }}
+          >
+            Loading...
+          </div>
+        </div>
+      }
+    >
+      <ProductsContent />
+    </Suspense>
   )
 }

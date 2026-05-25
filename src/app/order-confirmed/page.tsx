@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -14,7 +14,7 @@ const confetti = Array.from({ length: 20 }, (_, index) => ({
   color: ['#C9A961', '#E8C4D0', '#FBF5F0'][index % 3],
 }))
 
-export default function OrderConfirmedPage() {
+function OrderConfirmedContent() {
   const searchParams = useSearchParams()
   const orderNumber = searchParams.get('order') || 'JB-PENDING'
   const [copied, setCopied] = useState(false)
@@ -77,5 +77,35 @@ export default function OrderConfirmedPage() {
         </div>
       </section>
     </main>
+  )
+}
+
+export default function OrderConfirmedPage() {
+  return (
+    <Suspense
+      fallback={
+        <div
+          style={{
+            minHeight: '100vh',
+            background: '#FBF5F0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <div
+            style={{
+              fontFamily: 'var(--font-playfair)',
+              fontSize: '18px',
+              color: '#B8A090',
+            }}
+          >
+            Loading...
+          </div>
+        </div>
+      }
+    >
+      <OrderConfirmedContent />
+    </Suspense>
   )
 }

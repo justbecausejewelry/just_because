@@ -1,6 +1,6 @@
 'use client'
 
-import { FormEvent, useState } from 'react'
+import { FormEvent, Suspense, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Eye, EyeOff, Star } from 'lucide-react'
@@ -9,7 +9,7 @@ import { signIn, supabaseAuth } from '@/lib/auth'
 
 const adminEmail = 'ujjwalbana@gmail.com'
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
@@ -170,5 +170,35 @@ export default function LoginPage() {
         </motion.form>
       </section>
     </main>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div
+          style={{
+            minHeight: '100vh',
+            background: '#FBF5F0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <div
+            style={{
+              fontFamily: 'var(--font-playfair)',
+              fontSize: '18px',
+              color: '#B8A090',
+            }}
+          >
+            Loading...
+          </div>
+        </div>
+      }
+    >
+      <LoginContent />
+    </Suspense>
   )
 }
