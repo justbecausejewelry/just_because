@@ -49,6 +49,12 @@ type IncomingProduct = Partial<{
   [K in keyof ProductFormData]: ProductFormData[K] | null
 }> & { id?: string }
 
+interface ValidationError {
+  field: string
+  message: string
+  tab: number
+}
+
 const productTypes = [
   ['engagement_ring', 'Engagement Ring'],
   ['wedding_ring', 'Wedding Ring'],
@@ -87,6 +93,46 @@ function slugify(value: string) {
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value || 0)
+}
+
+function validateForm(formData: ProductFormData): ValidationError[] {
+  const errors: ValidationError[] = []
+
+  if (!formData.productType) {
+    errors.push({ field: 'productType', message: 'Product type is required', tab: 0 })
+  }
+
+  if (!formData.category) {
+    errors.push({ field: 'category', message: 'Category is required', tab: 0 })
+  }
+
+  if (!formData.title.trim()) {
+    errors.push({ field: 'title', message: 'Product title is required', tab: 0 })
+  }
+
+  if (!formData.slug.trim()) {
+    errors.push({ field: 'slug', message: 'Slug is required', tab: 0 })
+  }
+
+  if (!formData.description.trim()) {
+    errors.push({ field: 'description', message: 'Description is required', tab: 0 })
+  }
+
+  if (!formData.basePrice || formData.basePrice <= 0) {
+    errors.push({ field: 'basePrice', message: 'Base price must be greater than 0', tab: 0 })
+  }
+
+  const hasEnabledMetal = Object.values(formData.metalPricing || {}).some((metal) => metal?.enabled === true)
+  if (!hasEnabledMetal) {
+    errors.push({ field: 'metalPricing', message: 'At least one metal option must be enabled', tab: 1 })
+  }
+
+  const hasEnabledCarat = Object.values(formData.caratPricing || {}).some((carat) => carat?.enabled === true)
+  if (!hasEnabledCarat) {
+    errors.push({ field: 'caratPricing', message: 'At least one carat option must be enabled', tab: 1 })
+  }
+
+  return errors
 }
 
 function blankProduct(): ProductFormData {
@@ -142,18 +188,33 @@ function TextInput({
   onChange,
   type = 'text',
   placeholder = '',
+  hasError = false,
 }: {
   label: string
   value: string | number | null | undefined
   onChange: (value: string) => void
   type?: string
   placeholder?: string
+  hasError?: boolean
 }) {
   return (
     <label className="block">
-      <span style={{ color: '#C9A961', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '8px' }}>{label}</span>
-      <input value={value ?? ''} onChange={(event) => onChange(event.target.value)} type={type} placeholder={placeholder} style={{ backgroundColor: '#FDF8F2', border: '1px solid #EDD9AF', borderRadius: '2px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', outlineColor: '#1A1014', padding: '12px 14px', width: '100%' }} />
+      <span style={{ color: hasError ? '#A85C6A' : '#C9A961', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '8px' }}>{label}</span>
+      <input value={value ?? ''} onChange={(event) => onChange(event.target.value)} type={type} placeholder={placeholder} style={{ backgroundColor: '#FDF8F2', border: hasError ? '1px solid #A85C6A' : '1px solid #EDD9AF', borderRadius: '2px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', outlineColor: hasError ? '#A85C6A' : '#1A1014', padding: '12px 14px', transition: 'border-color 0.2s', width: '100%' }} />
     </label>
+  )
+}
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) {
+    return null
+  }
+
+  return (
+    <div style={{ fontSize: '11px', color: '#A85C6A', fontFamily: 'var(--font-inter)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+      <span>!</span>
+      {message}
+    </div>
   )
 }
 
@@ -178,6 +239,7 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
   const [lastSaved, setLastSaved] = useState('')
   const [activeTab, setActiveTab] = useState(0)
   const [isSaving, setIsSaving] = useState(false)
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([])
 
   useEffect(() => {
     if (product) {
@@ -192,7 +254,10 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
 
   const setField = <K extends keyof ProductFormData>(key: K, value: ProductFormData[K]) => {
     setForm((current) => ({ ...current, [key]: value }))
+    setValidationErrors((current) => current.filter((error) => error.field !== key))
   }
+
+  const getFieldError = (field: string) => validationErrors.find((error) => error.field === field)?.message
 
   const updatePricing = (group: keyof Pick<ProductFormData, 'metalPricing' | 'caratPricing' | 'shapePricing' | 'colorPricing' | 'clarityPricing'>, option: string, patch: Partial<{ enabled: boolean; modifier: number }>) => {
     setForm((current) => ({
@@ -202,6 +267,7 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
         [option]: { ...current[group][option], ...patch },
       },
     }))
+    setValidationErrors((current) => current.filter((error) => error.field !== group))
   }
 
   const handleFiles = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -275,6 +341,16 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
   }
 
   const handleSave = async (action: 'draft' | 'publish') => {
+    const errors = validateForm(form)
+
+    if (errors.length > 0) {
+      showToast(errors[0].message, 'error')
+      setActiveTab(errors[0].tab)
+      setValidationErrors(errors)
+      return
+    }
+
+    setValidationErrors([])
     setIsSaving(true)
     try {
       const publish = action === 'publish'
@@ -377,37 +453,70 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
           ))}
         </div>
 
+        {validationErrors.length > 0 && (
+          <div style={{ background: '#FCF0F4', border: '1px solid #A85C6A', borderRadius: '2px', padding: '14px 18px', marginBottom: '20px', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: '16px', color: '#A85C6A', flexShrink: 0 }}>!</span>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: 500, color: '#A85C6A', fontFamily: 'var(--font-inter)', marginBottom: '6px' }}>
+                Please fix {validationErrors.length} error{validationErrors.length > 1 ? 's' : ''} before saving
+              </div>
+              <ul style={{ margin: 0, paddingLeft: '16px', listStyle: 'disc' }}>
+                {validationErrors.map((error, index) => (
+                  <li key={`${error.field}-${index}`} style={{ fontSize: '12px', color: '#A85C6A', fontFamily: 'var(--font-inter)', lineHeight: '1.8' }}>
+                    {error.message}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+
         {activeTab === 0 && (
           <section className="grid gap-5" style={{ backgroundColor: '#FBF5F0', border: '0.5px solid #EDD9AF', borderRadius: '4px', padding: '24px' }}>
+            <p style={{ fontSize: '11px', color: '#B8A090', fontFamily: 'var(--font-inter)', marginBottom: '4px' }}>
+              Fields marked with * are required
+            </p>
             <div className="grid gap-5 md:grid-cols-2">
               <label>
-                <span style={{ color: '#C9A961', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '8px' }}>PRODUCT TYPE</span>
+                <span style={{ color: getFieldError('productType') ? '#A85C6A' : '#C9A961', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '8px' }}>PRODUCT TYPE *</span>
                 <Select value={form.productType} onValueChange={(value) => { setField('productType', value); setField('category', categories[value]?.[0] || '') }}>
-                  <SelectTrigger style={{ backgroundColor: '#FDF8F2', border: '1px solid #EDD9AF', borderRadius: '2px', color: '#1A1014', width: '100%' }}><SelectValue /></SelectTrigger>
+                  <SelectTrigger style={{ backgroundColor: '#FDF8F2', border: getFieldError('productType') ? '1px solid #A85C6A' : '1px solid #EDD9AF', borderRadius: '2px', color: '#1A1014', width: '100%' }}><SelectValue /></SelectTrigger>
                   <SelectContent style={{ backgroundColor: '#FDF8F2', border: '1px solid #EDD9AF' }}>{productTypes.map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent>
                 </Select>
+                <FieldError message={getFieldError('productType')} />
               </label>
               <label>
-                <span style={{ color: '#C9A961', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '8px' }}>CATEGORY</span>
+                <span style={{ color: getFieldError('category') ? '#A85C6A' : '#C9A961', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '8px' }}>CATEGORY *</span>
                 <Select value={form.category} onValueChange={(value) => setField('category', value)}>
-                  <SelectTrigger style={{ backgroundColor: '#FDF8F2', border: '1px solid #EDD9AF', borderRadius: '2px', color: '#1A1014', width: '100%' }}><SelectValue /></SelectTrigger>
+                  <SelectTrigger style={{ backgroundColor: '#FDF8F2', border: getFieldError('category') ? '1px solid #A85C6A' : '1px solid #EDD9AF', borderRadius: '2px', color: '#1A1014', width: '100%' }}><SelectValue /></SelectTrigger>
                   <SelectContent style={{ backgroundColor: '#FDF8F2', border: '1px solid #EDD9AF' }}>{categoryOptions.map((item) => <SelectItem key={item} value={item}>{item.replace(/_/g, ' ')}</SelectItem>)}</SelectContent>
                 </Select>
+                <FieldError message={getFieldError('category')} />
               </label>
             </div>
             <div className="grid gap-5 md:grid-cols-2">
-              <TextInput label="TITLE" value={form.title} onChange={(value) => { setField('title', value); if (!form.slug) setField('slug', slugify(value)) }} />
-              <TextInput label="SLUG" value={form.slug} onChange={(value) => setField('slug', value)} />
+              <div>
+                <TextInput label="TITLE *" value={form.title} hasError={Boolean(getFieldError('title'))} onChange={(value) => { setForm((current) => ({ ...current, title: value, slug: current.slug ? current.slug : slugify(value) })); setValidationErrors((current) => current.filter((error) => error.field !== 'title' && error.field !== 'slug')) }} />
+                <FieldError message={getFieldError('title')} />
+              </div>
+              <div>
+                <TextInput label="SLUG *" value={form.slug} hasError={Boolean(getFieldError('slug'))} onChange={(value) => setField('slug', value)} />
+                <FieldError message={getFieldError('slug')} />
+              </div>
             </div>
             <div className="grid gap-5 md:grid-cols-[1fr_auto]">
               <TextInput label="SKU" value={form.sku} onChange={(value) => setField('sku', value)} />
               <button type="button" onClick={() => setField('sku', `JB-${form.productType.split('_')[0].slice(0, 4).toUpperCase()}-${Date.now()}`)} style={{ alignSelf: 'end', backgroundColor: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '11px', height: '43px', letterSpacing: '0.12em', padding: '0 16px' }}>AUTO-GENERATE</button>
             </div>
             <label>
-              <span style={{ color: '#C9A961', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '8px' }}>DESCRIPTION</span>
-              <textarea value={form.description ?? ''} onChange={(event) => setField('description', event.target.value)} style={{ backgroundColor: '#FDF8F2', border: '1px solid #EDD9AF', borderRadius: '2px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', minHeight: '120px', outlineColor: '#1A1014', padding: '12px 14px', width: '100%' }} />
+              <span style={{ color: getFieldError('description') ? '#A85C6A' : '#C9A961', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '8px' }}>DESCRIPTION *</span>
+              <textarea value={form.description ?? ''} onChange={(event) => setField('description', event.target.value)} style={{ backgroundColor: '#FDF8F2', border: getFieldError('description') ? '1px solid #A85C6A' : '1px solid #EDD9AF', borderRadius: '2px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', minHeight: '120px', outlineColor: getFieldError('description') ? '#A85C6A' : '#1A1014', padding: '12px 14px', transition: 'border-color 0.2s', width: '100%' }} />
+              <FieldError message={getFieldError('description')} />
             </label>
-            <TextInput label="BASE PRICE" value={form.basePrice} type="number" onChange={(value) => setField('basePrice', Number(value))} />
+            <div>
+              <TextInput label="BASE PRICE *" value={form.basePrice} type="number" hasError={Boolean(getFieldError('basePrice'))} onChange={(value) => setField('basePrice', Number(value))} />
+              <FieldError message={getFieldError('basePrice')} />
+            </div>
             <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '13px' }}>Starting from <span style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '22px' }}>{formatMoney(form.basePrice)}</span></p>
           </section>
         )}
@@ -422,8 +531,9 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
                 ['COLOR', 'colorPricing', optionSets.colors],
                 ['CLARITY', 'clarityPricing', optionSets.clarities],
               ].map(([label, group, options]) => (
-                <div key={label as string} style={{ backgroundColor: '#FBF5F0', border: '0.5px solid #EDD9AF', borderRadius: '4px', padding: '20px' }}>
-                  <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '12px' }}>{label as string}</p>
+                <div key={label as string} style={{ backgroundColor: '#FBF5F0', border: getFieldError(group as string) ? '1px solid #A85C6A' : '0.5px solid #EDD9AF', borderRadius: '4px', padding: '20px' }}>
+                  <p style={{ color: getFieldError(group as string) ? '#A85C6A' : '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '12px' }}>{label as string}</p>
+                  <FieldError message={getFieldError(group as string)} />
                   <div className="grid gap-2">
                     {(options as string[]).map((option) => {
                       const map = form[group as keyof Pick<ProductFormData, 'metalPricing' | 'caratPricing' | 'shapePricing' | 'colorPricing' | 'clarityPricing'>] as PricingMap

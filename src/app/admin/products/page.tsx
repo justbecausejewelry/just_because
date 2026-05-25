@@ -8,9 +8,10 @@ import { Gem, Pencil, Search, Trash2 } from 'lucide-react'
 type Product = {
   id: string
   sku: string
-  slug: string
+  slug?: string
   title: string
   productType: string
+  category: string
   basePrice: number
   images: string[]
   isActive: boolean
@@ -142,7 +143,7 @@ export default function AdminProductsPage() {
                 <td>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <Link
-                      href={`/products/${product.slug}`}
+                      href={`/products/${product.slug || product.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       title="View on storefront"

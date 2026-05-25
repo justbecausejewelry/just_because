@@ -9,7 +9,7 @@ const supabase = createClient(
 export async function GET() {
   const { data, error } = await supabase
     .from('Product')
-    .select('*')
+    .select('id, sku, title, slug, productType, category, basePrice, isActive, isFeatured, images')
     .order('createdAt', { ascending: false })
 
   if (error) {
