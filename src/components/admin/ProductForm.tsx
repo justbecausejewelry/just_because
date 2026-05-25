@@ -4,7 +4,6 @@ import { ChangeEvent, useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { GripVertical, Upload, Video, X } from 'lucide-react'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 type PricingMap = Record<string, { enabled: boolean; modifier: number }>
@@ -45,7 +44,9 @@ type ProductFormData = {
   seoDescription: string
 }
 
-type IncomingProduct = Partial<ProductFormData> & { id?: string }
+type IncomingProduct = Partial<{
+  [K in keyof ProductFormData]: ProductFormData[K] | null
+}> & { id?: string }
 
 const productTypes = [
   ['engagement_ring', 'Engagement Ring'],
@@ -124,11 +125,33 @@ function blankProduct(): ProductFormData {
   }
 }
 
-function TextInput({ label, value, onChange, type = 'text' }: { label: string; value: string | number; onChange: (value: string) => void; type?: string }) {
+function withoutNulls(product?: IncomingProduct) {
+  if (!product) {
+    return {}
+  }
+
+  return Object.fromEntries(
+    Object.entries(product).filter(([, value]) => value !== null && value !== undefined)
+  ) as Partial<ProductFormData>
+}
+
+function TextInput({
+  label,
+  value,
+  onChange,
+  type = 'text',
+  placeholder = '',
+}: {
+  label: string
+  value: string | number | null | undefined
+  onChange: (value: string) => void
+  type?: string
+  placeholder?: string
+}) {
   return (
     <label className="block">
       <span style={{ color: '#C9A961', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '8px' }}>{label}</span>
-      <input value={value} onChange={(event) => onChange(event.target.value)} type={type} style={{ backgroundColor: '#FDF8F2', border: '1px solid #EDD9AF', borderRadius: '2px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', outlineColor: '#1A1014', padding: '12px 14px', width: '100%' }} />
+      <input value={value ?? ''} onChange={(event) => onChange(event.target.value)} type={type} placeholder={placeholder} style={{ backgroundColor: '#FDF8F2', border: '1px solid #EDD9AF', borderRadius: '2px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', outlineColor: '#1A1014', padding: '12px 14px', width: '100%' }} />
     </label>
   )
 }
@@ -143,17 +166,19 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (checked: b
 
 export function ProductForm({ product, mode }: { product?: IncomingProduct; mode: 'new' | 'edit' }) {
   const router = useRouter()
-  const [form, setForm] = useState<ProductFormData>(() => ({ ...blankProduct(), ...product }))
+  const [form, setForm] = useState<ProductFormData>(() => ({ ...blankProduct(), ...withoutNulls(product) }))
   const [tagInput, setTagInput] = useState('')
   const [videoInput, setVideoInput] = useState('')
   const [videoMode, setVideoMode] = useState<'url' | 'upload'>('url')
   const [videoPreview, setVideoPreview] = useState<{ name: string; size: number; url: string } | null>(null)
   const [videoUploadProgress, setVideoUploadProgress] = useState(0)
   const [status, setStatus] = useState('Not saved yet')
+  const [lastSaved, setLastSaved] = useState('')
+  const [activeTab, setActiveTab] = useState(0)
 
   useEffect(() => {
     if (product) {
-      setForm((current) => ({ ...current, ...product }))
+      setForm((current) => ({ ...current, ...withoutNulls(product) }))
     }
   }, [product])
 
@@ -267,19 +292,71 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
       return
     }
     setStatus('Last saved: just now')
+    setLastSaved('just now')
     if (mode === 'new' && result.product?.id) {
       router.push(`/admin/products/${result.product.id}`)
     }
   }
 
+  const handleSave = (action: 'draft' | 'publish') => {
+    void save(action === 'publish')
+  }
+
   return (
     <div className="pb-24">
-      <Tabs defaultValue="basic">
-        <TabsList variant="line" className="mb-6" style={{ borderBottom: '0.5px solid #EDD9AF', width: '100%' }}>
-          {['basic', 'pricing', 'media', 'settings'].map((tab) => <TabsTrigger key={tab} value={tab} style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.14em', padding: '14px 18px', textTransform: 'uppercase' }}>{tab === 'basic' ? 'Basic Info' : tab === 'media' ? 'Images & Media' : tab}</TabsTrigger>)}
-        </TabsList>
+      <div>
+        <div style={{ display: 'flex', borderBottom: '0.5px solid #EDD9AF', background: '#FBF5F0', marginBottom: '24px', overflowX: 'auto' }}>
+          {['Basic Info', 'Pricing', 'Images & Media', 'Settings'].map((tab, i) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(i)}
+              style={{
+                padding: '16px 24px',
+                background: 'transparent',
+                border: 'none',
+                borderBottom: activeTab === i ? '2px solid #1A1014' : '2px solid transparent',
+                fontSize: '11px',
+                letterSpacing: '0.15em',
+                cursor: 'pointer',
+                color: activeTab === i ? '#1A1014' : '#B8A090',
+                fontFamily: 'var(--font-inter)',
+                fontWeight: activeTab === i ? 500 : 400,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'all 0.2s',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {i < activeTab && (
+                <span style={{ color: '#C9A961', fontSize: '12px' }}>✓</span>
+              )}
+              {i >= activeTab && (
+                <span
+                  style={{
+                    width: '18px',
+                    height: '18px',
+                    borderRadius: '50%',
+                    background: activeTab === i ? '#1A1014' : 'transparent',
+                    border: activeTab === i ? 'none' : '1px solid #EDD9AF',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '10px',
+                    color: activeTab === i ? '#FBF5F0' : '#B8A090',
+                    flexShrink: 0,
+                  }}
+                >
+                  {i + 1}
+                </span>
+              )}
+              {tab.toUpperCase()}
+            </button>
+          ))}
+        </div>
 
-        <TabsContent value="basic">
+        {activeTab === 0 && (
           <section className="grid gap-5" style={{ backgroundColor: '#FBF5F0', border: '0.5px solid #EDD9AF', borderRadius: '4px', padding: '24px' }}>
             <div className="grid gap-5 md:grid-cols-2">
               <label>
@@ -307,14 +384,14 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
             </div>
             <label>
               <span style={{ color: '#C9A961', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '8px' }}>DESCRIPTION</span>
-              <textarea value={form.description} onChange={(event) => setField('description', event.target.value)} style={{ backgroundColor: '#FDF8F2', border: '1px solid #EDD9AF', borderRadius: '2px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', minHeight: '120px', outlineColor: '#1A1014', padding: '12px 14px', width: '100%' }} />
+              <textarea value={form.description ?? ''} onChange={(event) => setField('description', event.target.value)} style={{ backgroundColor: '#FDF8F2', border: '1px solid #EDD9AF', borderRadius: '2px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', minHeight: '120px', outlineColor: '#1A1014', padding: '12px 14px', width: '100%' }} />
             </label>
             <TextInput label="BASE PRICE" value={form.basePrice} type="number" onChange={(value) => setField('basePrice', Number(value))} />
             <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '13px' }}>Starting from <span style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '22px' }}>{formatMoney(form.basePrice)}</span></p>
           </section>
-        </TabsContent>
+        )}
 
-        <TabsContent value="pricing">
+        {activeTab === 1 && (
           <section className="grid gap-6 lg:grid-cols-[1fr_320px]">
             <div className="grid gap-5">
               {[
@@ -347,9 +424,9 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
               <p style={{ color: '#FBF5F0', fontFamily: 'var(--font-playfair)', fontSize: '38px', marginTop: '16px' }}>{formatMoney(samplePrice)}</p>
             </aside>
           </section>
-        </TabsContent>
+        )}
 
-        <TabsContent value="media">
+        {activeTab === 2 && (
           <section style={{ backgroundColor: '#FBF5F0', border: '0.5px solid #EDD9AF', borderRadius: '4px', padding: '24px' }}>
             <label className="block cursor-pointer text-center" style={{ backgroundColor: '#FDF8F2', border: '2px dashed #EDD9AF', borderRadius: '4px', padding: '40px' }}>
               <Upload color="#C9A961" className="mx-auto mb-4" size={34} />
@@ -379,7 +456,7 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
 
                 {videoMode === 'url' ? (
                   <div>
-                    <input value={videoInput} onChange={(event) => setVideoInput(event.target.value)} placeholder="YouTube URL or direct MP4 link" style={{ backgroundColor: '#FDF8F2', border: '1px solid #EDD9AF', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', outlineColor: '#1A1014', padding: '12px 16px', width: '100%' }} />
+                    <input value={videoInput ?? ''} onChange={(event) => setVideoInput(event.target.value)} placeholder="YouTube URL or direct MP4 link" style={{ backgroundColor: '#FDF8F2', border: '1px solid #EDD9AF', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', outlineColor: '#1A1014', padding: '12px 16px', width: '100%' }} />
                     <button type="button" onClick={addVideoUrl} style={{ backgroundColor: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '11px', marginTop: '10px', padding: '10px 20px' }}>
                       Add URL
                     </button>
@@ -438,9 +515,9 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
               <TextInput label="CERTIFICATE URL" value={form.certificateUrl} onChange={(value) => setField('certificateUrl', value)} />
             </div>
           </section>
-        </TabsContent>
+        )}
 
-        <TabsContent value="settings">
+        {activeTab === 3 && (
           <section className="grid gap-5" style={{ backgroundColor: '#FBF5F0', border: '0.5px solid #EDD9AF', borderRadius: '4px', padding: '24px' }}>
             {[['Show to customers', 'isActive'], ['Featured product', 'isFeatured'], ['New Arrival', 'isNewArrival']].map(([label, key]) => (
               <div key={key} className="flex items-center justify-between" style={{ borderBottom: '0.5px solid #EDD9AF', paddingBottom: '14px' }}>
@@ -451,7 +528,7 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
             <TextInput label="SORT ORDER" value={form.sortOrder} type="number" onChange={(value) => setField('sortOrder', Number(value))} />
             <label>
               <span style={{ color: '#C9A961', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '8px' }}>INTERNAL NOTES</span>
-              <textarea value={form.internalNotes} onChange={(event) => setField('internalNotes', event.target.value)} style={{ backgroundColor: '#FDF8F2', border: '1px solid #EDD9AF', color: '#1A1014', minHeight: '100px', padding: '12px 14px', width: '100%' }} />
+              <textarea value={form.internalNotes ?? ''} onChange={(event) => setField('internalNotes', event.target.value)} style={{ backgroundColor: '#FDF8F2', border: '1px solid #EDD9AF', color: '#1A1014', minHeight: '100px', padding: '12px 14px', width: '100%' }} />
             </label>
             <div>
               <TextInput label="TAGS" value={tagInput} onChange={setTagInput} />
@@ -461,18 +538,49 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
             <TextInput label="SEO TITLE" value={form.seoTitle} onChange={(value) => setField('seoTitle', value)} />
             <label>
               <span style={{ color: '#C9A961', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '8px' }}>SEO DESCRIPTION</span>
-              <textarea value={form.seoDescription} onChange={(event) => setField('seoDescription', event.target.value)} style={{ backgroundColor: '#FDF8F2', border: '1px solid #EDD9AF', color: '#1A1014', minHeight: '90px', padding: '12px 14px', width: '100%' }} />
+              <textarea value={form.seoDescription ?? ''} onChange={(event) => setField('seoDescription', event.target.value)} style={{ backgroundColor: '#FDF8F2', border: '1px solid #EDD9AF', color: '#1A1014', minHeight: '90px', padding: '12px 14px', width: '100%' }} />
             </label>
           </section>
-        </TabsContent>
-      </Tabs>
+        )}
+      </div>
 
       <div className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-between gap-4 px-6 py-4 lg:left-[260px] lg:px-8" style={{ backgroundColor: '#FBF5F0', borderTop: '0.5px solid #EDD9AF' }}>
-        <span style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>{status}</span>
-        <div className="flex gap-3">
-          <button type="button" onClick={() => save(false)} style={{ backgroundColor: 'transparent', border: '0.5px solid #EDD9AF', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.14em', padding: '12px 16px' }}>SAVE AS DRAFT</button>
-          <button type="button" onClick={() => save(true)} style={{ backgroundColor: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.14em', padding: '12px 16px' }}>SAVE & PUBLISH</button>
-        </div>
+        {activeTab < 3 ? (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+            <span style={{ fontSize: '12px', color: '#B8A090', fontFamily: 'var(--font-inter)' }}>
+              Step {activeTab + 1} of 4
+            </span>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              {activeTab > 0 && (
+                <button type="button" onClick={() => setActiveTab(activeTab - 1)} style={{ padding: '12px 24px', background: 'transparent', border: '1px solid #EDD9AF', color: '#1A1014', fontSize: '11px', letterSpacing: '0.15em', cursor: 'pointer', fontFamily: 'var(--font-inter)' }}>
+                  ← BACK
+                </button>
+              )}
+              <button type="button" onClick={() => setActiveTab(activeTab + 1)} style={{ padding: '12px 28px', background: '#1A1014', border: 'none', color: '#FBF5F0', fontSize: '11px', letterSpacing: '0.15em', cursor: 'pointer', fontFamily: 'var(--font-inter)' }}>
+                {activeTab === 0 && 'NEXT: PRICING →'}
+                {activeTab === 1 && 'NEXT: MEDIA →'}
+                {activeTab === 2 && 'NEXT: SETTINGS →'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+            <div style={{ fontSize: '12px', color: '#B8A090', fontFamily: 'var(--font-inter)' }}>
+              {lastSaved ? `Last saved: ${lastSaved}` : status}
+            </div>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button type="button" onClick={() => setActiveTab(2)} style={{ padding: '12px 24px', background: 'transparent', border: '1px solid #EDD9AF', color: '#1A1014', fontSize: '11px', letterSpacing: '0.15em', cursor: 'pointer', fontFamily: 'var(--font-inter)' }}>
+                ← BACK
+              </button>
+              <button type="button" onClick={() => handleSave('draft')} style={{ padding: '12px 24px', background: 'transparent', border: '1px solid #1A1014', color: '#1A1014', fontSize: '11px', letterSpacing: '0.15em', cursor: 'pointer', fontFamily: 'var(--font-inter)' }}>
+                SAVE AS DRAFT
+              </button>
+              <button type="button" onClick={() => handleSave('publish')} style={{ padding: '12px 28px', background: '#1A1014', border: 'none', color: '#FBF5F0', fontSize: '11px', letterSpacing: '0.15em', cursor: 'pointer', fontFamily: 'var(--font-inter)' }}>
+                SAVE & PUBLISH
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
