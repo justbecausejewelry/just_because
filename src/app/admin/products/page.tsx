@@ -8,6 +8,7 @@ import { Gem, Pencil, Search, Trash2 } from 'lucide-react'
 type Product = {
   id: string
   sku: string
+  slug: string
   title: string
   productType: string
   basePrice: number
@@ -139,9 +140,42 @@ export default function AdminProductsPage() {
                 <td><Toggle checked={product.isActive} onChange={() => patchProduct(product.id, { isActive: !product.isActive })} /></td>
                 <td><Toggle checked={product.isFeatured} onChange={() => patchProduct(product.id, { isFeatured: !product.isFeatured })} /></td>
                 <td>
-                  <div className="flex gap-3">
-                    <Link href={`/admin/products/${product.id}`} style={{ color: '#C9A961' }}><Pencil size={16} /></Link>
-                    <button onClick={() => deleteProduct(product.id)} style={{ color: '#A85C6A' }}><Trash2 size={16} /></button>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <Link
+                      href={`/products/${product.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="View on storefront"
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: 'transparent',
+                        border: '0.5px solid #EDD9AF',
+                        borderRadius: '2px',
+                        cursor: 'pointer',
+                        color: '#B8A090',
+                        transition: 'all 0.2s',
+                        textDecoration: 'none',
+                      }}
+                      onMouseEnter={(event) => {
+                        event.currentTarget.style.borderColor = '#C9A961'
+                        event.currentTarget.style.color = '#C9A961'
+                      }}
+                      onMouseLeave={(event) => {
+                        event.currentTarget.style.borderColor = '#EDD9AF'
+                        event.currentTarget.style.color = '#B8A090'
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    </Link>
+                    <Link href={`/admin/products/${product.id}`} title="Edit product" style={{ color: '#C9A961', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', border: '0.5px solid #EDD9AF', borderRadius: '2px' }}><Pencil size={16} /></Link>
+                    <button onClick={() => deleteProduct(product.id)} title="Delete product" style={{ color: '#A85C6A', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', border: '0.5px solid #EDD9AF', borderRadius: '2px' }}><Trash2 size={16} /></button>
                   </div>
                 </td>
               </tr>

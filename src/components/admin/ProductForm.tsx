@@ -3,8 +3,9 @@
 import { ChangeEvent, useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { GripVertical, Upload, Video, X } from 'lucide-react'
+import { Upload, X } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useToast } from '@/context/ToastContext'
 
 type PricingMap = Record<string, { enabled: boolean; modifier: number }>
 
@@ -166,15 +167,17 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (checked: b
 
 export function ProductForm({ product, mode }: { product?: IncomingProduct; mode: 'new' | 'edit' }) {
   const router = useRouter()
+  const { showToast } = useToast()
   const [form, setForm] = useState<ProductFormData>(() => ({ ...blankProduct(), ...withoutNulls(product) }))
   const [tagInput, setTagInput] = useState('')
-  const [videoInput, setVideoInput] = useState('')
-  const [videoMode, setVideoMode] = useState<'url' | 'upload'>('url')
-  const [videoPreview, setVideoPreview] = useState<{ name: string; size: number; url: string } | null>(null)
-  const [videoUploadProgress, setVideoUploadProgress] = useState(0)
+  const [videoFile, setVideoFile] = useState<File | null>(null)
+  const [videoPreview, setVideoPreview] = useState('')
+  const [videoUploading, setVideoUploading] = useState(false)
+  const [videoProgress, setVideoProgress] = useState(0)
   const [status, setStatus] = useState('Not saved yet')
   const [lastSaved, setLastSaved] = useState('')
   const [activeTab, setActiveTab] = useState(0)
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     if (product) {
@@ -218,88 +221,106 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
     }
   }
 
-  const youtubeIdFromUrl = (url: string) => {
-    const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&?/]+)/)
-    return match?.[1]
-  }
-
-  const labelForVideo = (url: string) => {
-    try {
-      const parsed = new URL(url)
-      return parsed.pathname.split('/').filter(Boolean).pop() || parsed.hostname
-    } catch {
-      return url
-    }
-  }
-
-  const addVideoUrl = () => {
-    if (!videoInput.trim()) {
-      return
-    }
-
-    setField('videos', [...form.videos, videoInput.trim()])
-    setVideoInput('')
-  }
-
-  const handleVideoFile = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) {
+  const handleVideoSelect = async (file: File) => {
+    if (file.size > 100 * 1024 * 1024) {
+      showToast('Video must be under 100MB', 'error')
       return
     }
 
     const localUrl = URL.createObjectURL(file)
-    setVideoPreview({ name: file.name, size: file.size, url: localUrl })
-    setVideoUploadProgress(30)
+    setVideoFile(file)
+    setVideoPreview(localUrl)
+    setVideoUploading(true)
+    setVideoProgress(0)
 
-    const body = new FormData()
-    body.append('file', file)
-    body.append('slug', form.slug || slugify(form.title) || 'draft')
-    body.append('bucket', 'product-videos')
+    try {
+      const { createClient } = await import('@supabase/supabase-js')
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      )
 
-    const response = await fetch('/api/admin/upload', { method: 'POST', body })
-    setVideoUploadProgress(80)
-    const payload = (await response.json()) as { publicUrl?: string; error?: string }
-    const publicUrl = payload.publicUrl
+      const productSlug = form.slug || slugify(form.title) || `product-${Date.now()}`
+      const fileName = `${Date.now()}-${file.name.replace(/\s/g, '-')}`
+      const filePath = `products/${productSlug}/${fileName}`
 
-    if (publicUrl) {
-      setField('videos', [...form.videos, publicUrl])
-      setVideoUploadProgress(100)
-      setStatus('Video uploaded.')
-    } else {
-      setStatus(payload.error || 'Unable to upload video.')
-      setVideoUploadProgress(0)
+      setVideoProgress(30)
+
+      const { error } = await supabase.storage
+        .from('product-videos')
+        .upload(filePath, file, { upsert: true })
+
+      if (error) {
+        throw error
+      }
+
+      setVideoProgress(80)
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('product-videos')
+        .getPublicUrl(filePath)
+
+      setField('videos', [publicUrl])
+      setVideoProgress(100)
+      showToast('Video uploaded successfully!', 'success')
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : 'Unknown upload error'
+      showToast(`Video upload failed: ${message}`, 'error')
+      setVideoFile(null)
+      setVideoPreview('')
+    } finally {
+      setVideoUploading(false)
+      window.setTimeout(() => setVideoProgress(0), 1000)
     }
   }
 
-  const save = async (publish: boolean) => {
-    const payload = {
-      ...form,
-      slug: form.slug || slugify(form.title),
-      isActive: publish ? true : form.isActive,
-      certificateUrl: form.certificateUrl || null,
-      hoverImage: null,
-      modelUrl: null,
-    }
-    const url = mode === 'new' ? '/api/admin/products' : `/api/admin/products/${form.id}`
-    const response = await fetch(url, {
-      method: mode === 'new' ? 'POST' : 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-    const result = (await response.json()) as { product?: ProductFormData; error?: string }
-    if (!response.ok || result.error) {
-      setStatus(result.error || 'Unable to save product.')
-      return
-    }
-    setStatus('Last saved: just now')
-    setLastSaved('just now')
-    if (mode === 'new' && result.product?.id) {
-      router.push(`/admin/products/${result.product.id}`)
-    }
-  }
+  const handleSave = async (action: 'draft' | 'publish') => {
+    setIsSaving(true)
+    try {
+      const publish = action === 'publish'
+      const payload = {
+        ...form,
+        slug: form.slug || slugify(form.title),
+        isActive: publish ? true : form.isActive,
+        certificateUrl: form.certificateUrl || null,
+        hoverImage: null,
+        modelUrl: null,
+      }
+      const url = mode === 'new' ? '/api/admin/products' : `/api/admin/products/${form.id}`
+      const response = await fetch(url, {
+        method: mode === 'new' ? 'POST' : 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const data = (await response.json()) as { product?: ProductFormData; error?: string }
 
-  const handleSave = (action: 'draft' | 'publish') => {
-    void save(action === 'publish')
+      if (!response.ok || data.error) {
+        throw new Error(data.error || 'Unable to save product.')
+      }
+
+      showToast(
+        publish ? 'Product published successfully!' : 'Draft saved successfully!',
+        'success'
+      )
+
+      if (publish) {
+        window.setTimeout(() => {
+          router.push('/admin/products')
+        }, 1000)
+      } else {
+        if (mode === 'new' && data.product?.id) {
+          router.replace(`/admin/products/${data.product.id}`)
+        }
+        setStatus('Last saved: just now')
+        setLastSaved('just now')
+      }
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : 'Failed to save product'
+      setStatus(message)
+      showToast('Failed to save product', 'error')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -445,66 +466,125 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
             </div>
             <div className="mt-6 grid gap-5 md:grid-cols-2">
               <div>
-                <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '10px' }}>VIDEOS</p>
-                <div className="mb-4 flex gap-2">
-                  {(['url', 'upload'] as const).map((mode) => (
-                    <button key={mode} type="button" onClick={() => setVideoMode(mode)} style={{ backgroundColor: videoMode === mode ? '#1A1014' : 'transparent', border: videoMode === mode ? '1px solid #1A1014' : '1px solid #EDD9AF', color: videoMode === mode ? '#FBF5F0' : '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', padding: '8px 20px' }}>
-                      {mode === 'url' ? 'URL' : 'UPLOAD FILE'}
-                    </button>
-                  ))}
+                <div style={{ fontSize: '9px', letterSpacing: '0.3em', color: '#C9A961', fontFamily: 'var(--font-inter)', marginBottom: '12px' }}>
+                  PRODUCT VIDEO
                 </div>
 
-                {videoMode === 'url' ? (
-                  <div>
-                    <input value={videoInput ?? ''} onChange={(event) => setVideoInput(event.target.value)} placeholder="YouTube URL or direct MP4 link" style={{ backgroundColor: '#FDF8F2', border: '1px solid #EDD9AF', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', outlineColor: '#1A1014', padding: '12px 16px', width: '100%' }} />
-                    <button type="button" onClick={addVideoUrl} style={{ backgroundColor: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '11px', marginTop: '10px', padding: '10px 20px' }}>
-                      Add URL
-                    </button>
-                    {videoInput && (
-                      <div className="mt-3 flex items-center gap-3" style={{ backgroundColor: '#FDF8F2', border: '0.5px solid #EDD9AF', padding: '10px' }}>
-                        {youtubeIdFromUrl(videoInput) ? (
-                          <Image src={`https://img.youtube.com/vi/${youtubeIdFromUrl(videoInput)}/0.jpg`} alt="YouTube preview" width={72} height={44} style={{ objectFit: 'cover' }} />
-                        ) : (
-                          <span className="flex h-11 w-[72px] items-center justify-center" style={{ backgroundColor: '#F5E8ED' }}>
-                            <Video color="#C9A961" size={22} />
-                          </span>
-                        )}
-                        <span className="min-w-0 flex-1 truncate" style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>{videoInput}</span>
-                        <button type="button" onClick={() => setVideoInput('')} style={{ color: '#1A1014' }}><X size={15} /></button>
-                      </div>
-                    )}
+                {!videoPreview && !form.videos?.[0] ? (
+                  <div
+                    onClick={() => document.getElementById('video-upload')?.click()}
+                    style={{
+                      border: '2px dashed #EDD9AF',
+                      borderRadius: '4px',
+                      padding: '36px 24px',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      background: '#FDF8F2',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={(event) => {
+                      event.currentTarget.style.borderColor = '#C9A961'
+                      event.currentTarget.style.background = '#FBF5F0'
+                    }}
+                    onMouseLeave={(event) => {
+                      event.currentTarget.style.borderColor = '#EDD9AF'
+                      event.currentTarget.style.background = '#FDF8F2'
+                    }}
+                    onDragOver={(event) => {
+                      event.preventDefault()
+                      event.currentTarget.style.borderColor = '#C9A961'
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault()
+                      const file = event.dataTransfer.files[0]
+                      if (file && file.type.startsWith('video/')) {
+                        void handleVideoSelect(file)
+                      }
+                    }}
+                  >
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#C9A961" strokeWidth="1.2" style={{ margin: '0 auto 12px' }}>
+                      <path d="M15 10l4.553-2.069A1 1 0 0121 8.87v6.26a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
+                    </svg>
+                    <p style={{ fontSize: '13px', color: '#1A1014', fontFamily: 'var(--font-inter)', marginBottom: '4px' }}>
+                      Drop video here or click to upload
+                    </p>
+                    <p style={{ fontSize: '11px', color: '#B8A090', fontFamily: 'var(--font-inter)' }}>
+                      MP4, MOV, WebM - max 100MB
+                    </p>
                   </div>
                 ) : (
-                  <div>
-                    <label className="block cursor-pointer text-center" style={{ backgroundColor: '#FDF8F2', border: '2px dashed #EDD9AF', borderRadius: '4px', padding: '32px' }}>
-                      <Video color="#C9A961" className="mx-auto mb-3" size={34} />
-                      <p style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '20px' }}>Drag and drop video here</p>
-                      <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '13px' }}>or click to browse</p>
-                      <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', marginTop: '4px' }}>MP4, MOV, WebM up to 100MB</p>
-                      <input onChange={handleVideoFile} type="file" accept="video/mp4,video/quicktime,video/webm" className="hidden" />
-                    </label>
-                    {videoPreview && (
-                      <div className="mt-4" style={{ backgroundColor: '#FDF8F2', border: '0.5px solid #EDD9AF', padding: '12px' }}>
-                        <video src={videoPreview.url} controls style={{ maxHeight: '200px', width: '100%' }} />
-                        <div className="mt-3 flex items-center justify-between gap-3">
-                          <span className="truncate" style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>{videoPreview.name} - {(videoPreview.size / (1024 * 1024)).toFixed(1)} MB</span>
-                          <button type="button" onClick={() => { URL.revokeObjectURL(videoPreview.url); setVideoPreview(null); setVideoUploadProgress(0) }} style={{ color: '#A85C6A', fontFamily: 'var(--font-inter)', fontSize: '11px' }}>Remove</button>
-                        </div>
-                        <div style={{ backgroundColor: '#EDD9AF', borderRadius: '999px', height: '4px', marginTop: '12px', overflow: 'hidden' }}>
-                          <div style={{ backgroundColor: '#C9A961', borderRadius: '999px', height: '4px', transition: 'width 0.3s ease', width: `${videoUploadProgress}%` }} />
-                        </div>
-                      </div>
-                    )}
+                  <div style={{ border: '0.5px solid #EDD9AF', borderRadius: '4px', overflow: 'hidden', background: '#FDF8F2' }}>
+                    <video src={videoPreview || form.videos?.[0]} controls style={{ width: '100%', maxHeight: '240px', display: 'block' }} />
+                    <div style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '0.5px solid #EDD9AF' }}>
+                      <span style={{ fontSize: '11px', color: '#B8A090', fontFamily: 'var(--font-inter)' }}>
+                        {videoFile?.name || 'Current video'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (videoPreview) {
+                            URL.revokeObjectURL(videoPreview)
+                          }
+                          setVideoFile(null)
+                          setVideoPreview('')
+                          setField('videos', [])
+                        }}
+                        style={{ background: 'transparent', border: '0.5px solid #EDD9AF', color: '#A85C6A', padding: '6px 12px', fontSize: '10px', cursor: 'pointer', fontFamily: 'var(--font-inter)', letterSpacing: '0.1em' }}
+                      >
+                        REMOVE
+                      </button>
+                    </div>
                   </div>
                 )}
+
+                {videoUploading && (
+                  <div style={{ marginTop: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#B8A090', fontFamily: 'var(--font-inter)', marginBottom: '6px' }}>
+                      <span>Uploading...</span>
+                      <span>{videoProgress}%</span>
+                    </div>
+                    <div style={{ background: '#EDD9AF', height: '4px', borderRadius: '999px', overflow: 'hidden' }}>
+                      <div style={{ background: '#C9A961', height: '100%', width: `${videoProgress}%`, transition: 'width 0.3s ease', borderRadius: '999px' }} />
+                    </div>
+                  </div>
+                )}
+
+                <input
+                  id="video-upload"
+                  type="file"
+                  accept="video/mp4,video/mov,video/webm,video/*"
+                  style={{ display: 'none' }}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0]
+                    if (file) {
+                      void handleVideoSelect(file)
+                    }
+                  }}
+                />
+
+                <details style={{ marginTop: '12px' }}>
+                  <summary style={{ fontSize: '11px', color: '#B8A090', cursor: 'pointer', fontFamily: 'var(--font-inter)', letterSpacing: '0.05em', listStyle: 'none' }}>
+                    - Or paste a video URL instead
+                  </summary>
+                  <div style={{ marginTop: '10px' }}>
+                    <input
+                      type="url"
+                      placeholder="https://youtube.com/... or direct MP4 URL"
+                      value={form.videos?.[0]?.startsWith('http') && !form.videos[0].includes('supabase') ? form.videos[0] : ''}
+                      onChange={(event) => setField('videos', event.target.value ? [event.target.value] : [])}
+                      style={{ width: '100%', padding: '10px 14px', border: '1px solid #EDD9AF', background: '#FDF8F2', color: '#1A1014', fontSize: '12px', fontFamily: 'var(--font-inter)', borderRadius: '2px' }}
+                    />
+                  </div>
+                </details>
 
                 {form.videos.length > 0 && (
                   <div className="mt-4 grid gap-2">
                     {form.videos.map((video, index) => (
                       <div key={`${video}-${index}`} className="flex items-center gap-3" style={{ backgroundColor: '#FDF8F2', border: '0.5px solid #EDD9AF', padding: '10px 12px' }}>
-                        <GripVertical color="#B8A090" size={16} />
-                        <Video color="#C9A961" size={18} />
-                        <span className="min-w-0 flex-1 truncate" style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>{labelForVideo(video)}</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C9A961" strokeWidth="1.5">
+                          <path d="M15 10l4.553-2.069A1 1 0 0121 8.87v6.26a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
+                        </svg>
+                        <span className="min-w-0 flex-1 truncate" style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>{video}</span>
                         {index === 0 && <span style={{ backgroundColor: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '8px', letterSpacing: '0.12em', padding: '3px 7px' }}>PRIMARY</span>}
                         <button type="button" onClick={() => setField('videos', form.videos.filter((item) => item !== video))} style={{ color: '#A85C6A' }}><X size={15} /></button>
                       </div>
@@ -572,11 +652,36 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
               <button type="button" onClick={() => setActiveTab(2)} style={{ padding: '12px 24px', background: 'transparent', border: '1px solid #EDD9AF', color: '#1A1014', fontSize: '11px', letterSpacing: '0.15em', cursor: 'pointer', fontFamily: 'var(--font-inter)' }}>
                 ← BACK
               </button>
-              <button type="button" onClick={() => handleSave('draft')} style={{ padding: '12px 24px', background: 'transparent', border: '1px solid #1A1014', color: '#1A1014', fontSize: '11px', letterSpacing: '0.15em', cursor: 'pointer', fontFamily: 'var(--font-inter)' }}>
-                SAVE AS DRAFT
+              <button type="button" onClick={() => void handleSave('draft')} disabled={isSaving} style={{ padding: '12px 24px', background: 'transparent', border: '1px solid #1A1014', color: '#1A1014', fontSize: '11px', letterSpacing: '0.15em', cursor: isSaving ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-inter)', opacity: isSaving ? 0.65 : 1 }}>
+                {isSaving ? 'SAVING...' : 'SAVE AS DRAFT'}
               </button>
-              <button type="button" onClick={() => handleSave('publish')} style={{ padding: '12px 28px', background: '#1A1014', border: 'none', color: '#FBF5F0', fontSize: '11px', letterSpacing: '0.15em', cursor: 'pointer', fontFamily: 'var(--font-inter)' }}>
-                SAVE & PUBLISH
+              <button
+                type="button"
+                onClick={() => void handleSave('publish')}
+                disabled={isSaving}
+                style={{
+                  padding: '12px 28px',
+                  background: isSaving ? '#B8A090' : '#1A1014',
+                  border: 'none',
+                  color: '#FBF5F0',
+                  fontSize: '11px',
+                  letterSpacing: '0.15em',
+                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                  fontFamily: 'var(--font-inter)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  transition: 'background 0.2s',
+                }}
+              >
+                {isSaving ? (
+                  <>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
+                      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                    </svg>
+                    SAVING...
+                  </>
+                ) : 'SAVE & PUBLISH'}
               </button>
             </div>
           </div>
