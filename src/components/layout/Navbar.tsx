@@ -237,7 +237,7 @@ export function Navbar() {
             width: '100%',
           }}
         >
-          <Link href="/" style={{ textDecoration: 'none', flexShrink: 0, zIndex: 1 }}>
+          <Link href="/" className="jb-logo-link" style={{ textDecoration: 'none', flexShrink: 0, zIndex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', cursor: 'pointer' }}>
               <span
                 style={{
@@ -280,6 +280,7 @@ export function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
+                className="jb-nav-link"
                 style={navStyle(link)}
                 onMouseEnter={(event) => {
                   event.currentTarget.style.color = '#C9A961'
@@ -311,6 +312,7 @@ export function Navbar() {
             <button
               onClick={() => setSearchOpen(true)}
               aria-label="Search"
+              className="jb-icon-action"
               style={{
                 background: 'transparent',
                 border: 'none',
@@ -325,6 +327,7 @@ export function Navbar() {
                 <button
                   onClick={() => setIsDropdownOpen((open) => !open)}
                   aria-label="Account menu"
+                  className="jb-icon-action"
                   style={{
                     background: 'transparent',
                     border: 'none',
@@ -336,7 +339,7 @@ export function Navbar() {
                   <User size={20} />
                 </button>
               ) : (
-                <Link href="/login" aria-label="Sign in" style={{ color: '#1A1014' }}>
+                <Link href="/login" aria-label="Sign in" className="jb-icon-action" style={{ color: '#1A1014', display: 'flex' }}>
                   <User size={20} />
                 </Link>
               )}
@@ -394,7 +397,7 @@ export function Navbar() {
                 </div>
               )}
             </div>
-            <Link href="/wishlist" aria-label="Wishlist" style={{ color: '#1A1014', position: 'relative' }}>
+            <Link href="/wishlist" aria-label="Wishlist" className="jb-icon-action" style={{ color: '#1A1014', position: 'relative', display: 'flex' }}>
               <Heart size={20} color="#1A1014" />
               {wishlistCount > 0 && (
                 <span
@@ -421,6 +424,7 @@ export function Navbar() {
             <button
               onClick={() => setCartOpen(true)}
               aria-label="Open cart"
+              className="jb-icon-action"
               style={{
                 background: 'transparent',
                 border: 'none',
@@ -464,6 +468,7 @@ export function Navbar() {
             <button
               onClick={() => setCartOpen(true)}
               aria-label="Open cart"
+              className="jb-icon-action"
               style={{
                 background: 'transparent',
                 border: 'none',
@@ -501,6 +506,7 @@ export function Navbar() {
               onClick={() => setMobileOpen((open) => !open)}
               aria-label="Open menu"
               aria-expanded={mobileOpen}
+              className="jb-icon-action"
               style={{
                 width: '44px',
                 height: '44px',
@@ -567,13 +573,13 @@ export function Navbar() {
                 </Link>
               ))}
               <div style={{ padding: '20px 24px', display: 'flex', gap: '20px', alignItems: 'center' }}>
-                <button onClick={() => { setMobileOpen(false); setSearchOpen(true) }} aria-label="Search" style={{ color: '#1A1014' }}><Search size={20} /></button>
-                <Link onClick={() => setMobileOpen(false)} href={user ? '/account' : '/login'} style={{ color: '#1A1014' }}><User size={20} /></Link>
-                <Link onClick={() => setMobileOpen(false)} href="/wishlist" style={{ color: '#1A1014', position: 'relative' }}>
+                <button className="jb-icon-action" onClick={() => { setMobileOpen(false); setSearchOpen(true) }} aria-label="Search" style={{ color: '#1A1014' }}><Search size={20} /></button>
+                <Link className="jb-icon-action" onClick={() => setMobileOpen(false)} href={user ? '/account' : '/login'} style={{ color: '#1A1014' }}><User size={20} /></Link>
+                <Link className="jb-icon-action" onClick={() => setMobileOpen(false)} href="/wishlist" style={{ color: '#1A1014', position: 'relative' }}>
                   <Heart size={20} />
                   {wishlistCount > 0 && <span style={{ position: 'absolute', top: '-7px', right: '-7px', background: '#E8C4D0', color: '#6B2D44', borderRadius: '50%', width: '16px', height: '16px', fontSize: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{wishlistCount}</span>}
                 </Link>
-                <button onClick={() => { setMobileOpen(false); setCartOpen(true) }} aria-label="Open cart" style={{ color: '#1A1014', position: 'relative' }}>
+                <button className="jb-icon-action" onClick={() => { setMobileOpen(false); setCartOpen(true) }} aria-label="Open cart" style={{ color: '#1A1014', position: 'relative' }}>
                   <ShoppingBag size={20} />
                   {itemCount > 0 && <span style={{ position: 'absolute', top: '-7px', right: '-7px', background: '#E8C4D0', color: '#6B2D44', borderRadius: '50%', width: '16px', height: '16px', fontSize: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{itemCount}</span>}
                 </button>

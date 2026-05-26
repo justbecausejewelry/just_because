@@ -113,10 +113,10 @@ function ProductCard({ product }: { product: Product }) {
     <motion.div
       whileHover={{
         y: -8,
-        boxShadow: '0 12px 40px rgba(26,16,20,0.10)',
+        boxShadow: '0 16px 40px rgba(26,16,20,0.12)',
       }}
       transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-      className="best-seller-card group relative h-full"
+      className="best-seller-card jb-card-hover group relative h-full"
     >
       <Link
         href={`/products/${product.slug}`}
@@ -148,7 +148,7 @@ function ProductCard({ product }: { product: Product }) {
                 alt={product.title}
                 fill
                 sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
-                style={{ objectFit: 'cover' }}
+                style={{ objectFit: 'cover', transition: 'transform 0.6s cubic-bezier(0.4,0,0.2,1)' }}
               />
             ) : (
               <ProductPlaceholder />
@@ -242,6 +242,7 @@ function ProductCard({ product }: { product: Product }) {
             </div>
 
             <div
+              data-hover-cta
               className="absolute inset-x-0 bottom-0 translate-y-full transition-transform duration-300 ease-out group-hover:translate-y-0"
               style={{
                 backgroundColor: '#1A1014',
@@ -260,6 +261,7 @@ function ProductCard({ product }: { product: Product }) {
         </div>
       </Link>
       <button
+        className="jb-wishlist-button"
         onClick={(event) => {
           event.preventDefault()
           event.stopPropagation()
@@ -397,6 +399,7 @@ export function BestSellers() {
         </div>
         <Link
           href="/products"
+          className="jb-gold-link"
           style={{
             color: '#C9A961',
             fontFamily: 'var(--font-inter)',

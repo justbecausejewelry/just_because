@@ -104,7 +104,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
-                className="mb-1 flex items-center gap-3"
+                className="admin-sidebar-link mb-1 flex items-center gap-3"
                 style={{
                   backgroundColor: isActive ? 'rgba(201,169,97,0.12)' : 'transparent',
                   borderRadius: '4px',

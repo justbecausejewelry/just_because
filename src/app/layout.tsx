@@ -4,6 +4,7 @@ import { AppShell } from '@/components/layout/AppShell'
 import { CartProvider } from '@/context/CartContext'
 import { ToastProvider } from '@/context/ToastContext'
 import { WishlistProvider } from '@/context/WishlistContext'
+import DiamondCursor from '@/components/ui/DiamondCursor'
 import './globals.css'
 
 const playfair = Playfair_Display({
@@ -46,6 +47,7 @@ export default function RootLayout({
         className={`${playfair.variable} ${inter.variable} ${italianno.variable} antialiased`}
         style={{ backgroundColor: '#FBF5F0', color: '#1A1014' }}
       >
+        <DiamondCursor />
         <CartProvider>
           <WishlistProvider>
             <ToastProvider>

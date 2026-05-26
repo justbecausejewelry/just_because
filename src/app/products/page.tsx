@@ -114,9 +114,9 @@ function ProductCard({ product }: { product: Product }) {
 
   return (
     <motion.div
-      whileHover={{ y: -8, boxShadow: '0 12px 40px rgba(26,16,20,0.10)' }}
+      whileHover={{ y: -8, boxShadow: '0 16px 40px rgba(26,16,20,0.12)' }}
       transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-      className="group relative h-full"
+      className="jb-card-hover group relative h-full"
     >
       <Link href={`/products/${product.slug}`} style={{ textDecoration: 'none' }}>
         <div
@@ -136,7 +136,7 @@ function ProductCard({ product }: { product: Product }) {
                 alt={product.title}
                 fill
                 sizes="(max-width: 768px) 50vw, (max-width: 1024px) 50vw, 33vw"
-                style={{ objectFit: 'cover' }}
+                style={{ objectFit: 'cover', transition: 'transform 0.6s cubic-bezier(0.4,0,0.2,1)' }}
               />
             ) : (
               <ProductPlaceholder />
@@ -175,13 +175,14 @@ function ProductCard({ product }: { product: Product }) {
               <span style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px', marginRight: '6px' }}>From</span>
               <span style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '16px', fontWeight: 500 }}>{formatPrice(product.basePrice)}</span>
             </p>
-            <div className="absolute inset-x-0 bottom-0 translate-y-full transition-transform duration-300 ease-out group-hover:translate-y-0" style={{ backgroundColor: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.18em', padding: '11px', textAlign: 'center' }}>
+            <div data-hover-cta className="absolute inset-x-0 bottom-0 translate-y-full transition-transform duration-300 ease-out group-hover:translate-y-0" style={{ backgroundColor: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.18em', padding: '11px', textAlign: 'center' }}>
               Customize →
             </div>
           </div>
         </div>
       </Link>
       <button
+        className="jb-wishlist-button"
         onClick={(event) => {
           event.preventDefault()
           event.stopPropagation()
@@ -436,6 +437,7 @@ function ProductsContent() {
                 <button
                   key={type.value}
                   onClick={() => setSelectedType(type.value)}
+                  className="product-filter-pill"
                   style={{ backgroundColor: selectedType === type.value ? '#1A1014' : 'transparent', border: '0.5px solid #EDD9AF', borderRadius: '999px', color: selectedType === type.value ? '#FBF5F0' : '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '11px', padding: '8px 12px' }}
                 >
                   {type.label}
@@ -451,7 +453,7 @@ function ProductsContent() {
                 <button
                   key={metal}
                   onClick={() => toggleMetal(metal)}
-                  className="flex items-center gap-2"
+                  className="product-filter-pill flex items-center gap-2"
                   style={{ backgroundColor: selectedMetals.includes(metal) ? '#1A1014' : 'transparent', border: '0.5px solid #EDD9AF', borderRadius: '999px', color: selectedMetals.includes(metal) ? '#FBF5F0' : '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '11px', padding: '8px 12px' }}
                 >
                   <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: metalSwatches[metal], border: '0.5px solid #EDD9AF' }} />
@@ -476,6 +478,7 @@ function ProductsContent() {
                 <button
                   key={option.value}
                   onClick={() => setSort(option.value)}
+                  className="product-filter-pill"
                   style={{ backgroundColor: sort === option.value ? '#1A1014' : 'transparent', border: '0.5px solid #EDD9AF', borderRadius: '999px', color: sort === option.value ? '#FBF5F0' : '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '11px', padding: '8px 12px' }}
                 >
                   {option.label}
