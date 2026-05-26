@@ -71,6 +71,16 @@ function highlightTitle(title: string, query: string) {
   )
 }
 
+function accountName(user: SupabaseUser | null) {
+  if (!user) return ''
+  const name = user.user_metadata?.name
+  return typeof name === 'string' && name.trim() ? name : user.email || 'Account'
+}
+
+function accountInitial(user: SupabaseUser | null) {
+  return accountName(user).charAt(0).toUpperCase() || 'J'
+}
+
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -307,11 +317,21 @@ export function Navbar() {
               )}
 
               {user && accountOpen && (
-                <div style={{ position: 'absolute', top: '34px', right: 0, width: '220px', background: '#FDF8F2', border: '0.5px solid #EDD9AF', boxShadow: '0 12px 34px rgba(26,16,20,0.12)', padding: '8px', zIndex: 220 }}>
+                <div style={{ position: 'absolute', top: '34px', right: 0, width: '240px', background: '#FDF8F2', border: '0.5px solid #EDD9AF', boxShadow: '0 12px 34px rgba(26,16,20,0.12)', padding: '8px', zIndex: 220 }}>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', borderBottom: '0.5px solid #EDD9AF', padding: '10px 10px 12px', marginBottom: '6px' }}>
+                    <span style={{ width: '34px', height: '34px', borderRadius: '50%', background: '#C9A961', color: '#1A1014', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-playfair)', fontSize: '16px' }}>
+                      {accountInitial(user)}
+                    </span>
+                    <span style={{ minWidth: 0 }}>
+                      <span style={{ color: '#1A1014', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '12px', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{accountName(user)}</span>
+                      <span style={{ color: '#B8A090', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.email}</span>
+                    </span>
+                  </div>
                   {[
                     ['My Account', '/account'],
-                    ['My Messages', '/account/messages'],
                     ['My Orders', '/account/orders'],
+                    ['Messages', '/account/messages'],
+                    ...(user.email === 'ujjwalbana@gmail.com' ? ([['Admin Panel', '/admin']] as Array<[string, string]>) : []),
                     ['Wishlist', '/wishlist'],
                   ].map(([label, href]) => (
                     <Link

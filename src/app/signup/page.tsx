@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Star } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { signUp } from '@/lib/auth'
+import { supabaseAuth } from '@/lib/auth'
+import { useToast } from '@/context/ToastContext'
 
 function strengthFor(password: string) {
   let score = 0
@@ -18,6 +19,7 @@ function strengthFor(password: string) {
 
 export default function SignupPage() {
   const router = useRouter()
+  const { showToast } = useToast()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -26,6 +28,7 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [showConfirmation, setShowConfirmation] = useState(false)
   const strength = useMemo(() => strengthFor(password), [password])
   const strengthColor = strength <= 1 ? '#A85C6A' : strength === 2 ? '#B7791F' : strength === 3 ? '#C9A961' : '#7A8F72'
 
@@ -44,7 +47,18 @@ export default function SignupPage() {
     }
 
     setIsLoading(true)
-    const { error: signUpError } = await signUp(email, password, name)
+    const emailRedirectTo = process.env.NEXT_PUBLIC_APP_URL
+      ? `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`
+      : `${window.location.origin}/auth/callback`
+
+    const { data, error: signUpError } = await supabaseAuth.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { name },
+        emailRedirectTo,
+      },
+    })
     setIsLoading(false)
 
     if (signUpError) {
@@ -52,7 +66,16 @@ export default function SignupPage() {
       return
     }
 
-    router.push('/account')
+    if (data?.user && !signUpError) {
+      showToast('Account created! Welcome to Just Because *', 'success')
+
+      if (!data.session) {
+        setShowConfirmation(true)
+        return
+      }
+
+      router.push('/')
+    }
   }
 
   return (
@@ -80,6 +103,28 @@ export default function SignupPage() {
           <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '13px', marginBottom: '30px' }}>
             Already have one? <Link href="/login" style={{ color: '#C9A961', textDecoration: 'none' }}>Sign in →</Link>
           </p>
+
+          {showConfirmation && (
+            <div style={{
+              background: '#FDF8F2',
+              border: '1px solid #C9A961',
+              borderRadius: '2px',
+              padding: '20px 24px',
+              textAlign: 'center',
+              marginBottom: '18px',
+            }}>
+              <div style={{ fontSize: '32px', marginBottom: '12px', color: '#C9A961' }}>*</div>
+              <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '20px', color: '#1A1014', marginBottom: '8px' }}>
+                Check your email
+              </div>
+              <p style={{ fontSize: '13px', color: '#B8A090', fontFamily: 'var(--font-inter)', lineHeight: 1.6, marginBottom: '16px' }}>
+                We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account.
+              </p>
+              <button type="button" onClick={() => router.push('/')} className="btn-outline" style={{ width: '100%', justifyContent: 'center' }}>
+                RETURN TO HOMEPAGE
+              </button>
+            </div>
+          )}
 
           {error && <div style={{ backgroundColor: '#FFF0F0', border: '1px solid #A85C6A', borderRadius: '2px', color: '#A85C6A', fontFamily: 'var(--font-inter)', fontSize: '13px', marginBottom: '18px', padding: '12px 16px' }}>{error}</div>}
 

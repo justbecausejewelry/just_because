@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Eye, EyeOff, Star } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { signIn, supabaseAuth } from '@/lib/auth'
+import { createClient } from '@supabase/supabase-js'
+import { signIn } from '@/lib/auth'
 
 const adminEmail = 'ujjwalbana@gmail.com'
 
@@ -15,7 +16,7 @@ function LoginContent() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(searchParams.get('error') || '')
   const [isLoading, setIsLoading] = useState(false)
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -36,14 +37,34 @@ function LoginContent() {
       return
     }
 
-    router.push(searchParams.get('next') || '/account')
+    router.push(searchParams.get('redirect') || searchParams.get('next') || '/')
   }
 
-  const handleGoogle = async () => {
-    await supabaseAuth.auth.signInWithOAuth({
+  const handleGoogleSignIn = async () => {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+    const target = searchParams.get('redirect') || searchParams.get('next') || '/'
+    const baseRedirect = process.env.NEXT_PUBLIC_APP_URL
+      ? `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`
+      : `${window.location.origin}/auth/callback`
+    const redirectTo = `${baseRedirect}?next=${encodeURIComponent(target)}`
+
+    const { error: googleError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/account` },
+      options: {
+        redirectTo,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+      },
     })
+
+    if (googleError) {
+      setError('Google sign in failed. Please try email instead.')
+    }
   }
 
   return (
@@ -124,7 +145,7 @@ function LoginContent() {
             <span style={{ backgroundColor: '#EDD9AF', height: '0.5px', flex: 1 }} />
           </div>
 
-          <button type="button" onClick={handleGoogle} className="flex items-center justify-center gap-3" style={{ backgroundColor: '#FDF8F2', border: '1px solid #EDD9AF', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', height: '52px', width: '100%' }}>
+          <button type="button" onClick={handleGoogleSignIn} className="flex items-center justify-center gap-3" style={{ backgroundColor: '#FDF8F2', border: '1px solid #EDD9AF', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', height: '52px', width: '100%' }}>
             <span style={{ color: '#C9A961', fontWeight: 500 }}>G</span>
             Continue with Google
           </button>
