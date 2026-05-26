@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Star } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { supabaseAuth } from '@/lib/auth'
+import { getOrCreateProfile } from '@/lib/userProfile'
 import { useToast } from '@/context/ToastContext'
 
 function strengthFor(password: string) {
@@ -67,6 +68,7 @@ export default function SignupPage() {
     }
 
     if (data?.user && !signUpError) {
+      await getOrCreateProfile(data.user.id, data.user.email || email, name)
       showToast('Account created! Welcome to Just Because *', 'success')
 
       if (!data.session) {

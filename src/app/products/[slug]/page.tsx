@@ -303,11 +303,11 @@ export default function ProductDetailPage() {
     )
   }
 
-  const addConfiguredItem = () => {
+  const addConfiguredItem = async () => {
     if (cartItem) {
-      removeItem(cartItem.id)
+      await removeItem(cartItem.id)
     }
-    addItem({
+    await addItem({
       productId: product.id,
       productSlug: product.slug,
       productTitle: product.title,

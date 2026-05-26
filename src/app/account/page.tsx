@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { Heart, LogOut, MessageSquare, Settings, ShoppingBag } from 'lucide-react'
 import type { User } from '@supabase/supabase-js'
 import { supabaseAuth } from '@/lib/auth'
+import { getOrCreateProfile, type UserProfile } from '@/lib/userProfile'
 
 type MenuCardProps = {
   href: string
@@ -16,14 +17,17 @@ type MenuCardProps = {
   badge?: number
 }
 
-function displayName(user: User | null) {
+function displayName(user: User | null, profile: UserProfile | null) {
+  if (profile?.firstName || profile?.lastName) {
+    return `${profile.firstName || ''} ${profile.lastName || ''}`.trim()
+  }
   if (!user) return ''
   const name = user.user_metadata?.name
   return typeof name === 'string' && name.trim() ? name : user.email || 'Your account'
 }
 
-function initialFor(user: User | null) {
-  const value = displayName(user)
+function initialFor(user: User | null, profile: UserProfile | null) {
+  const value = displayName(user, profile)
   return value.charAt(0).toUpperCase() || 'J'
 }
 
@@ -77,6 +81,9 @@ function MenuCard({ href, icon: Icon, title, description, badge }: MenuCardProps
 export default function AccountPage() {
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [orderCount, setOrderCount] = useState(0)
+  const [wishlistCount, setWishlistCount] = useState(0)
   const [unreadMessages, setUnreadMessages] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -92,14 +99,22 @@ export default function AccountPage() {
       }
 
       setUser(currentUser)
+      const currentProfile = await getOrCreateProfile(
+        currentUser.id,
+        currentUser.email || '',
+        typeof currentUser.user_metadata?.name === 'string' ? currentUser.user_metadata.name : undefined
+      )
+      setProfile(currentProfile)
 
-      const { count } = await supabaseAuth
-        .from('Conversation')
-        .select('*', { count: 'exact', head: true })
-        .eq('customerId', currentUser.id)
-        .eq('isReadByCustomer', false)
+      const [{ count: orders }, { count: wishlist }, { count: unread }] = await Promise.all([
+        supabaseAuth.from('Order').select('*', { count: 'exact', head: true }).eq('customerEmail', currentUser.email || ''),
+        supabaseAuth.from('Wishlist').select('*', { count: 'exact', head: true }).eq('userId', currentUser.id),
+        supabaseAuth.from('Conversation').select('*', { count: 'exact', head: true }).eq('customerId', currentUser.id).eq('isReadByCustomer', false),
+      ])
 
-      setUnreadMessages(count || 0)
+      setOrderCount(orders || 0)
+      setWishlistCount(wishlist || 0)
+      setUnreadMessages(unread || 0)
       setIsLoading(false)
     }
 
@@ -146,13 +161,32 @@ export default function AccountPage() {
             flexShrink: 0,
           }}
         >
-          {initialFor(user)}
+          {initialFor(user, profile)}
         </div>
         <div>
           <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '14px', margin: '0 0 4px' }}>Welcome back,</p>
-          <h1 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '28px', fontWeight: 400, margin: 0 }}>{displayName(user)}</h1>
-          <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', margin: '6px 0 0' }}>{user?.email}</p>
+          <h1 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '28px', fontWeight: 400, margin: 0 }}>{displayName(user, profile)}</h1>
+          <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', margin: '6px 0 0' }}>
+            {user?.email} {profile?.createdAt ? `- Member since ${new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' }).format(new Date(profile.createdAt))}` : ''}
+          </p>
         </div>
+      </section>
+
+      <section className="grid gap-3 md:grid-cols-4" style={{ marginBottom: '28px' }}>
+        {[
+          ['Orders', String(orderCount)],
+          ['Wishlist', String(wishlistCount)],
+          ['Messages', String(unreadMessages)],
+          ['Ring Size', profile?.ringSize || 'Not set'],
+        ].map(([label, value]) => (
+          <div key={label} style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', padding: '16px' }}>
+            <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.16em', margin: 0, textTransform: 'uppercase' }}>{label}</p>
+            <p style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '22px', margin: '6px 0 0' }}>
+              {value}
+              {label === 'Messages' && unreadMessages > 0 ? <span style={{ display: 'inline-block', width: '7px', height: '7px', borderRadius: '50%', background: '#C9A961', marginLeft: '8px' }} /> : null}
+            </p>
+          </div>
+        ))}
       </section>
 
       <section className="account-menu-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>

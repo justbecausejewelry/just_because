@@ -1,12 +1,29 @@
 'use client'
 
-import { FormEvent, useMemo, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Gem } from 'lucide-react'
 import { useCart } from '@/context/CartContext'
+import { supabaseAuth } from '@/lib/auth'
+
+type SavedAddress = {
+  id: string
+  userId: string
+  label: string
+  firstName: string
+  lastName: string
+  addressLine1: string
+  addressLine2?: string | null
+  city: string
+  state: string
+  zipCode: string
+  country: string
+  phone?: string | null
+  isDefault: boolean
+}
 
 function formatPrice(value: number) {
   return new Intl.NumberFormat('en-US', {
@@ -33,6 +50,10 @@ export default function CheckoutPage() {
   const [error, setError] = useState('')
   const [summaryOpen, setSummaryOpen] = useState(false)
   const [shippingMethod, setShippingMethod] = useState<'standard' | 'express'>('standard')
+  const [userId, setUserId] = useState<string | null>(null)
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([])
+  const [selectedAddressId, setSelectedAddressId] = useState('')
+  const [saveAddress, setSaveAddress] = useState(false)
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
@@ -57,6 +78,32 @@ export default function CheckoutPage() {
     return `•••• •••• •••• ${digits}`
   }, [form.cardNumber])
 
+  useEffect(() => {
+    const loadSavedAddresses = async () => {
+      const {
+        data: { user },
+      } = await supabaseAuth.auth.getUser()
+
+      if (!user) return
+
+      setUserId(user.id)
+      setForm((current) => ({
+        ...current,
+        email: current.email || user.email || '',
+      }))
+
+      const { data } = await supabaseAuth
+        .from('SavedAddress')
+        .select('*')
+        .eq('userId', user.id)
+        .order('isDefault', { ascending: false })
+
+      setSavedAddresses((data || []) as SavedAddress[])
+    }
+
+    void loadSavedAddresses()
+  }, [])
+
   const setField = (key: keyof typeof form, value: string) => {
     setForm((current) => ({ ...current, [key]: value }))
   }
@@ -64,6 +111,22 @@ export default function CheckoutPage() {
   const continueTo = (next: number) => {
     setError('')
     setStep(next)
+  }
+
+  const applySavedAddress = (address: SavedAddress) => {
+    setSelectedAddressId(address.id)
+    setForm((current) => ({
+      ...current,
+      firstName: current.firstName || address.firstName,
+      lastName: current.lastName || address.lastName,
+      phone: current.phone || address.phone || '',
+      address1: address.addressLine1,
+      address2: address.addressLine2 || '',
+      city: address.city,
+      state: address.state,
+      zip: address.zipCode,
+      country: address.country,
+    }))
   }
 
   const placeOrder = async (event: FormEvent) => {
@@ -104,7 +167,26 @@ export default function CheckoutPage() {
       setError(payload.error || 'Unable to place order.')
       return
     }
-    clearCart()
+    if (saveAddress && userId) {
+      await supabaseAuth
+        .from('SavedAddress')
+        .insert({
+          userId,
+          label: 'Home',
+          firstName: form.firstName,
+          lastName: form.lastName,
+          addressLine1: form.address1,
+          addressLine2: form.address2,
+          city: form.city,
+          state: form.state,
+          zipCode: form.zip,
+          country: form.country,
+          phone: form.phone,
+          isDefault: savedAddresses.length === 0,
+        })
+    }
+
+    await clearCart()
     router.push(`/order-confirmed?order=${payload.orderNumber}`)
   }
 
@@ -196,6 +278,36 @@ export default function CheckoutPage() {
             {step === 2 && (
               <div className="grid gap-5">
                 <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.3em' }}>SHIPPING ADDRESS</p>
+                {savedAddresses.length > 0 && (
+                  <div>
+                    <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.25em', marginBottom: '10px' }}>USE SAVED ADDRESS</p>
+                    <div className="grid gap-3">
+                      {savedAddresses.map((address) => (
+                        <button
+                          key={address.id}
+                          type="button"
+                          onClick={() => applySavedAddress(address)}
+                          style={{
+                            background: '#FDF8F2',
+                            border: selectedAddressId === address.id ? '0.5px solid #C9A961' : '0.5px solid #EDD9AF',
+                            color: '#1A1014',
+                            cursor: 'pointer',
+                            fontFamily: 'var(--font-inter)',
+                            fontSize: '12px',
+                            padding: '12px 16px',
+                            textAlign: 'left',
+                          }}
+                        >
+                          <strong style={{ color: '#C9A961', fontWeight: 500 }}>{address.label}</strong>
+                          <span style={{ color: '#B8A090', display: 'block', marginTop: '4px' }}>
+                            {address.addressLine1}, {address.city}, {address.state} {address.zipCode}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                    <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', marginTop: '14px' }}>Or enter a new address</p>
+                  </div>
+                )}
                 <Field label="ADDRESS LINE 1" value={form.address1} onChange={(value) => setField('address1', value)} />
                 <Field label="ADDRESS LINE 2" value={form.address2} onChange={(value) => setField('address2', value)} />
                 <div className="grid gap-4 md:grid-cols-2"><Field label="CITY" value={form.city} onChange={(value) => setField('city', value)} /><Field label="STATE" value={form.state} onChange={(value) => setField('state', value)} /></div>
@@ -224,6 +336,12 @@ export default function CheckoutPage() {
                 <div className="grid gap-4 md:grid-cols-2"><Field label="EXPIRY MM/YY" value={form.expiry} onChange={(value) => setField('expiry', value)} /><Field label="CVV" value={form.cvv} onChange={(value) => setField('cvv', value)} /></div>
                 <Field label="CARDHOLDER NAME" value={form.cardName} onChange={(value) => setField('cardName', value)} placeholder="Name on card" />
                 <label style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px' }}><input type="checkbox" defaultChecked style={{ accentColor: '#1A1014', marginRight: '8px' }} /> Same as shipping address</label>
+                {userId && (
+                  <label style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>
+                    <input type="checkbox" checked={saveAddress} onChange={(event) => setSaveAddress(event.target.checked)} style={{ accentColor: '#1A1014', marginRight: '8px' }} />
+                    Save this address for future orders
+                  </label>
+                )}
                 {error && <p style={{ color: '#A85C6A', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>{error}</p>}
                 <button disabled={isPlacing} style={{ background: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '13px', height: '60px', letterSpacing: '0.25em', opacity: isPlacing ? 0.7 : 1 }}>{isPlacing ? 'PROCESSING...' : `PLACE ORDER — ${formatPrice(total)}`}</button>
                 <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px', textAlign: 'center' }}>SSL Encrypted | PCI Compliant | 256-bit Security</p>
