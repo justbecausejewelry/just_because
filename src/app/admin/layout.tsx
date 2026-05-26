@@ -9,6 +9,7 @@ import {
   Gem,
   LayoutDashboard,
   LogOut,
+  MessageSquare,
   Package,
   Plus,
   ShoppingBag,
@@ -25,6 +26,7 @@ const navItems = [
   { label: 'Add Product', href: '/admin/products/new', icon: Plus },
   { label: 'Diamonds', href: '/admin/diamonds', icon: Gem },
   { label: 'Orders', href: '/admin/orders', icon: ShoppingBag },
+  { label: 'Support', href: '/admin/support', icon: MessageSquare },
   { label: 'Discount Codes', href: '/admin/discounts', icon: Tag },
   { label: 'Customers', href: '/admin/customers', icon: Users },
   { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
@@ -44,6 +46,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [email, setEmail] = useState('')
   const [isChecking, setIsChecking] = useState(true)
   const [showDropdown, setShowDropdown] = useState(false)
+  const [supportUnreadCount, setSupportUnreadCount] = useState(0)
   const title = useMemo(() => titleFor(pathname), [pathname])
 
   useEffect(() => {
@@ -71,6 +74,23 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
     void check()
   }, [router])
+
+  useEffect(() => {
+    const loadUnread = async () => {
+      try {
+        const response = await fetch('/api/admin/conversations')
+        const payload = (await response.json()) as {
+          conversations?: Array<{ isReadByAdmin?: boolean }>
+        }
+        const count = (payload.conversations || []).filter((item) => item.isReadByAdmin === false).length
+        setSupportUnreadCount(count)
+      } catch {
+        setSupportUnreadCount(0)
+      }
+    }
+
+    void loadUnread()
+  }, [pathname])
 
   const handleSignOut = async () => {
     await signOut()
@@ -118,6 +138,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               >
                 <Icon size={17} />
                 {item.label}
+                {item.href === '/admin/support' && supportUnreadCount > 0 && (
+                  <span style={{ marginLeft: 'auto', background: '#E8C4D0', color: '#6B2D44', borderRadius: '999px', fontSize: '10px', padding: '1px 7px' }}>
+                    {supportUnreadCount}
+                  </span>
+                )}
               </Link>
             )
           })}

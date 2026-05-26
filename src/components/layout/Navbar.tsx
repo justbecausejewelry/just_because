@@ -4,10 +4,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import type { User as SupabaseUser } from '@supabase/supabase-js'
 import { Gem, Heart, Menu, Search, ShoppingBag, User, X } from 'lucide-react'
 import { MiniCartDrawer } from '@/components/cart/MiniCartDrawer'
 import { useCart } from '@/context/CartContext'
 import { useWishlist } from '@/context/WishlistContext'
+import { signOut, supabaseAuth } from '@/lib/auth'
 import { debounce } from '@/lib/utils'
 
 type SearchProduct = {
@@ -78,8 +80,12 @@ export function Navbar() {
   const [searching, setSearching] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [cartOpen, setCartOpen] = useState(false)
+  const [accountOpen, setAccountOpen] = useState(false)
+  const [user, setUser] = useState<SupabaseUser | null>(null)
+  const [unreadMessages, setUnreadMessages] = useState(0)
   const pathname = usePathname()
   const inputRef = useRef<HTMLInputElement>(null)
+  const accountRef = useRef<HTMLDivElement>(null)
   const { isMiniCartOpen, itemCount, closeCart } = useCart()
   const { itemCount: wishlistCount } = useWishlist()
 
@@ -92,6 +98,7 @@ export function Navbar() {
 
   useEffect(() => {
     setMobileOpen(false)
+    setAccountOpen(false)
   }, [pathname])
 
   useEffect(() => {
@@ -105,12 +112,52 @@ export function Navbar() {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setMobileOpen(false)
+        setAccountOpen(false)
         closeSearch()
       }
     }
+    const handleClickOutside = (event: MouseEvent) => {
+      if (accountRef.current && !accountRef.current.contains(event.target as Node)) {
+        setAccountOpen(false)
+      }
+    }
     document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
   }, [])
+
+  useEffect(() => {
+    supabaseAuth.auth.getUser().then(({ data }) => setUser(data.user))
+    const {
+      data: { subscription },
+    } = supabaseAuth.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  useEffect(() => {
+    const loadUnreadMessages = async () => {
+      if (!user) {
+        setUnreadMessages(0)
+        return
+      }
+
+      const { count } = await supabaseAuth
+        .from('Conversation')
+        .select('*', { count: 'exact', head: true })
+        .eq('customerId', user.id)
+        .eq('isReadByCustomer', false)
+
+      setUnreadMessages(count || 0)
+    }
+
+    void loadUnreadMessages()
+  }, [user, pathname])
 
   useEffect(() => {
     if (searchOpen) {
@@ -156,6 +203,11 @@ export function Navbar() {
     setSearchQuery('')
     setSearchResults([])
     setDiamondResults([])
+  }
+
+  const handleSignOut = async () => {
+    await signOut()
+    setAccountOpen(false)
   }
 
   return (
@@ -237,9 +289,50 @@ export function Navbar() {
               <Search size={20} color="#1A1014" />
             </button>
 
-            <Link href="/login" className="desktop-only-icon jb-icon-action" aria-label="Account" style={{ display: 'flex', alignItems: 'center', color: '#1A1014' }}>
-              <User size={20} color="#1A1014" />
-            </Link>
+            <div ref={accountRef} className="desktop-only-icon" style={{ position: 'relative', alignItems: 'center' }}>
+              {user ? (
+                <button
+                  onClick={() => setAccountOpen((open) => !open)}
+                  className="jb-icon-action"
+                  aria-label="Account menu"
+                  style={{ background: 'transparent', border: 'none', color: '#1A1014', cursor: 'pointer', padding: '4px', position: 'relative' }}
+                >
+                  <User size={20} color="#1A1014" />
+                  {unreadMessages > 0 && <span style={{ position: 'absolute', top: '-3px', right: '-3px', width: '8px', height: '8px', borderRadius: '50%', background: '#E8C4D0', border: '1px solid #FBF5F0' }} />}
+                </button>
+              ) : (
+                <Link href="/login" className="jb-icon-action" aria-label="Account" style={{ display: 'flex', alignItems: 'center', color: '#1A1014', position: 'relative' }}>
+                  <User size={20} color="#1A1014" />
+                </Link>
+              )}
+
+              {user && accountOpen && (
+                <div style={{ position: 'absolute', top: '34px', right: 0, width: '220px', background: '#FDF8F2', border: '0.5px solid #EDD9AF', boxShadow: '0 12px 34px rgba(26,16,20,0.12)', padding: '8px', zIndex: 220 }}>
+                  {[
+                    ['My Account', '/account'],
+                    ['My Messages', '/account/messages'],
+                    ['My Orders', '/account/orders'],
+                    ['Wishlist', '/wishlist'],
+                  ].map(([label, href]) => (
+                    <Link
+                      key={href}
+                      href={href}
+                      onClick={() => setAccountOpen(false)}
+                      style={{ color: '#1A1014', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: 'var(--font-inter)', fontSize: '12px', padding: '10px 12px', textDecoration: 'none' }}
+                    >
+                      {label}
+                      {href === '/account/messages' && unreadMessages > 0 && (
+                        <span style={{ background: '#E8C4D0', color: '#6B2D44', borderRadius: '999px', fontSize: '10px', padding: '1px 7px' }}>{unreadMessages}</span>
+                      )}
+                    </Link>
+                  ))}
+                  <div style={{ background: '#EDD9AF', height: '0.5px', margin: '6px 0' }} />
+                  <button onClick={handleSignOut} style={{ color: '#B8A090', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '12px', padding: '10px 12px', textAlign: 'left', width: '100%', background: 'transparent', border: 'none' }}>
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
 
             <Link href="/wishlist" className="desktop-only-icon jb-icon-action" aria-label="Wishlist" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
               <Heart size={20} color="#1A1014" />
@@ -345,9 +438,10 @@ export function Navbar() {
 
         <div style={{ padding: '20px 24px', borderTop: '0.5px solid #EDD9AF', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', alignItems: 'center' }}>
-            <Link href="/login" onClick={() => setMobileOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none', color: '#B8A090', fontSize: '12px', fontFamily: 'var(--font-inter)' }}>
+            <Link href={user ? '/account/messages' : '/login'} onClick={() => setMobileOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none', color: '#B8A090', fontSize: '12px', fontFamily: 'var(--font-inter)' }}>
               <User size={16} color="#B8A090" />
-              Account
+              {user ? 'Messages' : 'Account'}
+              {unreadMessages > 0 && <span style={{ background: '#E8C4D0', color: '#6B2D44', borderRadius: '999px', padding: '1px 6px', fontSize: '10px' }}>{unreadMessages}</span>}
             </Link>
             <Link href="/wishlist" onClick={() => setMobileOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none', color: '#B8A090', fontSize: '12px', fontFamily: 'var(--font-inter)' }}>
               <Heart size={16} color="#B8A090" />

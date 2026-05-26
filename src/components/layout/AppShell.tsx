@@ -4,6 +4,7 @@ import { ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import { Footer } from '@/components/layout/Footer'
 import { Navbar } from '@/components/layout/Navbar'
+import ChatButton from '@/components/ui/ChatButton'
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
@@ -19,6 +20,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <Navbar />
       <main>{children}</main>
       {!isCheckout && <Footer />}
+      <ChatButton />
     </>
   )
 }
