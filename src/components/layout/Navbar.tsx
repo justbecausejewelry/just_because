@@ -42,6 +42,8 @@ const navLinks = [
   { label: 'Gifts *', href: '/products?category=gifts', isGold: true },
 ]
 
+const ADMIN_EMAILS = ['ujjwalbana@gmail.com', 'jesse@gmail.com']
+
 const popularSearches = ['Engagement rings', 'Tennis bracelet', 'Oval diamond', 'Rose gold', 'Wedding bands']
 
 function formatPrice(price: number) {
@@ -331,7 +333,7 @@ export function Navbar() {
                     ['My Account', '/account'],
                     ['My Orders', '/account/orders'],
                     ['Messages', '/account/messages'],
-                    ...(user.email === 'ujjwalbana@gmail.com' ? ([['Admin Panel', '/admin']] as Array<[string, string]>) : []),
+                    ...(ADMIN_EMAILS.includes(user.email || '') ? ([['Admin Panel', '/admin']] as Array<[string, string]>) : []),
                     ['Wishlist', '/wishlist'],
                   ].map(([label, href]) => (
                     <Link

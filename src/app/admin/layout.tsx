@@ -16,9 +16,12 @@ import {
   Tag,
   Users,
 } from 'lucide-react'
-import { getUser, signOut } from '@/lib/auth'
+import { signOut, supabaseAuth } from '@/lib/auth'
 
-const adminEmail = 'ujjwalbana@gmail.com'
+const ADMIN_EMAILS = [
+  'ujjwalbana@gmail.com',
+  'jesse@gmail.com',
+]
 
 const navItems = [
   { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
@@ -63,12 +66,21 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const check = async () => {
-      const user = await getUser()
-      if (user?.email !== adminEmail) {
-        router.replace('/login')
+      const {
+        data: { user },
+      } = await supabaseAuth.auth.getUser()
+
+      if (!user) {
+        router.replace('/login?redirect=/admin')
         return
       }
-      setEmail(user.email)
+
+      if (!ADMIN_EMAILS.includes(user.email || '')) {
+        router.replace('/')
+        return
+      }
+
+      setEmail(user.email || '')
       setIsChecking(false)
     }
 
