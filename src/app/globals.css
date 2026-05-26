@@ -1,5 +1,189 @@
 @import "tailwindcss";
 
+/* -- Lumiere Design Tokens -- */
+:root {
+  --color-pearl:    #FBF5F0;
+  --color-gold:     #C9A961;
+  --color-blush:    #E8C4D0;
+  --color-noir:     #1A1014;
+  --color-taupe:    #B8A090;
+  --color-ivory:    #FDF8F2;
+  --color-goldtint: #EDD9AF;
+  --color-rose:     #F5E8ED;
+  --color-petal:    #FCF0F4;
+  --color-deepnoir: #2A1E24;
+
+  --font-display: var(--font-playfair), serif;
+  --font-body:    var(--font-inter), sans-serif;
+  --font-script:  var(--font-italianno), cursive;
+
+  --transition-luxe: cubic-bezier(0.4, 0, 0.2, 1);
+  --shadow-card: 0 4px 20px rgba(26,16,20,0.06);
+  --shadow-card-hover: 0 16px 40px rgba(26,16,20,0.12);
+  --border-gold: 0.5px solid #EDD9AF;
+}
+
+/* -- Tailwind v4 custom tokens -- */
+@theme {
+  --color-pearl:    #FBF5F0;
+  --color-gold:     #C9A961;
+  --color-blush:    #E8C4D0;
+  --color-noir:     #1A1014;
+  --color-taupe:    #B8A090;
+  --color-ivory:    #FDF8F2;
+  --color-goldtint: #EDD9AF;
+  --color-rose:     #F5E8ED;
+  --color-petal:    #FCF0F4;
+  --color-deepnoir: #2A1E24;
+}
+
+/* -- Global reusable component classes -- */
+
+/* Buttons */
+.btn-primary {
+  background: var(--color-noir);
+  color: var(--color-pearl);
+  padding: 14px 28px;
+  font-size: 11px;
+  font-family: var(--font-body);
+  letter-spacing: 0.18em;
+  border: none;
+  cursor: pointer;
+  transition: background 0.3s var(--transition-luxe),
+              transform 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-primary:hover {
+  background: var(--color-deepnoir);
+}
+
+.btn-primary:active {
+  transform: scale(0.97);
+}
+
+.btn-primary:disabled {
+  background: var(--color-taupe);
+  cursor: not-allowed;
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--color-noir);
+  padding: 14px 28px;
+  font-size: 11px;
+  font-family: var(--font-body);
+  letter-spacing: 0.18em;
+  border: 1px solid var(--color-goldtint);
+  cursor: pointer;
+  transition: all 0.3s var(--transition-luxe);
+}
+
+.btn-outline:hover {
+  background: var(--color-noir);
+  color: var(--color-pearl);
+  border-color: var(--color-noir);
+}
+
+.btn-outline:active {
+  transform: scale(0.97);
+}
+
+.btn-gold {
+  background: var(--color-gold);
+  color: #3A2810;
+  padding: 12px 24px;
+  font-size: 11px;
+  font-family: var(--font-body);
+  letter-spacing: 0.15em;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s var(--transition-luxe);
+}
+
+.btn-gold:hover {
+  background: var(--color-goldtint);
+  transform: translateY(-1px);
+}
+
+/* Cards */
+.card-luxury {
+  background: var(--color-ivory);
+  border: var(--border-gold);
+  border-radius: 2px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.4s var(--transition-luxe),
+              box-shadow 0.4s ease,
+              border-color 0.3s ease;
+  box-shadow: var(--shadow-card);
+}
+
+.card-luxury:hover {
+  transform: translateY(-8px);
+  box-shadow: var(--shadow-card-hover);
+  border-color: var(--color-gold);
+}
+
+.card-luxury img {
+  transition: transform 0.6s var(--transition-luxe);
+}
+
+.card-luxury:hover img {
+  transform: scale(1.04);
+}
+
+/* Forms */
+.input-luxury,
+.select-luxury,
+.textarea-luxury {
+  background: var(--color-ivory);
+  border: 1px solid var(--color-goldtint);
+  border-radius: 2px;
+  color: var(--color-noir);
+  font-family: var(--font-body);
+  font-size: 13px;
+  outline: none;
+  padding: 12px 14px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  width: 100%;
+}
+
+.input-luxury:hover,
+.select-luxury:hover,
+.textarea-luxury:hover {
+  border-color: var(--color-taupe);
+}
+
+.input-luxury:focus,
+.select-luxury:focus,
+.textarea-luxury:focus {
+  border-color: var(--color-noir);
+  box-shadow: 0 0 0 2px rgba(201,169,97,0.18);
+}
+
+.eyebrow-luxury {
+  color: var(--color-gold);
+  font-family: var(--font-body);
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+.link-gold {
+  color: var(--color-gold);
+  font-family: var(--font-body);
+  text-decoration: none;
+  transition: opacity 0.2s ease, letter-spacing 0.2s ease;
+}
+
+.link-gold:hover {
+  letter-spacing: 0.04em;
+  opacity: 0.75;
+}
+
 :root {
   --background: #FBF5F0;
   --foreground: #1A1014;
