@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
@@ -156,6 +156,9 @@ export default function ProductDetailPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedImage, setSelectedImage] = useState(0)
+  const [isZoomed, setIsZoomed] = useState(false)
+  const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 })
+  const [showZoomLens, setShowZoomLens] = useState(false)
   const [selectedMetal, setSelectedMetal] = useState('')
   const [selectedCarat, setSelectedCarat] = useState<number>(6)
   const [selectedShape, setSelectedShape] = useState('')
@@ -166,6 +169,9 @@ export default function ProductDetailPage() {
   const [price, setPrice] = useState<PriceResponse | null>(null)
   const [priceLoading, setPriceLoading] = useState(false)
   const [addedToCart, setAddedToCart] = useState(false)
+  const imageRef = useRef<HTMLDivElement>(null)
+  const touchStartX = useRef(0)
+  const touchEndX = useRef(0)
 
   const loadProduct = useCallback(async () => {
     setIsLoading(true)
@@ -191,8 +197,9 @@ export default function ProductDetailPage() {
       setSelectedShape(incoming.availableShapes?.[0] || 'Round')
       setSelectedColor(incoming.availableColors?.[3] || incoming.availableColors?.[0] || 'G')
       setSelectedClarity(incoming.availableClarities?.[3] || incoming.availableClarities?.[0] || 'VS1')
-      setRingSize(incoming.availableSizes?.[4] || incoming.availableSizes?.[0] || '6')
+      setRingSize('')
       setSelectedImage(0)
+      setIsZoomed(false)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Unable to load product.')
     } finally {
@@ -250,8 +257,34 @@ export default function ProductDetailPage() {
       return []
     }
 
-    return Array.from({ length: 4 }, (_, index) => product.images[index % product.images.length])
+    return product.images
   }, [product])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (images.length <= 1) {
+        if (event.key === 'Escape') {
+          setIsZoomed(false)
+        }
+        return
+      }
+
+      if (event.key === 'ArrowLeft') {
+        setSelectedImage((prev) => (prev === 0 ? images.length - 1 : prev - 1))
+        setIsZoomed(false)
+      }
+      if (event.key === 'ArrowRight') {
+        setSelectedImage((prev) => (prev === images.length - 1 ? 0 : prev + 1))
+        setIsZoomed(false)
+      }
+      if (event.key === 'Escape') {
+        setIsZoomed(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [images.length])
 
   const averageRating = reviews.length
     ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
@@ -303,7 +336,9 @@ export default function ProductDetailPage() {
     )
   }
 
-  const addConfiguredItem = async () => {
+  const handleAddToCart = async () => {
+    if (!ringSize) return
+
     if (cartItem) {
       await removeItem(cartItem.id)
     }
@@ -325,7 +360,30 @@ export default function ProductDetailPage() {
     })
     showToast('Added to cart successfully', 'success')
     setAddedToCart(true)
-    window.setTimeout(() => setAddedToCart(false), 1500)
+    window.setTimeout(() => setAddedToCart(false), 2500)
+  }
+
+  const handleBuyNow = async () => {
+    if (!ringSize) return
+
+    await addItem({
+      productId: product.id,
+      productSlug: product.slug,
+      productTitle: product.title,
+      productImage: product.images?.[0] || '',
+      selectedMetal,
+      selectedCarat,
+      selectedShape,
+      selectedColor,
+      selectedClarity,
+      ringSize,
+      engraving,
+      quantity: 1,
+      unitPrice: calculatedPrice,
+      priceBreakdown,
+    })
+
+    router.push('/checkout')
   }
 
   return (
@@ -384,36 +442,304 @@ export default function ProductDetailPage() {
       </div>
       <div className="product-detail-grid mx-auto grid max-w-[1400px] gap-10 px-4 py-8 md:grid-cols-[45fr_55fr] md:px-10 md:py-10 lg:grid-cols-[55fr_45fr] lg:gap-[60px] lg:px-20 lg:py-[60px]">
         <section>
-          <div style={{ aspectRatio: '1', backgroundColor: '#F5E8ED', borderRadius: '2px', overflow: 'hidden', position: 'relative' }}>
-            {images[selectedImage] ? (
-              <Image src={images[selectedImage]} alt={product.title} fill priority sizes="(max-width: 1024px) 100vw, 55vw" style={{ objectFit: 'cover' }} />
-            ) : (
-              <ProductPlaceholder size={92} />
+          <div
+            ref={imageRef}
+            style={{
+              position: 'relative',
+              aspectRatio: '1',
+              overflow: 'hidden',
+              background: '#F5E8ED',
+              borderRadius: '2px',
+              cursor: isZoomed ? 'zoom-out' : 'zoom-in',
+            }}
+            onClick={() => setIsZoomed((zoomed) => !zoomed)}
+            onMouseMove={(event) => {
+              if (!imageRef.current) return
+              const rect = imageRef.current.getBoundingClientRect()
+              const x = ((event.clientX - rect.left) / rect.width) * 100
+              const y = ((event.clientY - rect.top) / rect.height) * 100
+              setZoomPos({ x, y })
+              setShowZoomLens(true)
+            }}
+            onMouseLeave={() => {
+              setShowZoomLens(false)
+              setIsZoomed(false)
+            }}
+            onTouchStart={(event) => {
+              touchStartX.current = event.touches[0]?.clientX || 0
+            }}
+            onTouchEnd={(event) => {
+              touchEndX.current = event.changedTouches[0]?.clientX || 0
+              const diff = touchStartX.current - touchEndX.current
+              if (images.length > 1 && Math.abs(diff) > 50) {
+                setSelectedImage((prev) => {
+                  if (diff > 0) {
+                    return prev === images.length - 1 ? 0 : prev + 1
+                  }
+                  return prev === 0 ? images.length - 1 : prev - 1
+                })
+                setIsZoomed(false)
+              }
+            }}
+          >
+            <div
+              style={{
+                width: '100%',
+                height: '100%',
+                position: 'relative',
+                transition: 'transform 0.4s cubic-bezier(0.4,0,0.2,1)',
+                transform: isZoomed
+                  ? `scale(2.5) translate(${(50 - zoomPos.x) * 0.4}%, ${(50 - zoomPos.y) * 0.4}%)`
+                  : 'scale(1)',
+                transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
+              }}
+            >
+              {images[selectedImage] ? (
+                <Image
+                  src={images[selectedImage]}
+                  alt={product.title}
+                  fill
+                  priority
+                  sizes="(max-width: 1024px) 100vw, 55vw"
+                  style={{ objectFit: 'cover' }}
+                />
+              ) : (
+                <ProductPlaceholder size={92} />
+              )}
+            </div>
+
+            <button
+              onClick={(event) => {
+                event.stopPropagation()
+                setSelectedImage((prev) => (prev === 0 ? images.length - 1 : prev - 1))
+                setIsZoomed(false)
+              }}
+              style={{
+                position: 'absolute',
+                left: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                background: 'rgba(253,248,242,0.92)',
+                border: '0.5px solid #EDD9AF',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                zIndex: 10,
+                transition: 'all 0.2s ease',
+                opacity: images.length > 1 ? 1 : 0,
+                pointerEvents: images.length > 1 ? 'auto' : 'none',
+              }}
+              onMouseEnter={(event) => {
+                event.currentTarget.style.background = '#FBF5F0'
+                event.currentTarget.style.borderColor = '#C9A961'
+              }}
+              onMouseLeave={(event) => {
+                event.currentTarget.style.background = 'rgba(253,248,242,0.92)'
+                event.currentTarget.style.borderColor = '#EDD9AF'
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1014" strokeWidth="2">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+            </button>
+
+            <button
+              onClick={(event) => {
+                event.stopPropagation()
+                setSelectedImage((prev) => (prev === images.length - 1 ? 0 : prev + 1))
+                setIsZoomed(false)
+              }}
+              style={{
+                position: 'absolute',
+                right: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                background: 'rgba(253,248,242,0.92)',
+                border: '0.5px solid #EDD9AF',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                zIndex: 10,
+                transition: 'all 0.2s ease',
+                opacity: images.length > 1 ? 1 : 0,
+                pointerEvents: images.length > 1 ? 'auto' : 'none',
+              }}
+              onMouseEnter={(event) => {
+                event.currentTarget.style.background = '#FBF5F0'
+                event.currentTarget.style.borderColor = '#C9A961'
+              }}
+              onMouseLeave={(event) => {
+                event.currentTarget.style.background = 'rgba(253,248,242,0.92)'
+                event.currentTarget.style.borderColor = '#EDD9AF'
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1014" strokeWidth="2">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+
+            {!isZoomed && (
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: '12px',
+                  right: '12px',
+                  background: 'rgba(253,248,242,0.92)',
+                  padding: '5px 10px',
+                  fontSize: '10px',
+                  color: '#B8A090',
+                  fontFamily: 'var(--font-inter)',
+                  letterSpacing: '0.1em',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  pointerEvents: 'none',
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="M21 21l-4.35-4.35" />
+                  <line x1="11" y1="8" x2="11" y2="14" />
+                  <line x1="8" y1="11" x2="14" y2="11" />
+                </svg>
+                Click to zoom
+              </div>
+            )}
+
+            {isZoomed && (
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: '12px',
+                  right: '12px',
+                  background: 'rgba(253,248,242,0.92)',
+                  padding: '5px 10px',
+                  fontSize: '10px',
+                  color: '#C9A961',
+                  fontFamily: 'var(--font-inter)',
+                  letterSpacing: '0.1em',
+                  pointerEvents: 'none',
+                }}
+              >
+                Click to zoom out
+              </div>
+            )}
+
+            {showZoomLens && !isZoomed && (
+              <div
+                style={{
+                  position: 'absolute',
+                  width: '80px',
+                  height: '80px',
+                  border: '1px solid rgba(201,169,97,0.6)',
+                  borderRadius: '50%',
+                  pointerEvents: 'none',
+                  transform: 'translate(-50%, -50%)',
+                  left: `${zoomPos.x}%`,
+                  top: `${zoomPos.y}%`,
+                  transition: 'left 0.05s, top 0.05s',
+                }}
+              />
+            )}
+
+            {images.length > 1 && (
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: '12px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  display: 'flex',
+                  gap: '6px',
+                  zIndex: 10,
+                }}
+              >
+                {images.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      setSelectedImage(index)
+                      setIsZoomed(false)
+                    }}
+                    style={{
+                      width: index === selectedImage ? '20px' : '6px',
+                      height: '6px',
+                      borderRadius: '999px',
+                      background: index === selectedImage ? '#C9A961' : 'rgba(201,169,97,0.4)',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: 0,
+                      transition: 'all 0.3s ease',
+                    }}
+                  />
+                ))}
+              </div>
             )}
           </div>
           <div className="hide-scrollbar mt-3 flex gap-2 overflow-x-auto">
-            {Array.from({ length: 4 }, (_, index) => (
-              <button
-                key={index}
-                onClick={() => setSelectedImage(index)}
-                style={{
-                  width: 'clamp(60px, 12vw, 80px)',
-                  height: 'clamp(60px, 12vw, 80px)',
-                  border: selectedImage === index ? '2px solid #C9A961' : '1px solid #EDD9AF',
-                  backgroundColor: '#F5E8ED',
-                  position: 'relative',
-                  overflow: 'hidden',
-                }}
-              >
-                {images[index] ? (
-                  <Image src={images[index]} alt={`${product.title} view ${index + 1}`} fill sizes="80px" style={{ objectFit: 'cover' }} />
-                ) : (
-                  <ProductPlaceholder size={24} />
-                )}
-              </button>
-            ))}
+            {images.length > 0 ? (
+              images.map((image, index) => (
+                <button
+                  key={`${image}-${index}`}
+                  onClick={() => {
+                    setSelectedImage(index)
+                    setIsZoomed(false)
+                  }}
+                  style={{
+                    width: '72px',
+                    height: '72px',
+                    flexShrink: 0,
+                    border: selectedImage === index ? '2px solid #C9A961' : '1px solid #EDD9AF',
+                    borderRadius: '2px',
+                    overflow: 'hidden',
+                    cursor: 'pointer',
+                    background: '#F5E8ED',
+                    padding: 0,
+                    transition: 'border-color 0.2s ease',
+                  }}
+                >
+                  <Image
+                    src={image}
+                    alt={`${product.title} view ${index + 1}`}
+                    width={72}
+                    height={72}
+                    style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+                  />
+                </button>
+              ))
+            ) : (
+              [0, 1, 2, 3].map((index) => (
+                <div
+                  key={index}
+                  style={{
+                    width: '72px',
+                    height: '72px',
+                    flexShrink: 0,
+                    border: index === 0 ? '2px solid #C9A961' : '1px solid #EDD9AF',
+                    borderRadius: '2px',
+                    background: '#F5E8ED',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9A961" strokeWidth="1">
+                    <path d="M6 3h12l4 6-10 13L2 9z" />
+                  </svg>
+                </div>
+              ))
+            )}
           </div>
-          <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px', marginTop: '12px', textAlign: 'center' }}>Hover to zoom</p>
+          <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px', marginTop: '12px', textAlign: 'center' }}>Click to zoom - use arrow keys or swipe to browse</p>
         </section>
 
         <section>
@@ -581,13 +907,119 @@ export default function ProductDetailPage() {
               </div>
             )}
 
-            <button
-              className="product-add-to-cart"
-              onClick={addConfiguredItem}
-              style={{ backgroundColor: addedToCart ? '#C9A961' : isInCart ? '#2A1E24' : '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '12px', height: '56px', letterSpacing: '0.2em', transition: 'background-color 0.3s', width: '100%' }}
+            <div
+              className="product-action-buttons"
+              style={{
+                display: 'flex',
+                gap: '12px',
+                marginTop: '24px',
+              }}
             >
-              {addedToCart ? '✓ ADDED TO CART' : isInCart ? 'UPDATE CART' : `ADD TO CART — ${currentPrice}`}
-            </button>
+              <button
+                onClick={handleAddToCart}
+                disabled={addedToCart || !ringSize}
+                style={{
+                  flex: 1,
+                  height: '56px',
+                  background: addedToCart ? '#2A1E24' : 'transparent',
+                  border: '1.5px solid #1A1014',
+                  color: '#1A1014',
+                  fontSize: '11px',
+                  letterSpacing: '0.2em',
+                  cursor: !ringSize ? 'not-allowed' : 'pointer',
+                  fontFamily: 'var(--font-inter)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  transition: 'all 0.3s ease',
+                  opacity: !ringSize ? 0.5 : 1,
+                }}
+                onMouseEnter={(event) => {
+                  if (!addedToCart && ringSize) {
+                    event.currentTarget.style.background = '#1A1014'
+                    event.currentTarget.style.color = '#FBF5F0'
+                  }
+                }}
+                onMouseLeave={(event) => {
+                  if (!addedToCart) {
+                    event.currentTarget.style.background = 'transparent'
+                    event.currentTarget.style.color = '#1A1014'
+                  }
+                }}
+              >
+                {addedToCart ? (
+                  <>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FBF5F0" strokeWidth="2">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    <span style={{ color: '#FBF5F0' }}>ADDED TO CART</span>
+                  </>
+                ) : (
+                  <>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
+                      <line x1="3" y1="6" x2="21" y2="6" />
+                      <path d="M16 10a4 4 0 01-8 0" />
+                    </svg>
+                    ADD TO CART
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={handleBuyNow}
+                disabled={!ringSize}
+                style={{
+                  flex: 1,
+                  height: '56px',
+                  background: !ringSize ? '#888' : '#C9A961',
+                  border: 'none',
+                  color: '#1A1014',
+                  fontSize: '11px',
+                  letterSpacing: '0.2em',
+                  cursor: !ringSize ? 'not-allowed' : 'pointer',
+                  fontFamily: 'var(--font-inter)',
+                  fontWeight: 500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  transition: 'all 0.3s ease',
+                }}
+                onMouseEnter={(event) => {
+                  if (ringSize) {
+                    event.currentTarget.style.background = '#EDD9AF'
+                    event.currentTarget.style.transform = 'translateY(-1px)'
+                  }
+                }}
+                onMouseLeave={(event) => {
+                  event.currentTarget.style.background = ringSize ? '#C9A961' : '#888'
+                  event.currentTarget.style.transform = 'translateY(0)'
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+                BUY NOW
+              </button>
+            </div>
+
+            {!ringSize && (
+              <p
+                style={{
+                  fontSize: '11px',
+                  color: '#A85C6A',
+                  fontFamily: 'var(--font-inter)',
+                  marginTop: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+              >
+                ! Please select a ring size to continue
+              </p>
+            )}
 
             <div className="flex items-center justify-center gap-8">
               <button className="flex items-center gap-2" style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '12px' }}><Heart size={15} /> Save to Wishlist</button>
