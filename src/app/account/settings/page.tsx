@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Pencil, Trash2 } from 'lucide-react'
 import type { User } from '@supabase/supabase-js'
 import { supabaseAuth } from '@/lib/auth'
-import { getOrCreateProfile, updateProfile } from '@/lib/userProfile'
+import { getOrCreateProfile } from '@/lib/userProfile'
 import { useToast } from '@/context/ToastContext'
 
 type SavedAddress = {
@@ -73,6 +73,7 @@ export default function AccountSettingsPage() {
   })
   const [deleteConfirm, setDeleteConfirm] = useState('')
   const [isLoading, setIsLoading] = useState(true)
+  const [isSavingProfile, setIsSavingProfile] = useState(false)
 
   const passwordStrength = useMemo(() => strengthFor(passwordForm.newPassword), [passwordForm.newPassword])
   const strengthColor = passwordStrength <= 1 ? '#A85C6A' : passwordStrength === 2 ? '#B7791F' : passwordStrength === 3 ? '#C9A961' : '#7A8F72'
@@ -119,19 +120,51 @@ export default function AccountSettingsPage() {
     event.preventDefault()
     if (!user) return
 
-    const { error } = await updateProfile(user.id, {
-      firstName: profileForm.firstName,
-      lastName: profileForm.lastName,
-      phone: profileForm.phone,
-      ringSize: profileForm.ringSize,
-    })
+    setIsSavingProfile(true)
 
-    if (error) {
-      showToast('Unable to update profile', 'error')
-      return
+    try {
+      const { data: existing } = await supabaseAuth
+        .from('UserProfile')
+        .select('id')
+        .eq('userId', user.id)
+        .single()
+
+      if (existing) {
+        const { error } = await supabaseAuth
+          .from('UserProfile')
+          .update({
+            firstName: profileForm.firstName,
+            lastName: profileForm.lastName,
+            phone: profileForm.phone,
+            ringSize: profileForm.ringSize,
+            updatedAt: new Date().toISOString(),
+          })
+          .eq('userId', user.id)
+
+        if (error) throw error
+      } else {
+        const { error } = await supabaseAuth
+          .from('UserProfile')
+          .insert({
+            userId: user.id,
+            email: user.email,
+            firstName: profileForm.firstName,
+            lastName: profileForm.lastName,
+            phone: profileForm.phone,
+            ringSize: profileForm.ringSize,
+          })
+
+        if (error) throw error
+      }
+
+      showToast('Profile updated successfully *', 'success')
+    } catch (err) {
+      console.error('Profile update error:', err)
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      showToast(`Unable to update profile: ${message}`, 'error')
+    } finally {
+      setIsSavingProfile(false)
     }
-
-    showToast('Profile updated *', 'success')
   }
 
   const saveAddress = async (event: FormEvent<HTMLFormElement>) => {
@@ -231,7 +264,9 @@ export default function AccountSettingsPage() {
             </select>
           </label>
         </div>
-        <button className="btn-primary" style={{ marginTop: '20px' }}>SAVE CHANGES</button>
+        <button className="btn-primary" disabled={isSavingProfile} style={{ marginTop: '20px' }}>
+          {isSavingProfile ? 'SAVING...' : 'SAVE CHANGES'}
+        </button>
       </form>
 
       <section style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '4px', padding: '28px', marginBottom: '20px' }}>
