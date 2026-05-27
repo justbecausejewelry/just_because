@@ -1,12 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { MessageCircle } from 'lucide-react'
+import { usePathname, useRouter } from 'next/navigation'
 import { supabaseAuth } from '@/lib/auth'
 
 export default function ChatButton() {
   const router = useRouter()
+  const pathname = usePathname()
   const [showTooltip, setShowTooltip] = useState(false)
   const [isVisible, setIsVisible] = useState(false)
 
@@ -28,12 +28,13 @@ export default function ChatButton() {
     } = await supabaseAuth.auth.getUser()
 
     if (user) {
-      router.push('/account/messages/new')
+      router.push('/account/messages/new?type=general')
     } else {
-      router.push('/login?redirect=/account/messages/new')
+      router.push('/login?redirect=/account/messages/new?type=general')
     }
   }
 
+  if (pathname.startsWith('/products/')) return null
   if (!isVisible) return null
 
   return (
@@ -65,7 +66,7 @@ export default function ChatButton() {
             animation: 'slideUpFade 0.4s ease',
           }}
         >
-          Have a question about our diamonds? *
+          Have a question? Ask our team *
           <div
             style={{
               position: 'absolute',
@@ -107,7 +108,12 @@ export default function ChatButton() {
           event.currentTarget.style.boxShadow = '0 4px 20px rgba(26,16,20,0.25)'
         }}
       >
-        <MessageCircle size={23} color="#C9A961" strokeWidth={1.5} />
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C9A961" strokeWidth="1.5">
+          <path d="M6 3h12l4 6-10 13L2 9z" />
+          <path d="M2 9h20" />
+          <path d="m6 3-4 6" />
+          <path d="m18 3 4 6" />
+        </svg>
       </button>
     </div>
   )

@@ -1,6 +1,7 @@
 'use client'
 
 import { FormEvent, useCallback, useEffect, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
@@ -15,6 +16,9 @@ type Conversation = {
   subject: string
   status: ConversationStatus
   createdAt: string
+  productSlug: string | null
+  productTitle: string | null
+  productImage: string | null
 }
 
 type ConversationMessage = {
@@ -125,6 +129,57 @@ export default function AdminSupportThreadPage() {
               Date joined: Prototype account | Total orders: --
             </p>
           </div>
+
+          {conversation.productTitle && (
+            <div
+              style={{
+                background: '#FDF8F2',
+                border: '0.5px solid #C9A961',
+                borderRadius: '4px',
+                padding: '14px 18px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '16px',
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                {conversation.productImage && (
+                  <Image
+                    src={conversation.productImage}
+                    alt=""
+                    width={48}
+                    height={48}
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      objectFit: 'cover',
+                      borderRadius: '2px',
+                    }}
+                  />
+                )}
+                <div>
+                  <div style={{ fontSize: '9px', color: '#C9A961', letterSpacing: '0.2em', fontFamily: 'var(--font-inter)', marginBottom: '3px' }}>
+                    CUSTOMER IS ASKING ABOUT
+                  </div>
+                  <div style={{ fontSize: '14px', fontFamily: 'var(--font-playfair)', color: '#1A1014' }}>
+                    {conversation.productTitle}
+                  </div>
+                </div>
+              </div>
+
+              {conversation.productSlug && (
+                <Link
+                  href={`/products/${conversation.productSlug}`}
+                  target="_blank"
+                  style={{ fontSize: '11px', color: '#C9A961', fontFamily: 'var(--font-inter)', textDecoration: 'none', letterSpacing: '0.1em' }}
+                >
+                  VIEW PRODUCT
+                </Link>
+              )}
+            </div>
+          )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: '#FBF5F0', border: '0.5px solid #EDD9AF', padding: '24px' }}>
             {messages.map((message) => {

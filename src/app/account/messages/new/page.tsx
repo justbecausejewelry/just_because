@@ -1,13 +1,14 @@
 'use client'
 
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, Suspense, useEffect, useMemo, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { supabaseAuth } from '@/lib/auth'
 import { useToast } from '@/context/ToastContext'
 
-const subjects = [
+const generalSubjects = [
   'Question about a product',
   'Ring sizing help',
   'Order inquiry',
@@ -18,8 +19,28 @@ const subjects = [
   'Other',
 ]
 
-export default function NewMessagePage() {
+const productSubjects = [
+  'Ring sizing for this design',
+  'Metal options available',
+  'Diamond shape customization',
+  'Delivery time for this piece',
+  'Price and payment options',
+  'Custom engraving',
+  'Certificate and authentication',
+  'Other question about this piece',
+]
+
+function LoadingMessage() {
+  return (
+    <main style={{ minHeight: '100vh', background: '#FBF5F0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#B8A090', fontFamily: 'var(--font-playfair)', fontSize: '20px' }}>
+      Loading...
+    </main>
+  )
+}
+
+function NewMessageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { showToast } = useToast()
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
@@ -27,20 +48,41 @@ export default function NewMessagePage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isChecking, setIsChecking] = useState(true)
 
+  const conversationType = searchParams.get('type') || 'general'
+  const productId = searchParams.get('productId')
+  const productSlug = searchParams.get('productSlug')
+  const productTitle = searchParams.get('productTitle')
+  const productImage = searchParams.get('productImage')
+  const isProductChat = conversationType === 'product' && Boolean(productId)
+
+  const subjects = useMemo(() => (isProductChat ? productSubjects : generalSubjects), [isProductChat])
+  const heading = isProductChat ? 'Ask about this piece' : 'Send us a message'
+  const subtext = isProductChat
+    ? `Our experts will answer your specific question about the ${productTitle || 'piece'}.`
+    : 'Our team typically replies within a few hours.'
+  const placeholder = isProductChat
+    ? `What would you like to know about the ${productTitle || 'piece'}?`
+    : "Tell us what's on your mind..."
+
   useEffect(() => {
     const checkUser = async () => {
       const {
         data: { user },
       } = await supabaseAuth.auth.getUser()
       if (!user) {
-        router.replace('/login?redirect=/account/messages/new')
+        const currentPath = `/account/messages/new?${searchParams.toString()}`
+        router.replace(`/login?redirect=${encodeURIComponent(currentPath)}`)
         return
       }
       setIsChecking(false)
     }
 
     void checkUser()
-  }, [router])
+  }, [router, searchParams])
+
+  useEffect(() => {
+    setSubject('')
+  }, [isProductChat])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -59,7 +101,8 @@ export default function NewMessagePage() {
       } = await supabaseAuth.auth.getUser()
 
       if (!user) {
-        router.replace('/login?redirect=/account/messages/new')
+        const currentPath = `/account/messages/new?${searchParams.toString()}`
+        router.replace(`/login?redirect=${encodeURIComponent(currentPath)}`)
         return
       }
 
@@ -72,6 +115,11 @@ export default function NewMessagePage() {
           customerName: typeof user.user_metadata?.name === 'string' ? user.user_metadata.name : user.email,
           subject,
           message: trimmed,
+          conversationType: isProductChat ? 'product' : 'general',
+          productId: productId || null,
+          productSlug: productSlug || null,
+          productTitle: productTitle || null,
+          productImage: productImage || null,
         }),
       })
 
@@ -80,7 +128,7 @@ export default function NewMessagePage() {
         throw new Error(payload.error || 'Unable to send message')
       }
 
-      showToast("Message sent! We'll reply soon *", 'success')
+      showToast(isProductChat ? 'Question sent! Our expert will reply soon *' : "Message sent! We'll reply soon *", 'success')
       router.push('/account/messages')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to send message')
@@ -90,11 +138,7 @@ export default function NewMessagePage() {
   }
 
   if (isChecking) {
-    return (
-      <main style={{ minHeight: '100vh', background: '#FBF5F0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#B8A090', fontFamily: 'var(--font-playfair)', fontSize: '20px' }}>
-        Loading...
-      </main>
-    )
+    return <LoadingMessage />
   }
 
   return (
@@ -108,16 +152,60 @@ export default function NewMessagePage() {
       </div>
 
       <p className="eyebrow-luxury" style={{ marginBottom: '10px' }}>SUPPORT</p>
-      <h1 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '36px', fontWeight: 400, lineHeight: 1.1, margin: 0 }}>Send us a message</h1>
+      <h1 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '36px', fontWeight: 400, lineHeight: 1.1, margin: 0 }}>{heading}</h1>
       <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '14px', lineHeight: 1.7, margin: '12px 0 32px' }}>
-        Our team typically replies within a few hours.
+        {subtext}
       </p>
+
+      {isProductChat && (
+        <div
+          style={{
+            background: '#FDF8F2',
+            border: '0.5px solid #C9A961',
+            borderRadius: '4px',
+            padding: '16px 20px',
+            marginBottom: '24px',
+            display: 'flex',
+            gap: '14px',
+            alignItems: 'center',
+          }}
+        >
+          {productImage && (
+            <div
+              style={{
+                width: '64px',
+                height: '64px',
+                flexShrink: 0,
+                background: '#F5E8ED',
+                borderRadius: '2px',
+                overflow: 'hidden',
+                position: 'relative',
+              }}
+            >
+              <Image src={productImage} alt={productTitle || ''} fill style={{ objectFit: 'cover' }} />
+            </div>
+          )}
+          <div>
+            <div style={{ fontSize: '9px', letterSpacing: '0.2em', color: '#C9A961', fontFamily: 'var(--font-inter)', marginBottom: '4px' }}>
+              ASKING ABOUT
+            </div>
+            <div style={{ fontSize: '14px', fontFamily: 'var(--font-playfair)', color: '#1A1014', marginBottom: '4px' }}>
+              {productTitle}
+            </div>
+            {productSlug && (
+              <Link href={`/products/${productSlug}`} style={{ fontSize: '11px', color: '#C9A961', fontFamily: 'var(--font-inter)', textDecoration: 'none' }}>
+                View product -&gt;
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '20px' }}>
         <label>
           <span className="eyebrow-luxury" style={{ display: 'block', marginBottom: '8px' }}>SUBJECT *</span>
           <select className="select-luxury" value={subject} onChange={(event) => setSubject(event.target.value)}>
-            <option value="">Select a topic...</option>
+            <option value="">{isProductChat ? 'Select your question...' : 'Select a topic...'}</option>
             {subjects.map((item) => (
               <option key={item} value={item}>{item}</option>
             ))}
@@ -130,7 +218,7 @@ export default function NewMessagePage() {
             className="textarea-luxury"
             rows={6}
             maxLength={1000}
-            placeholder="Tell us what's on your mind..."
+            placeholder={placeholder}
             value={message}
             onChange={(event) => setMessage(event.target.value)}
             style={{ resize: 'vertical' }}
@@ -152,5 +240,13 @@ export default function NewMessagePage() {
         </button>
       </form>
     </main>
+  )
+}
+
+export default function NewMessagePage() {
+  return (
+    <Suspense fallback={<LoadingMessage />}>
+      <NewMessageContent />
+    </Suspense>
   )
 }

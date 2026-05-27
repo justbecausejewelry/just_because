@@ -34,8 +34,24 @@ export async function POST(request: NextRequest) {
     customerName?: string
     subject?: string
     message?: string
+    productId?: string | null
+    productSlug?: string | null
+    productTitle?: string | null
+    productImage?: string | null
+    conversationType?: 'general' | 'product'
   }
-  const { customerId, customerEmail, customerName, subject, message } = body
+  const {
+    customerId,
+    customerEmail,
+    customerName,
+    subject,
+    message,
+    productId,
+    productSlug,
+    productTitle,
+    productImage,
+    conversationType = 'general',
+  } = body
 
   if (!customerId || !subject || !message) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -51,6 +67,11 @@ export async function POST(request: NextRequest) {
       status: 'open',
       isReadByAdmin: false,
       isReadByCustomer: true,
+      productId: productId || null,
+      productSlug: productSlug || null,
+      productTitle: productTitle || null,
+      productImage: productImage || null,
+      conversationType,
     })
     .select()
     .single()

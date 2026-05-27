@@ -22,6 +22,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useCart } from '@/context/CartContext'
 import { useToast } from '@/context/ToastContext'
+import { supabaseAuth } from '@/lib/auth'
 
 type PricingMap = Record<string, { enabled?: boolean; modifier?: number }>
 
@@ -286,6 +287,26 @@ export default function ProductDetailPage() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [images.length])
 
+  useEffect(() => {
+    if (!product) return
+
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('askExpert') !== 'true') return
+
+    supabaseAuth.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+
+      const msgParams = new URLSearchParams({
+        type: 'product',
+        productId: product.id,
+        productSlug: product.slug,
+        productTitle: product.title,
+        productImage: product.images?.[0] || '',
+      })
+      router.push(`/account/messages/new?${msgParams.toString()}`)
+    })
+  }, [product, router])
+
   const averageRating = reviews.length
     ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
     : 4.9
@@ -384,6 +405,27 @@ export default function ProductDetailPage() {
     })
 
     router.push('/checkout')
+  }
+
+  const handleTalkToExpert = async () => {
+    const {
+      data: { user },
+    } = await supabaseAuth.auth.getUser()
+
+    if (!user) {
+      router.push(`/login?redirect=/products/${product.slug}?askExpert=true`)
+      return
+    }
+
+    const params = new URLSearchParams({
+      type: 'product',
+      productId: product.id,
+      productSlug: product.slug,
+      productTitle: product.title,
+      productImage: product.images?.[0] || '',
+    })
+
+    router.push(`/account/messages/new?${params.toString()}`)
   }
 
   return (
@@ -1041,6 +1083,72 @@ export default function ProductDetailPage() {
                   </div>
                 )
               })}
+            </div>
+
+            <div
+              style={{
+                marginTop: '24px',
+                padding: '16px 20px',
+                background: '#FDF8F2',
+                border: '0.5px solid #EDD9AF',
+                borderRadius: '4px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '16px',
+                flexWrap: 'wrap',
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    color: '#1A1014',
+                    fontFamily: 'var(--font-inter)',
+                    marginBottom: '3px',
+                  }}
+                >
+                  Questions about this piece?
+                </div>
+                <div
+                  style={{
+                    fontSize: '11px',
+                    color: '#B8A090',
+                    fontFamily: 'var(--font-inter)',
+                  }}
+                >
+                  Our diamond experts reply within a few hours
+                </div>
+              </div>
+
+              <button
+                onClick={handleTalkToExpert}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '10px 18px',
+                  background: '#1A1014',
+                  border: 'none',
+                  color: '#FBF5F0',
+                  fontSize: '11px',
+                  letterSpacing: '0.15em',
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-inter)',
+                  whiteSpace: 'nowrap',
+                  borderRadius: '2px',
+                  transition: 'background 0.2s ease',
+                  flexShrink: 0,
+                }}
+                onMouseEnter={(event) => event.currentTarget.style.background = '#2A1E24'}
+                onMouseLeave={(event) => event.currentTarget.style.background = '#1A1014'}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                </svg>
+                TALK TO AN EXPERT
+              </button>
             </div>
           </div>
         </section>

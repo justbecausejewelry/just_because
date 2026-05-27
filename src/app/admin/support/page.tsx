@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 
 type ConversationStatus = 'open' | 'replied' | 'resolved'
@@ -14,9 +15,14 @@ type Conversation = {
   isReadByAdmin: boolean
   updatedAt: string
   createdAt: string
+  productTitle: string | null
+  productImage: string | null
+  conversationType: 'general' | 'product' | null
 }
 
-const tabs: Array<'all' | ConversationStatus> = ['all', 'open', 'replied', 'resolved']
+type ConversationFilter = 'all' | 'general' | 'product' | ConversationStatus
+
+const tabs: ConversationFilter[] = ['all', 'general', 'product', 'open', 'replied', 'resolved']
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(value))
@@ -30,14 +36,20 @@ function badgeStyle(status: ConversationStatus) {
 
 export default function AdminSupportPage() {
   const router = useRouter()
-  const [filter, setFilter] = useState<'all' | ConversationStatus>('all')
+  const [filter, setFilter] = useState<ConversationFilter>('all')
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const load = async () => {
       setIsLoading(true)
-      const response = await fetch(`/api/admin/conversations?status=${filter}`)
+      const params = new URLSearchParams()
+      if (filter === 'general' || filter === 'product') {
+        params.set('type', filter)
+      } else {
+        params.set('status', filter)
+      }
+      const response = await fetch(`/api/admin/conversations?${params.toString()}`)
       const payload = (await response.json()) as { conversations?: Conversation[] }
       setConversations(payload.conversations || [])
       setIsLoading(false)
@@ -92,14 +104,15 @@ export default function AdminSupportPage() {
               textTransform: 'uppercase',
             }}
           >
-            {tab}
+            {tab === 'product' ? 'Product Questions' : tab}
           </button>
         ))}
       </div>
 
       <section style={{ background: '#FBF5F0', border: '0.5px solid #EDD9AF', overflow: 'hidden' }}>
-        <div className="hidden md:grid" style={{ gridTemplateColumns: '1.1fr 1.4fr 1fr 120px 150px 90px', gap: '16px', padding: '14px 18px', borderBottom: '0.5px solid #EDD9AF', color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.18em' }}>
+        <div className="hidden md:grid" style={{ gridTemplateColumns: '1.1fr 1fr 1.4fr 1fr 120px 150px 90px', gap: '16px', padding: '14px 18px', borderBottom: '0.5px solid #EDD9AF', color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.18em' }}>
           <span>CUSTOMER</span>
+          <span>ABOUT</span>
           <span>SUBJECT</span>
           <span>LAST MESSAGE</span>
           <span>STATUS</span>
@@ -119,7 +132,7 @@ export default function AdminSupportPage() {
               style={{
                 width: '100%',
                 display: 'grid',
-                gridTemplateColumns: '1.1fr 1.4fr 1fr 120px 150px 90px',
+                gridTemplateColumns: '1.1fr 1fr 1.4fr 1fr 120px 150px 90px',
                 gap: '16px',
                 alignItems: 'center',
                 padding: '16px 18px',
@@ -134,6 +147,24 @@ export default function AdminSupportPage() {
               <span style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px' }}>
                 {conversation.customerName || 'Customer'}
                 <small style={{ display: 'block', color: '#B8A090', fontSize: '11px', marginTop: '2px' }}>{conversation.customerEmail}</small>
+              </span>
+              <span>
+                {conversation.productTitle ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {conversation.productImage && (
+                      <div style={{ width: '28px', height: '28px', background: '#F5E8ED', borderRadius: '2px', overflow: 'hidden', flexShrink: 0 }}>
+                        <Image src={conversation.productImage} alt="" width={28} height={28} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </div>
+                    )}
+                    <span style={{ fontSize: '11px', color: '#1A1014', fontFamily: 'var(--font-inter)', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {conversation.productTitle}
+                    </span>
+                  </div>
+                ) : (
+                  <span style={{ fontSize: '10px', color: '#B8A090', fontFamily: 'var(--font-inter)', letterSpacing: '0.1em' }}>
+                    GENERAL
+                  </span>
+                )}
               </span>
               <span style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px' }}>{conversation.subject}</span>
               <span style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>Open conversation</span>

@@ -13,6 +13,7 @@ type Conversation = {
   isReadByCustomer: boolean
   updatedAt: string
   createdAt?: string
+  productTitle: string | null
 }
 
 function statusStyle(status: Conversation['status']) {
@@ -102,6 +103,16 @@ export default function MessagesPage() {
                 >
                   <div style={{ minWidth: 0 }}>
                     <h2 style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '14px', fontWeight: 500, margin: 0 }}>{conversation.subject}</h2>
+                    {conversation.productTitle && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#C9A961" strokeWidth="1.5">
+                          <path d="M6 3h12l4 6-10 13L2 9z" />
+                        </svg>
+                        <span style={{ fontSize: '10px', color: '#C9A961', fontFamily: 'var(--font-inter)', letterSpacing: '0.1em' }}>
+                          Re: {conversation.productTitle}
+                        </span>
+                      </div>
+                    )}
                     <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', margin: '6px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       Conversation with the Just Because team
                     </p>

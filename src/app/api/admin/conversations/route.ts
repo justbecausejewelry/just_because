@@ -9,6 +9,7 @@ const supabase = createClient(
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const status = searchParams.get('status')
+  const type = searchParams.get('type')
 
   let query = supabase
     .from('Conversation')
@@ -17,6 +18,14 @@ export async function GET(request: NextRequest) {
 
   if (status && status !== 'all') {
     query = query.eq('status', status)
+  }
+
+  if (type === 'product') {
+    query = query.eq('conversationType', 'product')
+  }
+
+  if (type === 'general') {
+    query = query.eq('conversationType', 'general')
   }
 
   const { data, error } = await query
