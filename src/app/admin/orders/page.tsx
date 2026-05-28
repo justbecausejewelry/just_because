@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Download, Eye, MessageSquare, Search, X } from 'lucide-react'
-import { supabaseAuth } from '@/lib/auth'
 
 type OrderStatus = 'received' | 'in_production' | 'shipped' | 'delivered' | 'cancelled'
 
@@ -23,6 +22,8 @@ type OrderItem = {
   id: string
   productId?: string | null
   productTitle?: string | null
+  title?: string | null
+  name?: string | null
   selectedMetal?: string | null
   selectedCarat?: number | null
   selectedShape?: string | null
@@ -49,7 +50,7 @@ type Order = {
   status?: string | null
   createdAt: string
   updatedAt?: string | null
-  OrderItem?: OrderItem[]
+  items?: OrderItem[]
 }
 
 const statuses: Array<{ label: string; value: OrderStatus }> = [
@@ -93,7 +94,7 @@ function statusStyle(status?: string | null) {
 }
 
 function itemTitle(item: OrderItem) {
-  return item.productTitle || item.productId || 'Just Because piece'
+  return item.productTitle || item.title || item.name || item.productId || 'Custom piece'
 }
 
 function itemDetails(item: OrderItem) {
@@ -112,6 +113,22 @@ function normalizeStatus(status?: string | null): OrderStatus {
   return statuses.some((item) => item.value === status) ? status as OrderStatus : 'received'
 }
 
+function orderItems(order: Order) {
+  return order.items || []
+}
+
+function orderDisplayId(order: Order) {
+  return order.orderNumber || `JB-${order.id?.slice(-6).toUpperCase()}`
+}
+
+function customerDisplayName(order: Order) {
+  return order.customerName || order.customerEmail || 'Guest'
+}
+
+function orderTotal(order: Order) {
+  return order.total || order.subtotal || 0
+}
+
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
@@ -122,18 +139,38 @@ export default function AdminOrdersPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const loadOrders = async () => {
-      const { data } = await supabaseAuth
-        .from('Order')
-        .select('*, OrderItem(*)')
-        .order('createdAt', { ascending: false })
+    const fetchOrders = async () => {
+      setLoading(true)
 
-      setOrders((data || []) as Order[])
-      setLoading(false)
+      try {
+        const response = await fetch('/api/admin/orders')
+        const payload = (await response.json()) as {
+          orders?: Order[]
+          error?: string
+        }
+
+        if (!response.ok) {
+          console.error('Orders error:', payload.error)
+          setOrders([])
+          return
+        }
+
+        setOrders(payload.orders || [])
+      } catch (error) {
+        console.error('Orders error:', error)
+        setOrders([])
+      } finally {
+        setLoading(false)
+      }
     }
 
-    void loadOrders()
+    void fetchOrders()
   }, [])
+
+  useEffect(() => {
+    console.log('Orders loaded:', orders)
+    console.log('First order:', orders[0])
+  }, [orders])
 
   const filteredOrders = useMemo(() => {
     const lowerQuery = query.trim().toLowerCase()
@@ -155,7 +192,7 @@ export default function AdminOrdersPage() {
   }, [filter, fromDate, orders, query, toDate])
 
   const stats = useMemo(() => {
-    const revenue = orders.reduce((sum, order) => sum + (order.total || 0), 0)
+    const revenue = orders.reduce((sum, order) => sum + orderTotal(order), 0)
     return {
       total: orders.length,
       pending: orders.filter((order) => normalizeStatus(order.status) === 'received').length,
@@ -177,11 +214,9 @@ export default function AdminOrdersPage() {
     })
 
     if (!response.ok) {
-      const { data } = await supabaseAuth
-        .from('Order')
-        .select('*, OrderItem(*)')
-        .order('createdAt', { ascending: false })
-      setOrders((data || []) as Order[])
+      const reload = await fetch('/api/admin/orders')
+      const payload = (await reload.json()) as { orders?: Order[] }
+      setOrders(payload.orders || [])
     }
   }
 
@@ -192,8 +227,8 @@ export default function AdminOrdersPage() {
         order.orderNumber || order.id,
         order.customerName || '',
         order.customerEmail || '',
-        String(order.OrderItem?.length || 0),
-        String(order.total || 0),
+        String(orderItems(order).length),
+        String(orderTotal(order)),
         normalizeStatus(order.status),
         order.createdAt,
       ]),
@@ -288,21 +323,22 @@ export default function AdminOrdersPage() {
             {loading ? (
               <tr><td colSpan={7} style={{ padding: '28px 16px', color: '#B8A090' }}>Loading orders...</td></tr>
             ) : filteredOrders.map((order) => {
-              const firstItem = order.OrderItem?.[0]
+              const items = orderItems(order)
+              const firstItem = items[0]
               return (
                 <tr key={order.id} style={{ borderBottom: '0.5px solid #EDD9AF' }}>
                   <td style={{ padding: '16px', color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '13px', cursor: 'pointer' }} onClick={() => setSelectedOrder(order)}>
-                    {order.orderNumber || `JB-${order.id.slice(0, 5)}`}
+                    {orderDisplayId(order)}
                   </td>
                   <td style={{ padding: '16px' }}>
-                    <div style={{ color: '#1A1014', fontSize: '13px' }}>{order.customerName || 'Guest Customer'}</div>
+                    <div style={{ color: '#1A1014', fontSize: '13px' }}>{customerDisplayName(order)}</div>
                     <div style={{ color: '#B8A090', fontSize: '11px', marginTop: '3px' }}>{order.customerEmail}</div>
                   </td>
                   <td style={{ padding: '16px', color: '#1A1014', fontSize: '13px' }}>
-                    <div>{order.OrderItem?.length || 0} items</div>
+                    <div>{items.length} items</div>
                     <div style={{ color: '#B8A090', fontSize: '11px', marginTop: '3px', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{firstItem ? itemTitle(firstItem) : 'No items'}</div>
                   </td>
-                  <td style={{ padding: '16px', color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '14px' }}>{formatCurrency(order.total || 0)}</td>
+                  <td style={{ padding: '16px', color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '14px' }}>{formatCurrency(orderTotal(order))}</td>
                   <td style={{ padding: '16px' }}>
                     <select
                       value={normalizeStatus(order.status)}
@@ -359,7 +395,7 @@ function OrderDetailModal({
       <aside style={{ width: 'min(100vw, 480px)', height: '100vh', background: '#FBF5F0', padding: '26px 28px', overflowY: 'auto', boxShadow: '-12px 0 40px rgba(26,16,20,0.18)' }} onClick={(event) => event.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '18px', borderBottom: '0.5px solid #EDD9AF', paddingBottom: '18px' }}>
           <div>
-            <h2 style={{ fontFamily: 'var(--font-playfair)', fontSize: '22px', color: '#1A1014', fontWeight: 400, margin: 0 }}>Order #{order.orderNumber || order.id.slice(0, 8)}</h2>
+            <h2 style={{ fontFamily: 'var(--font-playfair)', fontSize: '22px', color: '#1A1014', fontWeight: 400, margin: 0 }}>Order #{orderDisplayId(order)}</h2>
             <div style={{ color: '#B8A090', fontSize: '11px', marginTop: '6px' }}>{formatDate(order.createdAt)}</div>
             <span style={{ ...statusStyle(order.status), display: 'inline-block', marginTop: '10px', padding: '5px 9px', borderRadius: '999px', fontSize: '10px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{status.replace(/_/g, ' ')}</span>
           </div>
@@ -367,14 +403,14 @@ function OrderDetailModal({
         </div>
 
         <DetailSection title="CUSTOMER">
-          <div style={{ color: '#1A1014', fontSize: '14px' }}>{order.customerName || 'Guest Customer'}</div>
+          <div style={{ color: '#1A1014', fontSize: '14px' }}>{customerDisplayName(order)}</div>
           <div style={{ color: '#C9A961', fontSize: '12px', marginTop: '4px' }}>{order.customerEmail}</div>
           <div style={{ color: '#B8A090', fontSize: '12px', marginTop: '4px' }}>{order.customerPhone || address?.phone || 'No phone on file'}</div>
           <Link href="/admin/customers" style={{ display: 'inline-block', color: '#C9A961', fontSize: '11px', letterSpacing: '0.08em', marginTop: '10px' }}>View profile {'->'}</Link>
         </DetailSection>
 
         <DetailSection title="ITEMS">
-          {(order.OrderItem || []).map((item) => (
+          {orderItems(order).map((item) => (
             <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '18px', padding: '12px 0', borderBottom: '0.5px solid #EDD9AF' }}>
               <div>
                 <div style={{ color: '#1A1014', fontSize: '13px' }}>{itemTitle(item)}</div>
@@ -391,7 +427,7 @@ function OrderDetailModal({
             ['Shipping', order.shippingAmount || 0],
             ['Discount', -(order.discountAmount || 0)],
             ['Tax', order.taxAmount || 0],
-            ['Total', order.total || 0],
+            ['Total', orderTotal(order)],
           ].map(([label, value]) => (
             <div key={label as string} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', color: label === 'Total' ? '#1A1014' : '#B8A090', fontFamily: label === 'Total' ? 'var(--font-playfair)' : 'var(--font-inter)', fontSize: label === 'Total' ? '17px' : '12px' }}>
               <span>{label}</span>

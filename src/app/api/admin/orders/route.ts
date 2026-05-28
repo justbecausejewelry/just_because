@@ -14,6 +14,44 @@ const allowedStatuses = new Set([
   'cancelled',
 ])
 
+type OrderRow = {
+  id: string
+  [key: string]: unknown
+}
+
+type OrderItemRow = {
+  orderId?: string | null
+  [key: string]: unknown
+}
+
+export async function GET() {
+  const { data: ordersData, error } = await supabase
+    .from('Order')
+    .select('*')
+    .order('createdAt', { ascending: false })
+
+  if (error) {
+    console.error('Orders error:', error)
+    return NextResponse.json({ error: error.message, orders: [] }, { status: 500 })
+  }
+
+  const { data: itemsData, error: itemsError } = await supabase
+    .from('OrderItem')
+    .select('*')
+
+  if (itemsError) {
+    console.error('Order items error:', itemsError)
+  }
+
+  const items = (itemsData || []) as OrderItemRow[]
+  const orders = ((ordersData || []) as OrderRow[]).map((order) => ({
+    ...order,
+    items: items.filter((item) => item.orderId === order.id),
+  }))
+
+  return NextResponse.json({ orders })
+}
+
 export async function PATCH(request: NextRequest) {
   const body = (await request.json()) as {
     orderId?: string
