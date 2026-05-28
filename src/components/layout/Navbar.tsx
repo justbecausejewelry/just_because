@@ -256,13 +256,7 @@ export function Navbar() {
               gap: '1px',
               lineHeight: 1,
             }}>
-              <span style={{
-                fontFamily: 'var(--font-italianno)',
-                fontSize: '28px',
-                color: '#C9A961',
-                lineHeight: 0.85,
-                letterSpacing: '0.02em',
-              }}>
+              <span className="nav-logo-script" style={{ letterSpacing: '0.02em' }}>
                 just
               </span>
               <div style={{
@@ -460,7 +454,7 @@ export function Navbar() {
             gap: '1px',
             lineHeight: 1,
           }}>
-            <span style={{ fontFamily: 'var(--font-italianno)', fontSize: '26px', color: '#C9A961', lineHeight: 0.85, letterSpacing: '0.02em' }}>just</span>
+            <span className="nav-logo-script" style={{ fontSize: '28px', letterSpacing: '0.02em' }}>just</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
               <div style={{ width: '12px', height: '0.5px', background: '#1A1014' }} />
               <span style={{ fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.38em', color: '#1A1014', fontWeight: 500 }}>BECAUSE</span>
@@ -644,6 +638,13 @@ export function Navbar() {
       />
 
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Italianno&display=swap');
+        .nav-logo-script {
+          font-family: 'Italianno', cursive !important;
+          font-size: 30px !important;
+          color: #C9A961 !important;
+          line-height: 0.85 !important;
+        }
         .desktop-nav {
           display: none !important;
         }

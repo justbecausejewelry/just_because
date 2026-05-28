@@ -1,11 +1,10 @@
 "use client"
-
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { createClient } from '@supabase/supabase-js'
 import { Eye, EyeOff } from 'lucide-react'
+import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,7 +15,7 @@ export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
+  const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -25,485 +24,401 @@ export default function LoginPage() {
       setError('Please fill in all fields')
       return
     }
-
     setLoading(true)
     setError('')
-
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
     if (signInError) {
       setError('Invalid email or password')
       setLoading(false)
-      return
+    } else {
+      router.push('/')
     }
-
-    router.push('/')
   }
 
   return (
-    <div style={{
-      display: 'flex',
-      height: '100vh',
-      width: '100vw',
-      overflow: 'hidden',
-      background: '#FBF5F0',
-    }}>
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Italianno&family=Playfair+Display:ital,wght@0,400;1,400&display=swap');
+
+        .logo-script {
+          font-family: 'Italianno', cursive !important;
+          font-size: 44px !important;
+          color: #FBF5F0 !important;
+          line-height: 0.85 !important;
+        }
+
+        .logo-script-dark {
+          font-family: 'Italianno', cursive !important;
+          font-size: 36px !important;
+          color: #1A1014 !important;
+          line-height: 0.85 !important;
+        }
+
+        .playfair-heading {
+          font-family: 'Playfair Display', Georgia, serif !important;
+          font-weight: 400 !important;
+        }
+
+        .playfair-italic {
+          font-family: 'Playfair Display', Georgia, serif !important;
+          font-weight: 400 !important;
+          font-style: italic !important;
+        }
+
+        .login-input {
+          width: 100%;
+          padding: 14px 16px;
+          background: #FDF8F2;
+          border: 1px solid #EDD9AF;
+          color: #1A1014;
+          font-size: 14px;
+          font-family: Inter, sans-serif;
+          outline: none;
+          box-sizing: border-box;
+          transition: border-color 0.2s;
+        }
+        .login-input:focus {
+          border-color: #1A1014;
+        }
+        .login-input::placeholder {
+          color: #B8A090;
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(12px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+
       <div style={{
-        width: '52%',
-        position: 'relative',
+        display: 'grid',
+        gridTemplateColumns: '52% 48%',
+        height: '100vh',
+        width: '100vw',
         overflow: 'hidden',
-        flexShrink: 0,
+        background: '#FBF5F0',
       }}>
-        <Image
-          src="/images/login-hero.jpg"
-          alt="Just Because diamond ring"
-          fill
-          style={{ objectFit: 'cover', objectPosition: 'center' }}
-          priority
-          quality={95}
-        />
 
         <div style={{
-          position: 'absolute',
-          inset: 0,
-          background: `linear-gradient(
-            to bottom,
-            rgba(26,16,20,0.72) 0%,
-            rgba(26,16,20,0.15) 35%,
-            rgba(26,16,20,0.08) 55%,
-            rgba(26,16,20,0.65) 100%
-          )`,
-        }} />
-
-        <div style={{
-          position: 'absolute',
-          top: '40px',
-          left: '48px',
-          zIndex: 2,
+          position: 'relative',
+          overflow: 'hidden',
         }}>
-          <AuthLogo />
-        </div>
-
-        <div style={{
-          position: 'absolute',
-          bottom: '48px',
-          left: '48px',
-          right: '48px',
-          zIndex: 2,
-        }}>
-          <div style={{
-            width: '40px',
-            height: '1px',
-            background: '#C9A961',
-            marginBottom: '16px',
-          }} />
-
-          <h2 style={{
-            fontFamily: 'var(--font-playfair)',
-            fontSize: '52px',
-            fontWeight: 400,
-            color: '#FBF5F0',
-            lineHeight: 1,
-            marginBottom: '8px',
-          }}>
-            Welcome
-          </h2>
-          <h2 style={{
-            fontFamily: 'var(--font-playfair)',
-            fontSize: '52px',
-            fontWeight: 400,
-            fontStyle: 'italic',
-            color: '#C9A961',
-            lineHeight: 1,
-            marginBottom: '24px',
-          }}>
-            back.
-          </h2>
-
-          <p style={{
-            fontSize: '13px',
-            color: 'rgba(251,245,240,0.7)',
-            fontFamily: 'var(--font-inter)',
-            letterSpacing: '0.05em',
-            marginBottom: '28px',
-          }}>
-            Sign in to your Just Because account.
-          </p>
+          <Image
+            src="/images/login-hero.jpg"
+            alt="Just Because"
+            fill
+            style={{ objectFit: 'cover', objectPosition: 'center 40%' }}
+            priority
+            quality={95}
+          />
 
           <div style={{
-            width: '100%',
-            height: '0.5px',
-            background: 'rgba(201,169,97,0.3)',
-            marginBottom: '24px',
+            position: 'absolute', inset: 0,
+            background: `linear-gradient(
+              to bottom,
+              rgba(26,16,20,0.80) 0%,
+              rgba(26,16,20,0.10) 30%,
+              rgba(26,16,20,0.05) 55%,
+              rgba(26,16,20,0.75) 100%
+            )`,
           }} />
 
           <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px',
+            position: 'absolute',
+            top: '36px', left: '44px',
+            zIndex: 3,
           }}>
-            {[
-              { q: '"The most beautiful buying experience."', name: 'Priya M.' },
-              { q: '"Quietly luxurious, from start to finish."', name: 'Sarah K.' },
-            ].map((r, i) => (
-              <div key={i} style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '10px',
-              }}>
-                <span style={{
-                  color: '#C9A961',
-                  fontSize: '12px',
-                  flexShrink: 0,
-                  marginTop: '1px',
-                }}>★</span>
-                <div>
-                  <p style={{
-                    fontFamily: 'var(--font-playfair)',
-                    fontStyle: 'italic',
-                    fontSize: '13px',
-                    color: 'rgba(251,245,240,0.9)',
-                    lineHeight: 1.5,
-                    marginBottom: '3px',
-                  }}>{r.q}</p>
+            <Link href="/" style={{ textDecoration: 'none' }}>
+              <div>
+                <span className="logo-script">just</span>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  marginTop: '2px',
+                }}>
+                  <div style={{
+                    width: '16px', height: '0.5px',
+                    background: 'rgba(251,245,240,0.5)',
+                  }} />
                   <span style={{
-                    fontSize: '11px',
-                    color: 'rgba(201,169,97,0.7)',
-                    fontFamily: 'var(--font-inter)',
-                    letterSpacing: '0.08em',
-                  }}>{r.name}</span>
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: '10px',
+                    letterSpacing: '0.42em',
+                    color: 'rgba(251,245,240,0.75)',
+                    fontWeight: 400,
+                  }}>BECAUSE</span>
+                  <div style={{
+                    width: '16px', height: '0.5px',
+                    background: 'rgba(251,245,240,0.5)',
+                  }} />
                 </div>
               </div>
-            ))}
+            </Link>
+          </div>
+
+          <div style={{
+            position: 'absolute',
+            bottom: '44px', left: '44px', right: '44px',
+            zIndex: 3,
+          }}>
+            <div style={{
+              width: '36px', height: '1.5px',
+              background: '#C9A961',
+              marginBottom: '18px',
+            }} />
+
+            <div className="playfair-heading" style={{
+              fontSize: '54px',
+              color: '#FBF5F0',
+              lineHeight: 1.0,
+              marginBottom: '2px',
+              animation: 'fadeIn 0.8s ease 0.3s both',
+            }}>
+              Welcome
+            </div>
+            <div className="playfair-italic" style={{
+              fontSize: '54px',
+              color: '#EDD9AF',
+              lineHeight: 1.0,
+              marginBottom: '20px',
+              animation: 'fadeIn 0.8s ease 0.5s both',
+            }}>
+              back.
+            </div>
+
+            <p style={{
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '13px',
+              color: 'rgba(251,245,240,0.65)',
+              marginBottom: '24px',
+              letterSpacing: '0.03em',
+              animation: 'fadeIn 0.8s ease 0.7s both',
+            }}>
+              Sign in to your Just Because account.
+            </p>
+
+            <div style={{
+              width: '100%', height: '0.5px',
+              background: 'rgba(201,169,97,0.25)',
+              marginBottom: '20px',
+            }} />
+
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '14px',
+              animation: 'fadeIn 0.8s ease 0.9s both',
+            }}>
+              {[
+                { q: '"The most beautiful buying experience."', n: 'Priya M.' },
+                { q: '"Quietly luxurious, from start to finish."', n: 'Sarah K.' },
+              ].map((r, i) => (
+                <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                  <span style={{ color: '#C9A961', fontSize: '11px', flexShrink: 0, marginTop: '2px' }}>★</span>
+                  <div>
+                    <p className="playfair-italic" style={{
+                      fontSize: '13px',
+                      color: 'rgba(251,245,240,0.88)',
+                      lineHeight: 1.45,
+                      marginBottom: '3px',
+                    }}>{r.q}</p>
+                    <span style={{
+                      fontFamily: 'Inter, sans-serif',
+                      fontSize: '10px',
+                      color: 'rgba(201,169,97,0.75)',
+                      letterSpacing: '0.08em',
+                    }}>{r.n}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
         <div style={{
-          position: 'absolute',
-          top: '40px',
-          right: '32px',
-          zIndex: 2,
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'flex-end',
-          gap: '3px',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: '0 64px',
+          background: '#FBF5F0',
+          overflowY: 'auto',
         }}>
-          <div style={{ width: '24px', height: '0.5px', background: 'rgba(201,169,97,0.4)' }} />
-          <div style={{ width: '16px', height: '0.5px', background: 'rgba(201,169,97,0.3)' }} />
-          <div style={{ width: '8px', height: '0.5px', background: 'rgba(201,169,97,0.2)' }} />
-        </div>
-      </div>
+          <div style={{
+            width: '100%',
+            maxWidth: '380px',
+            animation: 'fadeIn 0.8s ease 0.2s both',
+          }}>
 
-      <div style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: '48px 64px',
-        background: '#FBF5F0',
-        overflow: 'hidden',
-      }}>
-        <div style={{
-          width: '100%',
-          maxWidth: '400px',
-        }}>
-          <div style={{ marginBottom: '40px' }}>
-            <h1 style={{
-              fontFamily: 'var(--font-playfair)',
-              fontSize: '36px',
-              fontWeight: 400,
+            <h1 className="playfair-heading" style={{
+              fontSize: '38px',
               color: '#1A1014',
               marginBottom: '8px',
-              lineHeight: 1.1,
+              lineHeight: 1.0,
             }}>
               Sign in
             </h1>
             <p style={{
+              fontFamily: 'Inter, sans-serif',
               fontSize: '13px',
               color: '#B8A090',
-              fontFamily: 'var(--font-inter)',
+              marginBottom: '36px',
             }}>
               Don&apos;t have an account?{' '}
               <Link href="/signup" style={{
-                color: '#C9A961',
+                color: '#1A1014',
                 textDecoration: 'none',
                 fontWeight: 500,
-              }}>
-                Create one →
-              </Link>
+                borderBottom: '1px solid #EDD9AF',
+                paddingBottom: '1px',
+              }}>Create one →</Link>
             </p>
-          </div>
 
-          {error && (
-            <div style={{
-              background: '#FFF0F0',
-              border: '1px solid #A85C6A',
-              padding: '12px 16px',
-              marginBottom: '20px',
-              fontSize: '13px',
-              color: '#A85C6A',
-              fontFamily: 'var(--font-inter)',
-            }}>
-              {error}
+            {error && (
+              <div style={{
+                background: '#FFF0F0',
+                border: '1px solid #A85C6A',
+                padding: '12px 16px',
+                marginBottom: '20px',
+                fontSize: '13px',
+                color: '#A85C6A',
+                fontFamily: 'Inter, sans-serif',
+              }}>{error}</div>
+            )}
+
+            <div style={{ marginBottom: '18px' }}>
+              <div style={{
+                fontSize: '9px',
+                letterSpacing: '0.25em',
+                color: '#C9A961',
+                fontFamily: 'Inter, sans-serif',
+                marginBottom: '8px',
+              }}>EMAIL ADDRESS</div>
+              <input
+                className="login-input"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void handleSignIn()
+                }}
+                placeholder="your@email.com"
+              />
             </div>
-          )}
 
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{
-              display: 'block',
-              fontSize: '9px',
-              letterSpacing: '0.25em',
-              color: '#C9A961',
-              fontFamily: 'var(--font-inter)',
-              marginBottom: '8px',
-            }}>
-              EMAIL ADDRESS
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') void handleSignIn()
-              }}
-              placeholder="your@email.com"
+            <div style={{ marginBottom: '10px' }}>
+              <div style={{
+                fontSize: '9px',
+                letterSpacing: '0.25em',
+                color: '#C9A961',
+                fontFamily: 'Inter, sans-serif',
+                marginBottom: '8px',
+              }}>PASSWORD</div>
+              <div style={{ position: 'relative' }}>
+                <input
+                  className="login-input"
+                  type={showPw ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void handleSignIn()
+                  }}
+                  placeholder="••••••••"
+                  style={{ paddingRight: '48px' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw(!showPw)}
+                  style={{
+                    position: 'absolute',
+                    right: '14px', top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none', border: 'none',
+                    cursor: 'pointer', color: '#B8A090', padding: '4px',
+                  }}
+                >
+                  {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            <div style={{ textAlign: 'right', marginBottom: '28px' }}>
+              <Link href="/forgot-password" style={{
+                fontSize: '12px', color: '#B8A090',
+                textDecoration: 'none', fontFamily: 'Inter, sans-serif',
+              }}>Forgot password?</Link>
+            </div>
+
+            <button
+              onClick={() => void handleSignIn()}
+              disabled={loading}
               style={{
                 width: '100%',
-                padding: '14px 16px',
-                background: '#FDF8F2',
-                border: '1px solid #EDD9AF',
-                color: '#1A1014',
-                fontSize: '14px',
-                fontFamily: 'var(--font-inter)',
-                outline: 'none',
-                transition: 'border-color 0.2s',
-                boxSizing: 'border-box',
-              }}
-              onFocus={(event) => {
-                event.target.style.borderColor = '#1A1014'
-              }}
-              onBlur={(event) => {
-                event.target.style.borderColor = '#EDD9AF'
-              }}
-            />
-          </div>
-
-          <div style={{ marginBottom: '10px' }}>
-            <label style={{
-              display: 'block',
-              fontSize: '9px',
-              letterSpacing: '0.25em',
-              color: '#C9A961',
-              fontFamily: 'var(--font-inter)',
-              marginBottom: '8px',
-            }}>
-              PASSWORD
-            </label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') void handleSignIn()
-                }}
-                placeholder="••••••••"
-                style={{
-                  width: '100%',
-                  padding: '14px 48px 14px 16px',
-                  background: '#FDF8F2',
-                  border: '1px solid #EDD9AF',
-                  color: '#1A1014',
-                  fontSize: '14px',
-                  fontFamily: 'var(--font-inter)',
-                  outline: 'none',
-                  transition: 'border-color 0.2s',
-                  boxSizing: 'border-box',
-                }}
-                onFocus={(event) => {
-                  event.target.style.borderColor = '#1A1014'
-                }}
-                onBlur={(event) => {
-                  event.target.style.borderColor = '#EDD9AF'
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{
-                  position: 'absolute',
-                  right: '14px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  color: '#B8A090',
-                }}
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-          </div>
-
-          <div style={{
-            textAlign: 'right',
-            marginBottom: '28px',
-          }}>
-            <Link
-              href="/forgot-password"
-              style={{
-                fontSize: '12px',
-                color: '#B8A090',
-                textDecoration: 'none',
-                fontFamily: 'var(--font-inter)',
-                transition: 'color 0.2s',
-              }}
-              onMouseEnter={(event) => {
-                event.currentTarget.style.color = '#C9A961'
-              }}
-              onMouseLeave={(event) => {
-                event.currentTarget.style.color = '#B8A090'
+                padding: '16px',
+                background: loading ? '#888' : '#1A1014',
+                color: '#FBF5F0',
+                border: 'none',
+                fontSize: '11px',
+                letterSpacing: '0.22em',
+                fontFamily: 'Inter, sans-serif',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                transition: 'background 0.3s',
+                marginBottom: '24px',
               }}
             >
-              Forgot password?
-            </Link>
+              {loading ? 'SIGNING IN...' : 'SIGN IN →'}
+            </button>
+
+            <div style={{
+              display: 'flex', alignItems: 'center',
+              gap: '14px', marginBottom: '16px',
+            }}>
+              <div style={{ flex: 1, height: '0.5px', background: '#EDD9AF' }} />
+              <span style={{
+                fontSize: '11px', color: '#B8A090',
+                fontFamily: 'Inter, sans-serif',
+              }}>or</span>
+              <div style={{ flex: 1, height: '0.5px', background: '#EDD9AF' }} />
+            </div>
+
+            <button
+              onClick={() => router.push('/')}
+              style={{
+                width: '100%',
+                padding: '14px',
+                background: 'transparent',
+                color: '#B8A090',
+                border: '1px solid #EDD9AF',
+                fontSize: '10px',
+                letterSpacing: '0.2em',
+                fontFamily: 'Inter, sans-serif',
+                cursor: 'pointer',
+                transition: 'all 0.3s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = '#1A1014'
+                e.currentTarget.style.color = '#1A1014'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = '#EDD9AF'
+                e.currentTarget.style.color = '#B8A090'
+              }}
+            >
+              CONTINUE AS GUEST →
+            </button>
+
+            <p style={{
+              textAlign: 'center',
+              fontSize: '11px', color: '#B8A090',
+              fontFamily: 'Inter, sans-serif',
+              marginTop: '10px',
+            }}>
+              Browse our collection without an account
+            </p>
           </div>
-
-          <button
-            type="button"
-            onClick={() => void handleSignIn()}
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: '16px',
-              background: loading ? '#888' : '#1A1014',
-              color: '#FBF5F0',
-              border: 'none',
-              fontSize: '12px',
-              letterSpacing: '0.2em',
-              fontFamily: 'var(--font-inter)',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'background 0.3s',
-              marginBottom: '20px',
-            }}
-            onMouseEnter={(event) => {
-              if (!loading) event.currentTarget.style.background = '#2A1E24'
-            }}
-            onMouseLeave={(event) => {
-              if (!loading) event.currentTarget.style.background = '#1A1014'
-            }}
-          >
-            {loading ? 'SIGNING IN...' : 'SIGN IN →'}
-          </button>
-
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            marginBottom: '20px',
-          }}>
-            <div style={{ flex: 1, height: '0.5px', background: '#EDD9AF' }} />
-            <span style={{
-              fontSize: '11px',
-              color: '#B8A090',
-              fontFamily: 'var(--font-inter)',
-              whiteSpace: 'nowrap',
-            }}>or</span>
-            <div style={{ flex: 1, height: '0.5px', background: '#EDD9AF' }} />
-          </div>
-
-          <button
-            type="button"
-            onClick={() => router.push('/')}
-            style={{
-              width: '100%',
-              padding: '14px',
-              background: 'transparent',
-              color: '#B8A090',
-              border: '1px solid #EDD9AF',
-              fontSize: '11px',
-              letterSpacing: '0.18em',
-              fontFamily: 'var(--font-inter)',
-              cursor: 'pointer',
-              transition: 'all 0.3s',
-            }}
-            onMouseEnter={(event) => {
-              event.currentTarget.style.borderColor = '#1A1014'
-              event.currentTarget.style.color = '#1A1014'
-            }}
-            onMouseLeave={(event) => {
-              event.currentTarget.style.borderColor = '#EDD9AF'
-              event.currentTarget.style.color = '#B8A090'
-            }}
-          >
-            CONTINUE AS GUEST →
-          </button>
-
-          <p style={{
-            textAlign: 'center',
-            fontSize: '11px',
-            color: '#B8A090',
-            fontFamily: 'var(--font-inter)',
-            marginTop: '12px',
-          }}>
-            Browse our collection without an account
-          </p>
         </div>
       </div>
-    </div>
-  )
-}
-
-function AuthLogo() {
-  return (
-    <Link href="/" style={{
-      textDecoration: 'none',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '0px',
-    }}>
-      <div style={{
-        display: 'flex',
-        alignItems: 'baseline',
-        gap: '0px',
-      }}>
-        <span style={{
-          fontFamily: 'var(--font-italianno)',
-          fontSize: '42px',
-          color: '#FBF5F0',
-          lineHeight: 0.9,
-          letterSpacing: '-0.01em',
-        }}>just</span>
-      </div>
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-      }}>
-        <div style={{
-          width: '20px',
-          height: '0.5px',
-          background: '#C9A961',
-        }} />
-        <span style={{
-          fontFamily: 'var(--font-inter)',
-          fontSize: '11px',
-          letterSpacing: '0.45em',
-          color: '#C9A961',
-          fontWeight: 400,
-        }}>BECAUSE</span>
-        <div style={{
-          width: '20px',
-          height: '0.5px',
-          background: '#C9A961',
-        }} />
-      </div>
-    </Link>
+    </>
   )
 }
