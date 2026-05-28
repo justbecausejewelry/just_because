@@ -1,6 +1,7 @@
 import { PromoBar } from '@/components/layout/PromoBar'
 import { BestSellers } from '@/components/home/BestSellers'
 import { Categories } from '@/components/home/Categories'
+import { EditorialSplit } from '@/components/home/EditorialSplit'
 import { Hero } from '@/components/home/Hero'
 import { Reviews } from '@/components/home/Reviews'
 import { ShopByShape } from '@/components/home/ShopByShape'
@@ -15,6 +16,7 @@ export default function Home() {
         <ShopByShape />
         <Categories />
         <VideoStory />
+        <EditorialSplit />
         <BestSellers />
         <Reviews />
       </div>
