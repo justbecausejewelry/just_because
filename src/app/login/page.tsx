@@ -1,9 +1,10 @@
 'use client'
 
 import { FormEvent, Suspense, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Eye, EyeOff, Star } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { createClient } from '@supabase/supabase-js'
 import { signIn } from '@/lib/auth'
@@ -69,36 +70,110 @@ function LoginContent() {
 
   return (
     <main className="flex min-h-screen flex-col lg:flex-row">
-      <motion.section
+      <motion.div
         initial={{ opacity: 0, x: -24 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.55, ease: [0.4, 0, 0.2, 1] }}
-        className="flex flex-col justify-center px-8 py-12 lg:w-[45%] lg:px-[60px]"
-        style={{ backgroundColor: '#1A1014' }}
+        style={{
+          flex: 1,
+          position: 'relative',
+          overflow: 'hidden',
+          minHeight: '100vh',
+        }}
       >
-        <div className="mb-12 flex items-baseline gap-2">
-          <span style={{ color: '#C9A961', fontFamily: 'var(--font-italianno)', fontSize: '36px', lineHeight: 1 }}>just</span>
-          <span style={{ color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '14px', fontWeight: 500, letterSpacing: '0.28em' }}>BECAUSE</span>
-        </div>
-        <h1 style={{ color: '#FBF5F0', fontFamily: 'var(--font-playfair)', fontSize: '48px', fontWeight: 400, lineHeight: 1.05, marginBottom: '14px' }}>Welcome back.</h1>
-        <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '14px', lineHeight: 1.8 }}>Sign in to your Just Because account.</p>
+        <Image
+          src="/images/login-hero.jpg"
+          alt="Just Because diamonds"
+          fill
+          style={{ objectFit: 'cover' }}
+          priority
+          quality={95}
+        />
 
-        <div className="mt-14 grid gap-5">
-          {[
-            ['The most beautiful buying experience I have had online.', 'Priya M.'],
-            ['It felt personal, considered, and quietly luxurious.', 'Sarah K.'],
-            ['Everything about it felt like a boutique appointment.', 'Aaron L.'],
-          ].map(([quote, author]) => (
-            <div key={quote}>
-              <div className="mb-2 flex items-center gap-1">
-                <Star size={13} fill="#C9A961" color="#C9A961" />
-              </div>
-              <p style={{ color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '13px', lineHeight: 1.7, margin: 0 }}>&ldquo;{quote}&rdquo;</p>
-              <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', marginTop: '5px' }}>{author}</p>
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'linear-gradient(to bottom, rgba(26,16,20,0.05) 0%, rgba(26,16,20,0.55) 100%)',
+        }} />
+
+        <div style={{
+          position: 'relative',
+          zIndex: 2,
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          padding: '52px 48px',
+        }}>
+          <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+            <span style={{
+              fontFamily: 'var(--font-italianno)',
+              fontSize: '32px',
+              color: '#FBF5F0',
+              lineHeight: 1,
+            }}>just</span>
+            <span style={{
+              fontFamily: 'var(--font-inter)',
+              fontSize: '13px',
+              letterSpacing: '0.28em',
+              color: '#FBF5F0',
+              fontWeight: 500,
+            }}>BECAUSE</span>
+          </Link>
+
+          <div>
+            <h2 style={{
+              fontFamily: 'var(--font-playfair)',
+              fontSize: '44px',
+              fontWeight: 400,
+              color: '#FBF5F0',
+              lineHeight: 1.1,
+              marginBottom: '12px',
+            }}>
+              Welcome back.
+            </h2>
+            <p style={{
+              fontSize: '14px',
+              color: 'rgba(251,245,240,0.75)',
+              fontFamily: 'var(--font-inter)',
+              lineHeight: 1.6,
+              marginBottom: '40px',
+            }}>
+              Sign in to your Just Because account.
+            </p>
+
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '20px',
+            }}>
+              {[
+                { q: '"The most beautiful buying experience I have had online."', name: 'Priya M.' },
+                { q: '"It felt personal, considered, and quietly luxurious."', name: 'Sarah K.' },
+                { q: '"Everything about it felt like a boutique appointment."', name: 'Aaron L.' },
+              ].map((r, i) => (
+                <div key={i}>
+                  <div style={{ fontSize: '13px', color: '#C9A961', marginBottom: '3px' }}>★</div>
+                  <p style={{
+                    fontFamily: 'var(--font-playfair)',
+                    fontStyle: 'italic',
+                    fontSize: '13px',
+                    color: 'rgba(251,245,240,0.9)',
+                    lineHeight: 1.5,
+                    marginBottom: '3px',
+                  }}>{r.q}</p>
+                  <div style={{
+                    fontSize: '11px',
+                    color: 'rgba(251,245,240,0.5)',
+                    fontFamily: 'var(--font-inter)',
+                    letterSpacing: '0.05em',
+                  }}>{r.name}</div>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
         </div>
-      </motion.section>
+      </motion.div>
 
       <section className="flex flex-1 items-center justify-center px-6 py-12 lg:w-[55%] lg:px-[60px]" style={{ backgroundColor: '#FBF5F0' }}>
         <motion.form
