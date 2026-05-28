@@ -1,393 +1,503 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
-import Image from 'next/image'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import type { User as SupabaseUser } from '@supabase/supabase-js'
-import { Gem, Heart, Menu, Search, ShoppingBag, User, X } from 'lucide-react'
+import { usePathname, useRouter } from 'next/navigation'
+import { Heart, Menu, Search, ShoppingBag, User, X } from 'lucide-react'
 import { MiniCartDrawer } from '@/components/cart/MiniCartDrawer'
 import { useCart } from '@/context/CartContext'
 import { useWishlist } from '@/context/WishlistContext'
-import { signOut, supabaseAuth } from '@/lib/auth'
-import { debounce } from '@/lib/utils'
 
-type SearchProduct = {
-  id: string
+type MegaMenuLink = {
+  label: string
+  href: string
+}
+
+type MegaMenuSection = {
   title: string
-  slug: string
-  category: string
-  productType: string
-  basePrice: number
-  images: string[] | null
-  type: 'product'
+  links: MegaMenuLink[]
 }
 
-type SearchDiamond = {
-  id: string
-  shape: string
-  carat: number
-  color: string
-  clarity: string
-  price: number
+type MegaMenuImage = {
+  src: string
+  label: string
+  href: string
 }
 
-const navLinks = [
-  { label: 'Engagement rings', href: '/products?type=engagement_ring' },
-  { label: 'Rings', href: '/products?type=ring' },
-  { label: 'Earrings', href: '/products?type=earring' },
-  { label: 'Necklaces', href: '/products?type=necklace' },
-  { label: 'Bracelets', href: '/products?type=bracelet' },
-  { label: 'Diamonds', href: '/diamonds' },
-  { label: 'Gifts *', href: '/products?category=gifts', isGold: true },
-]
-
-const ADMIN_EMAILS = ['ujjwalbana@gmail.com', 'jesse@gmail.com']
-
-const popularSearches = ['Engagement rings', 'Tennis bracelet', 'Oval diamond', 'Rose gold', 'Wedding bands']
-
-function formatPrice(price: number) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(price)
+type MegaMenuEntry = {
+  sections: MegaMenuSection[]
+  images: MegaMenuImage[]
 }
 
-function prettify(value: string) {
-  return value.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
+const megaMenuData: Record<string, MegaMenuEntry> = {
+  'Engagement rings': {
+    sections: [
+      {
+        title: 'DESIGN YOUR RING',
+        links: [
+          { label: 'Start With a Setting', href: '/products?type=engagement_ring' },
+          { label: 'Start With a Diamond', href: '/diamonds' },
+          { label: 'Build Your Ring', href: '/build' },
+        ],
+      },
+      {
+        title: 'SHOP BY STYLE',
+        links: [
+          { label: 'Solitaire', href: '/products?type=engagement_ring&category=solitaire' },
+          { label: 'Pave', href: '/products?type=engagement_ring&category=pave' },
+          { label: 'Halo', href: '/products?type=engagement_ring&category=halo' },
+          { label: 'Hidden Halo', href: '/products?type=engagement_ring&category=hidden_halo' },
+          { label: 'Three Stone', href: '/products?type=engagement_ring&category=three_stone' },
+          { label: 'Side Stone', href: '/products?type=engagement_ring&category=side_stone' },
+          { label: 'Channel Set', href: '/products?type=engagement_ring&category=channel_set' },
+        ],
+      },
+      {
+        title: 'SHOP BY SHAPE',
+        links: [
+          { label: 'Round', href: '/products?shape=round' },
+          { label: 'Oval', href: '/products?shape=oval' },
+          { label: 'Cushion', href: '/products?shape=cushion' },
+          { label: 'Princess', href: '/products?shape=princess' },
+          { label: 'Emerald', href: '/products?shape=emerald' },
+          { label: 'Pear', href: '/products?shape=pear' },
+          { label: 'Marquise', href: '/products?shape=marquise' },
+          { label: 'Heart', href: '/products?shape=heart' },
+        ],
+      },
+      {
+        title: 'EXPLORE',
+        links: [
+          { label: 'Best Sellers', href: '/products?sort=featured&type=engagement_ring' },
+          { label: 'New Arrivals', href: '/products?sort=new&type=engagement_ring' },
+          { label: 'Under $3,000', href: '/products?maxPrice=3000&type=engagement_ring' },
+          { label: 'Ring Size Guide', href: '/education/ring-size' },
+        ],
+      },
+    ],
+    images: [
+      {
+        src: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=400&q=85',
+        label: 'BEST SELLERS',
+        href: '/products?sort=featured&type=engagement_ring',
+      },
+      {
+        src: 'https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?w=400&q=85',
+        label: 'NEW ARRIVALS',
+        href: '/products?sort=new&type=engagement_ring',
+      },
+    ],
+  },
+  Rings: {
+    sections: [
+      {
+        title: 'SHOP BY TYPE',
+        links: [
+          { label: 'Engagement Rings', href: '/products?type=engagement_ring' },
+          { label: 'Wedding Bands', href: '/products?type=wedding_ring' },
+          { label: 'Eternity Bands', href: '/products?category=eternity' },
+          { label: 'Stackable Rings', href: '/products?category=stackable' },
+        ],
+      },
+      {
+        title: 'WEDDING BANDS',
+        links: [
+          { label: 'Classic Bands', href: '/products?type=wedding_ring&category=classic' },
+          { label: 'Diamond Bands', href: '/products?type=wedding_ring&category=diamond_band' },
+          { label: 'Eternity Rings', href: '/products?type=wedding_ring&category=eternity' },
+          { label: 'Curved Bands', href: '/products?type=wedding_ring&category=curved' },
+          { label: "Men's Bands", href: '/products?type=wedding_ring&gender=mens' },
+        ],
+      },
+      {
+        title: 'BY METAL',
+        links: [
+          { label: 'White Gold', href: '/products?metal=white_gold&type=ring' },
+          { label: 'Yellow Gold', href: '/products?metal=yellow_gold&type=ring' },
+          { label: 'Rose Gold', href: '/products?metal=rose_gold&type=ring' },
+          { label: 'Platinum', href: '/products?metal=platinum&type=ring' },
+        ],
+      },
+    ],
+    images: [
+      {
+        src: 'https://images.unsplash.com/photo-1611955167811-4711904bb9f8?w=400&q=85',
+        label: 'WEDDING BANDS',
+        href: '/products?type=wedding_ring',
+      },
+    ],
+  },
+  Earrings: {
+    sections: [
+      {
+        title: 'SHOP BY STYLE',
+        links: [
+          { label: 'Stud Earrings', href: '/products?type=earring&category=stud' },
+          { label: 'Hoop Earrings', href: '/products?type=earring&category=hoop' },
+          { label: 'Drop Earrings', href: '/products?type=earring&category=drop' },
+          { label: 'Huggie Earrings', href: '/products?type=earring&category=huggie' },
+        ],
+      },
+      {
+        title: 'BY DIAMOND',
+        links: [
+          { label: 'Diamond Studs', href: '/products?type=earring&material=diamond' },
+          { label: 'Solitaire Studs', href: '/products?type=earring&category=solitaire' },
+          { label: 'Pave Earrings', href: '/products?type=earring&category=pave' },
+          { label: 'Halo Earrings', href: '/products?type=earring&category=halo' },
+        ],
+      },
+    ],
+    images: [
+      {
+        src: 'https://images.unsplash.com/photo-1635767798638-3e25273a8236?w=400&q=85',
+        label: 'DIAMOND STUDS',
+        href: '/products?type=earring',
+      },
+    ],
+  },
+  Necklaces: {
+    sections: [
+      {
+        title: 'SHOP BY STYLE',
+        links: [
+          { label: 'Diamond Pendants', href: '/products?type=necklace&category=pendant' },
+          { label: 'Tennis Necklaces', href: '/products?type=necklace&category=tennis' },
+          { label: 'Station Necklaces', href: '/products?type=necklace&category=station' },
+          { label: 'Chokers', href: '/products?type=necklace&category=choker' },
+        ],
+      },
+      {
+        title: 'BY LENGTH',
+        links: [
+          { label: 'Choker (14-16")', href: '/products?type=necklace&length=choker' },
+          { label: 'Princess (18")', href: '/products?type=necklace&length=princess' },
+          { label: 'Matinee (20-22")', href: '/products?type=necklace&length=matinee' },
+        ],
+      },
+    ],
+    images: [
+      {
+        src: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=400&q=85',
+        label: 'PENDANTS',
+        href: '/products?type=necklace',
+      },
+    ],
+  },
+  Bracelets: {
+    sections: [
+      {
+        title: 'SHOP BY STYLE',
+        links: [
+          { label: 'Tennis Bracelets', href: '/products?type=bracelet&category=tennis' },
+          { label: 'Bangles', href: '/products?type=bracelet&category=bangle' },
+          { label: 'Chain Bracelets', href: '/products?type=bracelet&category=chain' },
+          { label: 'Cuff Bracelets', href: '/products?type=bracelet&category=cuff' },
+        ],
+      },
+    ],
+    images: [
+      {
+        src: 'https://images.unsplash.com/photo-1573408301185-9519f94816b5?w=400&q=85',
+        label: 'TENNIS BRACELETS',
+        href: '/products?type=bracelet',
+      },
+    ],
+  },
+  Diamonds: {
+    sections: [
+      {
+        title: 'SHOP DIAMONDS',
+        links: [
+          { label: 'All Diamonds', href: '/diamonds' },
+          { label: 'Round Diamonds', href: '/diamonds?shape=round' },
+          { label: 'Oval Diamonds', href: '/diamonds?shape=oval' },
+          { label: 'Cushion Diamonds', href: '/diamonds?shape=cushion' },
+          { label: 'Princess Diamonds', href: '/diamonds?shape=princess' },
+          { label: 'Emerald Diamonds', href: '/diamonds?shape=emerald' },
+        ],
+      },
+      {
+        title: 'LEARN',
+        links: [
+          { label: 'The 4 Cs', href: '/education/4cs' },
+          { label: 'Diamond Shapes', href: '/education/shapes' },
+          { label: 'Lab vs Natural', href: '/education/lab-grown' },
+          { label: 'IGI Certification', href: '/education/igi' },
+        ],
+      },
+      {
+        title: 'BY CARAT',
+        links: [
+          { label: 'Under 1 Carat', href: '/diamonds?maxCarat=1' },
+          { label: '1.0 - 1.5 Carat', href: '/diamonds?minCarat=1&maxCarat=1.5' },
+          { label: '1.5 - 2.0 Carat', href: '/diamonds?minCarat=1.5&maxCarat=2' },
+          { label: '2.0+ Carat', href: '/diamonds?minCarat=2' },
+        ],
+      },
+    ],
+    images: [
+      {
+        src: 'https://images.unsplash.com/photo-1616418195576-4b5ab01efb6d?w=400&q=85',
+        label: 'LOOSE DIAMONDS',
+        href: '/diamonds',
+      },
+    ],
+  },
 }
 
-function highlightTitle(title: string, query: string) {
-  const index = title.toLowerCase().indexOf(query.toLowerCase())
-  if (index < 0 || !query) {
-    return title
-  }
-
-  return (
-    <>
-      {title.slice(0, index)}
-      <strong style={{ fontWeight: 500 }}>{title.slice(index, index + query.length)}</strong>
-      {title.slice(index + query.length)}
-    </>
-  )
-}
-
-function accountName(user: SupabaseUser | null) {
-  if (!user) return ''
-  const name = user.user_metadata?.name
-  return typeof name === 'string' && name.trim() ? name : user.email || 'Account'
-}
-
-function accountInitial(user: SupabaseUser | null) {
-  return accountName(user).charAt(0).toUpperCase() || 'J'
-}
+const menuLabels = Object.keys(megaMenuData)
 
 export function Navbar() {
-  const [mobileOpen, setMobileOpen] = useState(false)
+  const [activeMenu, setActiveMenu] = useState<string | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState<SearchProduct[]>([])
-  const [diamondResults, setDiamondResults] = useState<SearchDiamond[]>([])
-  const [searching, setSearching] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const [cartOpen, setCartOpen] = useState(false)
-  const [accountOpen, setAccountOpen] = useState(false)
-  const [user, setUser] = useState<SupabaseUser | null>(null)
-  const [unreadMessages, setUnreadMessages] = useState(0)
+  const menuTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pathname = usePathname()
-  const inputRef = useRef<HTMLInputElement>(null)
-  const accountRef = useRef<HTMLDivElement>(null)
+  const router = useRouter()
   const { isMiniCartOpen, itemCount, closeCart } = useCart()
   const { itemCount: wishlistCount } = useWishlist()
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20)
+    const handleScroll = () => setScrolled(window.scrollY > 10)
     window.addEventListener('scroll', handleScroll)
     handleScroll()
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
   useEffect(() => {
+    setActiveMenu(null)
     setMobileOpen(false)
-    setAccountOpen(false)
   }, [pathname])
 
   useEffect(() => {
-    document.body.style.overflow = mobileOpen ? 'hidden' : ''
     return () => {
-      document.body.style.overflow = ''
-    }
-  }, [mobileOpen])
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setMobileOpen(false)
-        setAccountOpen(false)
-        closeSearch()
+      if (menuTimeoutRef.current) {
+        clearTimeout(menuTimeoutRef.current)
       }
-    }
-    const handleClickOutside = (event: MouseEvent) => {
-      if (accountRef.current && !accountRef.current.contains(event.target as Node)) {
-        setAccountOpen(false)
-      }
-    }
-    document.addEventListener('keydown', handleKeyDown)
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown)
-      document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [])
 
-  useEffect(() => {
-    supabaseAuth.auth.getUser().then(({ data }) => setUser(data.user))
-    const {
-      data: { subscription },
-    } = supabaseAuth.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null)
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
-
-  useEffect(() => {
-    const loadUnreadMessages = async () => {
-      if (!user) {
-        setUnreadMessages(0)
-        return
-      }
-
-      const { count } = await supabaseAuth
-        .from('Conversation')
-        .select('*', { count: 'exact', head: true })
-        .eq('customerId', user.id)
-        .eq('isReadByCustomer', false)
-
-      setUnreadMessages(count || 0)
+  const clearMenuTimeout = () => {
+    if (menuTimeoutRef.current) {
+      clearTimeout(menuTimeoutRef.current)
+      menuTimeoutRef.current = null
     }
+  }
 
-    void loadUnreadMessages()
-  }, [user, pathname])
-
-  useEffect(() => {
-    if (searchOpen) {
-      window.setTimeout(() => inputRef.current?.focus(), 50)
+  const handleMouseEnter = (label: string) => {
+    clearMenuTimeout()
+    if (megaMenuData[label]) {
+      setActiveMenu(label)
     }
-  }, [searchOpen])
+  }
 
-  const debouncedSearch = useMemo(
-    () =>
-      debounce(async (query: string) => {
-        if (query.length < 2) {
-          setSearchResults([])
-          setDiamondResults([])
-          return
-        }
+  const handleMouseLeave = () => {
+    clearMenuTimeout()
+    menuTimeoutRef.current = setTimeout(() => {
+      setActiveMenu(null)
+    }, 150)
+  }
 
-        setSearching(true)
-        try {
-          const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`)
-          const payload = (await response.json()) as {
-            results?: SearchProduct[]
-            diamonds?: SearchDiamond[]
-          }
-          setSearchResults(payload.results || [])
-          setDiamondResults(payload.diamonds || [])
-        } catch {
-          setSearchResults([])
-          setDiamondResults([])
-        } finally {
-          setSearching(false)
-        }
-      }, 300),
-    []
-  )
-
-  const handleQueryChange = (query: string) => {
-    setSearchQuery(query)
-    void debouncedSearch(query)
+  const submitSearch = () => {
+    const query = searchQuery.trim()
+    if (!query) return
+    router.push(`/products?q=${encodeURIComponent(query)}`)
+    setSearchOpen(false)
+    setSearchQuery('')
   }
 
   const closeSearch = () => {
     setSearchOpen(false)
     setSearchQuery('')
-    setSearchResults([])
-    setDiamondResults([])
   }
 
-  const handleSignOut = async () => {
-    await signOut()
-    setAccountOpen(false)
-  }
+  const activeEntry = activeMenu ? megaMenuData[activeMenu] : null
 
   return (
     <>
-      <nav
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Italianno&display=swap');
+
+        .nav-logo-script {
+          font-family: 'Italianno', cursive !important;
+          font-size: 30px !important;
+          color: #C9A961 !important;
+          line-height: 0.85 !important;
+          display: block !important;
+        }
+
+        .mega-link {
+          font-size: 13px;
+          color: #1A1014;
+          text-decoration: none;
+          font-family: var(--font-inter);
+          line-height: 2.2;
+          display: block;
+          transition: color 0.15s ease;
+          white-space: nowrap;
+        }
+
+        .mega-link:hover {
+          color: #C9A961;
+        }
+
+        .mega-image-card {
+          position: relative;
+          overflow: hidden;
+          cursor: pointer;
+          flex: 1;
+          min-width: 160px;
+          max-width: 220px;
+        }
+
+        .mega-image-card img {
+          width: 100%;
+          aspect-ratio: 3 / 4;
+          object-fit: cover;
+          display: block;
+          transition: transform 0.5s ease;
+        }
+
+        .mega-image-card:hover img {
+          transform: scale(1.04);
+        }
+
+        .nav-link-item {
+          position: relative;
+          padding: 0 2px;
+          cursor: pointer;
+        }
+
+        .nav-link-item::after {
+          content: '';
+          position: absolute;
+          bottom: -4px;
+          left: 0;
+          width: 0;
+          height: 1px;
+          background: #1A1014;
+          transition: width 0.25s ease;
+        }
+
+        .nav-link-item:hover::after,
+        .nav-link-item.active::after {
+          width: 100%;
+        }
+
+        .desktop-mega-nav {
+          display: none !important;
+        }
+
+        .desktop-nav-icon {
+          display: none !important;
+        }
+
+        .mobile-menu-button {
+          display: flex !important;
+        }
+
+        @media (min-width: 1120px) {
+          .desktop-mega-nav {
+            display: flex !important;
+          }
+
+          .desktop-nav-icon {
+            display: flex !important;
+          }
+
+          .mobile-menu-button {
+            display: none !important;
+          }
+        }
+
+        @media (max-width: 1119px) {
+          .navbar-inner {
+            padding: 0 24px !important;
+          }
+        }
+
+        @keyframes megaFadeIn {
+          from { opacity: 0; transform: translateY(-6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+
+      <header
         style={{
           position: 'sticky',
           top: 0,
-          zIndex: 100,
+          zIndex: 200,
           background: '#FBF5F0',
-          borderBottom: '0.5px solid #EDD9AF',
+          borderBottom: `0.5px solid ${scrolled ? '#EDD9AF' : 'transparent'}`,
           boxShadow: scrolled ? '0 2px 20px rgba(26,16,20,0.06)' : 'none',
-          transition: 'box-shadow 0.3s ease',
+          transition: 'all 0.3s ease',
         }}
       >
         <div
-          className="jb-main-nav"
+          className="navbar-inner"
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '0 24px',
-            height: '64px',
-            maxWidth: '1400px',
+            padding: '0 60px',
+            height: '68px',
+            maxWidth: '1500px',
             margin: '0 auto',
             position: 'relative',
           }}
         >
-          <Link href="/" className="jb-logo-link" style={{ textDecoration: 'none', flexShrink: 0 }}>
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'flex-start',
-              gap: '1px',
-              lineHeight: 1,
-            }}>
-              <span className="nav-logo-script" style={{ letterSpacing: '0.02em' }}>
-                just
-              </span>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px',
-              }}>
-                <div style={{
-                  width: '12px',
-                  height: '0.5px',
-                  background: '#1A1014',
-                }} />
-                <span style={{
-                  fontFamily: 'var(--font-inter)',
-                  fontSize: '9px',
-                  letterSpacing: '0.38em',
-                  color: '#1A1014',
-                  fontWeight: 500,
-                }}>
+          <Link href="/" style={{ textDecoration: 'none', flexShrink: 0, zIndex: 2 }}>
+            <div>
+              <span className="nav-logo-script">just</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '1px' }}>
+                <div style={{ width: '11px', height: '0.5px', background: '#1A1014' }} />
+                <span style={{ fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.38em', color: '#1A1014', fontWeight: 400 }}>
                   BECAUSE
                 </span>
-                <div style={{
-                  width: '12px',
-                  height: '0.5px',
-                  background: '#1A1014',
-                }} />
+                <div style={{ width: '11px', height: '0.5px', background: '#1A1014' }} />
               </div>
             </div>
           </Link>
 
-          <div
-            className="desktop-nav"
-            style={{
-              display: 'flex',
-              gap: '28px',
-              alignItems: 'center',
-              position: 'absolute',
-              left: '50%',
-              transform: 'translateX(-50%)',
-            }}
-          >
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="jb-nav-link"
-                style={{
-                  fontSize: '12px',
-                  color: link.isGold ? '#C9A961' : '#1A1014',
-                  textDecoration: 'none',
-                  letterSpacing: '0.05em',
-                  fontFamily: 'var(--font-inter)',
-                  fontWeight: pathname === link.href ? 500 : 400,
-                  whiteSpace: 'nowrap',
-                  borderBottom: pathname === link.href ? '1px solid #1A1014' : '1px solid transparent',
-                  paddingBottom: '2px',
-                  transition: 'color 0.2s ease',
-                }}
+          <nav className="desktop-mega-nav" style={{ gap: '28px', alignItems: 'center', position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
+            {menuLabels.map((label) => (
+              <div
+                key={label}
+                className={`nav-link-item ${activeMenu === label ? 'active' : ''}`}
+                onMouseEnter={() => handleMouseEnter(label)}
+                onMouseLeave={handleMouseLeave}
               >
-                {link.label}
-              </Link>
+                <span style={{ fontSize: '12px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontWeight: activeMenu === label ? 500 : 400, letterSpacing: '0.02em', whiteSpace: 'nowrap', cursor: 'pointer' }}>
+                  {label}
+                </span>
+              </div>
             ))}
-          </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexShrink: 0 }}>
+            <Link href="/products?category=gifts" style={{ fontSize: '12px', color: '#C9A961', textDecoration: 'none', fontFamily: 'var(--font-inter)', fontWeight: 500, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
+              * Gifts
+            </Link>
+          </nav>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '18px', flexShrink: 0, zIndex: 2 }}>
             <button
-              onClick={() => setSearchOpen(true)}
-              className="desktop-only-icon jb-icon-action"
-              aria-label="Search"
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+              onClick={() => setSearchOpen((open) => !open)}
+              className="desktop-nav-icon"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', alignItems: 'center', gap: '6px', color: '#1A1014' }}
             >
-              <Search size={20} color="#1A1014" />
+              <Search size={18} color="#1A1014" />
+              <span style={{ fontSize: '11px', letterSpacing: '0.12em', fontFamily: 'var(--font-inter)', fontWeight: 500 }}>SEARCH</span>
             </button>
 
-            <div ref={accountRef} className="desktop-only-icon" style={{ position: 'relative', alignItems: 'center' }}>
-              {user ? (
-                <button
-                  onClick={() => setAccountOpen((open) => !open)}
-                  className="jb-icon-action"
-                  aria-label="Account menu"
-                  style={{ background: 'transparent', border: 'none', color: '#1A1014', cursor: 'pointer', padding: '4px', position: 'relative' }}
-                >
-                  <User size={20} color="#1A1014" />
-                  {unreadMessages > 0 && <span style={{ position: 'absolute', top: '-3px', right: '-3px', width: '8px', height: '8px', borderRadius: '50%', background: '#E8C4D0', border: '1px solid #FBF5F0' }} />}
-                </button>
-              ) : (
-                <Link href="/login" className="jb-icon-action" aria-label="Account" style={{ display: 'flex', alignItems: 'center', color: '#1A1014', position: 'relative' }}>
-                  <User size={20} color="#1A1014" />
-                </Link>
-              )}
+            <Link href="/account" className="desktop-nav-icon" style={{ alignItems: 'center', color: '#1A1014', textDecoration: 'none' }} aria-label="Account">
+              <User size={18} color="#1A1014" />
+            </Link>
 
-              {user && accountOpen && (
-                <div style={{ position: 'absolute', top: '34px', right: 0, width: '240px', background: '#FDF8F2', border: '0.5px solid #EDD9AF', boxShadow: '0 12px 34px rgba(26,16,20,0.12)', padding: '8px', zIndex: 220 }}>
-                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', borderBottom: '0.5px solid #EDD9AF', padding: '10px 10px 12px', marginBottom: '6px' }}>
-                    <span style={{ width: '34px', height: '34px', borderRadius: '50%', background: '#C9A961', color: '#1A1014', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-playfair)', fontSize: '16px' }}>
-                      {accountInitial(user)}
-                    </span>
-                    <span style={{ minWidth: 0 }}>
-                      <span style={{ color: '#1A1014', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '12px', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{accountName(user)}</span>
-                      <span style={{ color: '#B8A090', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.email}</span>
-                    </span>
-                  </div>
-                  {[
-                    ['My Account', '/account'],
-                    ['My Orders', '/account/orders'],
-                    ['Messages', '/account/messages'],
-                    ...(ADMIN_EMAILS.includes(user.email || '') ? ([['Admin Panel', '/admin']] as Array<[string, string]>) : []),
-                    ['Wishlist', '/wishlist'],
-                  ].map(([label, href]) => (
-                    <Link
-                      key={href}
-                      href={href}
-                      onClick={() => setAccountOpen(false)}
-                      style={{ color: '#1A1014', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: 'var(--font-inter)', fontSize: '12px', padding: '10px 12px', textDecoration: 'none' }}
-                    >
-                      {label}
-                      {href === '/account/messages' && unreadMessages > 0 && (
-                        <span style={{ background: '#E8C4D0', color: '#6B2D44', borderRadius: '999px', fontSize: '10px', padding: '1px 7px' }}>{unreadMessages}</span>
-                      )}
-                    </Link>
-                  ))}
-                  <div style={{ background: '#EDD9AF', height: '0.5px', margin: '6px 0' }} />
-                  <button onClick={handleSignOut} style={{ color: '#B8A090', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '12px', padding: '10px 12px', textAlign: 'left', width: '100%', background: 'transparent', border: 'none' }}>
-                    Sign out
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <Link href="/wishlist" className="desktop-only-icon jb-icon-action" aria-label="Wishlist" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <Heart size={20} color="#1A1014" />
+            <Link href="/wishlist" className="desktop-nav-icon" style={{ position: 'relative', alignItems: 'center' }} aria-label="Wishlist">
+              <Heart size={18} color="#1A1014" />
               {wishlistCount > 0 && (
                 <span style={{ position: 'absolute', top: '-6px', right: '-7px', background: '#E8C4D0', color: '#6B2D44', borderRadius: '50%', width: '15px', height: '15px', fontSize: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 500 }}>
                   {wishlistCount}
@@ -397,11 +507,10 @@ export function Navbar() {
 
             <button
               onClick={() => setCartOpen(true)}
-              className="jb-icon-action"
+              style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
               aria-label="Open cart"
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px', position: 'relative', display: 'flex', alignItems: 'center' }}
             >
-              <ShoppingBag size={20} color="#1A1014" />
+              <ShoppingBag size={18} color="#1A1014" />
               {itemCount > 0 && (
                 <span style={{ position: 'absolute', top: '-4px', right: '-6px', background: '#E8C4D0', color: '#6B2D44', borderRadius: '50%', width: '16px', height: '16px', fontSize: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 500 }}>
                   {itemCount}
@@ -409,224 +518,99 @@ export function Navbar() {
               )}
             </button>
 
+            <span className="desktop-nav-icon" style={{ fontSize: '11px', color: '#B8A090', fontFamily: 'var(--font-inter)', letterSpacing: '0.08em', cursor: 'pointer', alignItems: 'center' }}>USD v</span>
+
             <button
               onClick={() => setMobileOpen((open) => !open)}
-              className="mobile-only-icon jb-icon-action"
+              className="mobile-menu-button"
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px', alignItems: 'center' }}
               aria-label="Toggle menu"
               aria-expanded={mobileOpen}
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
             >
               {mobileOpen ? <X size={22} color="#1A1014" /> : <Menu size={22} color="#1A1014" />}
             </button>
           </div>
         </div>
-      </nav>
 
-      {mobileOpen && (
-        <button
-          aria-label="Close navigation"
-          onClick={() => setMobileOpen(false)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(26,16,20,0.5)', border: 'none', zIndex: 150 }}
-        />
-      )}
-
-      <aside
-        style={{
-          position: 'fixed',
-          top: 0,
-          right: 0,
-          width: '280px',
-          height: '100vh',
-          background: '#FBF5F0',
-          zIndex: 151,
-          transform: mobileOpen ? 'translateX(0)' : 'translateX(100%)',
-          transition: 'transform 0.35s cubic-bezier(0.4,0,0.2,1)',
-          display: 'flex',
-          flexDirection: 'column',
-          overflowY: 'auto',
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '0.5px solid #EDD9AF' }}>
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'flex-start',
-            gap: '1px',
-            lineHeight: 1,
-          }}>
-            <span className="nav-logo-script" style={{ fontSize: '28px', letterSpacing: '0.02em' }}>just</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <div style={{ width: '12px', height: '0.5px', background: '#1A1014' }} />
-              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.38em', color: '#1A1014', fontWeight: 500 }}>BECAUSE</span>
-              <div style={{ width: '12px', height: '0.5px', background: '#1A1014' }} />
-            </div>
-          </div>
-          <button onClick={() => setMobileOpen(false)} aria-label="Close menu" style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px' }}>
-            <X size={20} color="#B8A090" />
-          </button>
-        </div>
-
-        <div style={{ flex: 1, padding: '8px 0' }}>
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              onClick={() => setMobileOpen(false)}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '14px 24px',
-                textDecoration: 'none',
-                color: link.isGold ? '#C9A961' : '#1A1014',
-                fontFamily: 'var(--font-inter)',
-                fontSize: '14px',
-                letterSpacing: '0.03em',
-                borderBottom: '0.5px solid #EDD9AF',
-                transition: 'background 0.2s ease',
+        {searchOpen && (
+          <div style={{ borderTop: '0.5px solid #EDD9AF', padding: '16px 60px', background: '#FBF5F0', display: 'flex', alignItems: 'center', gap: '16px', animation: 'megaFadeIn 0.2s ease' }}>
+            <Search size={18} color="#B8A090" />
+            <input
+              autoFocus
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  submitSearch()
+                }
+                if (event.key === 'Escape') {
+                  closeSearch()
+                }
               }}
-              onMouseEnter={(event) => {
-                event.currentTarget.style.background = '#F5E8ED'
-              }}
-              onMouseLeave={(event) => {
-                event.currentTarget.style.background = 'transparent'
-              }}
-            >
-              {link.label}
-              <span style={{ color: '#EDD9AF', fontSize: '16px' }}>{'>'}</span>
-            </Link>
-          ))}
-        </div>
-
-        <div style={{ padding: '20px 24px', borderTop: '0.5px solid #EDD9AF', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', alignItems: 'center' }}>
-            <Link href={user ? '/account/messages' : '/login'} onClick={() => setMobileOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none', color: '#B8A090', fontSize: '12px', fontFamily: 'var(--font-inter)' }}>
-              <User size={16} color="#B8A090" />
-              {user ? 'Messages' : 'Account'}
-              {unreadMessages > 0 && <span style={{ background: '#E8C4D0', color: '#6B2D44', borderRadius: '999px', padding: '1px 6px', fontSize: '10px' }}>{unreadMessages}</span>}
-            </Link>
-            <Link href="/wishlist" onClick={() => setMobileOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none', color: '#B8A090', fontSize: '12px', fontFamily: 'var(--font-inter)' }}>
-              <Heart size={16} color="#B8A090" />
-              Wishlist
-              {wishlistCount > 0 && <span style={{ background: '#E8C4D0', color: '#6B2D44', borderRadius: '999px', padding: '1px 6px', fontSize: '10px' }}>{wishlistCount}</span>}
-            </Link>
-            <button
-              onClick={() => {
-                setMobileOpen(false)
-                setSearchOpen(true)
-              }}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'transparent', border: 'none', color: '#B8A090', fontSize: '12px', fontFamily: 'var(--font-inter)', cursor: 'pointer', padding: 0 }}
-            >
-              <Search size={16} color="#B8A090" />
-              Search
+              placeholder="Search for rings, diamonds, necklaces..."
+              style={{ flex: 1, background: 'none', border: 'none', outline: 'none', fontSize: '16px', color: '#1A1014', fontFamily: 'var(--font-inter)' }}
+            />
+            <button onClick={closeSearch} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#B8A090' }} aria-label="Close search">
+              <X size={18} />
             </button>
           </div>
-          <p style={{ fontSize: '11px', color: '#B8A090', fontFamily: 'var(--font-inter)', lineHeight: 1.6, margin: 0 }}>
-            &quot;A reason, in itself.&quot;
-          </p>
-        </div>
-      </aside>
+        )}
 
-      {searchOpen && (
-        <>
-          <button
-            aria-label="Close search"
-            onClick={closeSearch}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(26,16,20,0.5)', border: 'none', zIndex: 300, backdropFilter: 'blur(4px)' }}
-          />
-          <section style={{ position: 'fixed', top: 0, left: 0, right: 0, background: '#FBF5F0', zIndex: 301, padding: '24px 80px', borderBottom: '0.5px solid #EDD9AF' }}>
-            <div className="flex items-center gap-4">
-              <Search color="#C9A961" size={20} />
-              <input
-                ref={inputRef}
-                value={searchQuery}
-                onChange={(event) => handleQueryChange(event.target.value)}
-                placeholder="Search for rings, necklaces, diamonds..."
-                style={{ flex: 1, border: 'none', background: 'transparent', fontFamily: 'var(--font-playfair)', fontSize: '28px', color: '#1A1014', outline: 'none' }}
-              />
-              <button onClick={closeSearch} aria-label="Close search" style={{ color: '#B8A090', padding: '6px' }}>
-                <X size={20} />
-              </button>
-            </div>
-            <div className="mt-5 flex flex-wrap gap-2">
-              {popularSearches.map((suggestion) => (
-                <button key={suggestion} onClick={() => handleQueryChange(suggestion)} style={{ border: '0.5px solid #EDD9AF', borderRadius: '999px', color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', padding: '7px 12px' }}>
-                  {suggestion}
-                </button>
-              ))}
-            </div>
-          </section>
-          <div className="jb-search-results" style={{ position: 'fixed', top: '138px', left: 0, right: 0, maxHeight: 'calc(100vh - 138px)', overflowY: 'auto', zIndex: 301, padding: '32px 80px' }}>
-            {searching ? (
-              <div className="grid gap-4 md:grid-cols-3">
-                {Array.from({ length: 3 }, (_, index) => (
-                  <div key={index} className="just-because-shimmer" style={{ height: '88px', border: '0.5px solid #EDD9AF' }} />
+        {activeEntry && activeMenu && (
+          <div
+            onMouseEnter={clearMenuTimeout}
+            onMouseLeave={handleMouseLeave}
+            style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#FBF5F0', borderTop: '0.5px solid #EDD9AF', borderBottom: '0.5px solid #EDD9AF', boxShadow: '0 8px 32px rgba(26,16,20,0.10)', zIndex: 300, animation: 'megaFadeIn 0.2s ease' }}
+          >
+            <div style={{ maxWidth: '1500px', margin: '0 auto', padding: '36px 60px', display: 'flex', gap: '48px', alignItems: 'flex-start' }}>
+              <div style={{ display: 'flex', gap: '48px', flex: 1 }}>
+                {activeEntry.sections.map((section) => (
+                  <div key={section.title} style={{ minWidth: '140px' }}>
+                    <div style={{ fontSize: '9px', letterSpacing: '0.28em', color: '#C9A961', fontFamily: 'var(--font-inter)', fontWeight: 500, marginBottom: '12px', paddingBottom: '8px', borderBottom: '0.5px solid #EDD9AF' }}>
+                      {section.title}
+                    </div>
+                    {section.links.map((link) => (
+                      <Link key={link.href} href={link.href} className="mega-link" onClick={() => setActiveMenu(null)}>
+                        {link.label}
+                      </Link>
+                    ))}
+                  </div>
                 ))}
               </div>
-            ) : searchQuery.length > 2 && searchResults.length === 0 && diamondResults.length === 0 ? (
-              <div style={{ color: '#B8A090', fontFamily: 'var(--font-playfair)', fontSize: '20px', textAlign: 'center' }}>
-                No results for &quot;{searchQuery}&quot;
-                <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '13px', marginTop: '10px' }}>
-                  Try: engagement ring, oval diamond, tennis bracelet
-                </p>
-              </div>
-            ) : (
-              <div>
-                {searchResults.length > 0 && (
-                  <>
-                    <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.3em', marginBottom: '14px' }}>PRODUCTS</p>
-                    <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
-                      {searchResults.map((product) => (
-                        <Link key={product.id} href={`/products/${product.slug}`} onClick={closeSearch} style={{ display: 'flex', gap: '12px', padding: '16px', background: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '2px', cursor: 'pointer', textDecoration: 'none' }}>
-                          <div style={{ width: '56px', height: '56px', background: '#F5E8ED', position: 'relative', flexShrink: 0 }}>
-                            {product.images?.[0] ? (
-                              <Image src={product.images[0]} alt={product.title} fill sizes="56px" style={{ objectFit: 'cover' }} />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center">
-                                <Gem color="#C9A961" size={26} strokeWidth={1.1} />
-                              </div>
-                            )}
-                          </div>
-                          <div>
-                            <div style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px' }}>
-                              {highlightTitle(product.title, searchQuery)}
-                            </div>
-                            <div style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.12em', marginTop: '3px' }}>
-                              {prettify(product.category)}
-                            </div>
-                            <div style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '14px', marginTop: '5px' }}>
-                              From {formatPrice(product.basePrice)}
-                            </div>
-                          </div>
-                        </Link>
-                      ))}
+
+              <div style={{ display: 'flex', gap: '12px', flexShrink: 0 }}>
+                {activeEntry.images.map((image) => (
+                  <Link key={image.href} href={image.href} className="mega-image-card" onClick={() => setActiveMenu(null)} style={{ textDecoration: 'none' }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={image.src} alt={image.label} />
+                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(to top, rgba(26,16,20,0.7) 0%, transparent 100%)', padding: '20px 12px 12px' }}>
+                      <div style={{ fontSize: '9px', letterSpacing: '0.22em', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontWeight: 500 }}>
+                        {image.label}
+                      </div>
                     </div>
-                  </>
-                )}
-                {diamondResults.length > 0 && (
-                  <div style={{ marginTop: '28px' }}>
-                    <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.3em', marginBottom: '14px' }}>DIAMONDS</p>
-                    <div className="grid gap-4 md:grid-cols-4">
-                      {diamondResults.map((diamond) => (
-                        <div key={diamond.id} style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', padding: '16px' }}>
-                          <div style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '16px' }}>
-                            {diamond.carat}ct {diamond.shape}
-                          </div>
-                          <div style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', marginTop: '4px' }}>
-                            {diamond.color} color - {diamond.clarity}
-                          </div>
-                          <div style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '14px', marginTop: '8px' }}>
-                            {formatPrice(diamond.price)}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                  </Link>
+                ))}
               </div>
-            )}
+            </div>
           </div>
-        </>
+        )}
+      </header>
+
+      {mobileOpen && (
+        <aside style={{ background: '#FBF5F0', borderBottom: '0.5px solid #EDD9AF', boxShadow: '0 12px 32px rgba(26,16,20,0.12)', left: 0, padding: '14px 24px 20px', position: 'fixed', right: 0, top: '68px', zIndex: 190 }}>
+          <div style={{ display: 'grid', gap: '12px' }}>
+            {[...menuLabels, 'Gifts'].map((label) => (
+              <Link
+                key={label}
+                href={label === 'Gifts' ? '/products?category=gifts' : megaMenuData[label].sections[0].links[0].href}
+                onClick={() => setMobileOpen(false)}
+                style={{ borderBottom: '0.5px solid #EDD9AF', color: label === 'Gifts' ? '#C9A961' : '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', letterSpacing: '0.08em', padding: '10px 0', textDecoration: 'none' }}
+              >
+                {label}
+              </Link>
+            ))}
+          </div>
+        </aside>
       )}
 
       <MiniCartDrawer
@@ -636,47 +620,8 @@ export function Navbar() {
           closeCart()
         }}
       />
-
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Italianno&display=swap');
-        .nav-logo-script {
-          font-family: 'Italianno', cursive !important;
-          font-size: 30px !important;
-          color: #C9A961 !important;
-          line-height: 0.85 !important;
-        }
-        .desktop-nav {
-          display: none !important;
-        }
-        .desktop-only-icon {
-          display: none !important;
-        }
-        .mobile-only-icon {
-          display: flex !important;
-        }
-        @media (min-width: 1024px) {
-          .desktop-nav {
-            display: flex !important;
-          }
-          .desktop-only-icon {
-            display: flex !important;
-          }
-          .mobile-only-icon {
-            display: none !important;
-          }
-          .jb-main-nav {
-            padding: 0 60px !important;
-            height: 80px !important;
-          }
-        }
-        @media (max-width: 768px) {
-          .jb-search-results {
-            top: 122px !important;
-            max-height: calc(100vh - 122px) !important;
-            padding: 16px !important;
-          }
-        }
-      `}</style>
     </>
   )
 }
+
+export default Navbar
