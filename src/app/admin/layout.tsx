@@ -4,14 +4,13 @@ import { ReactNode, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  BarChart3,
+  BarChart2,
   Bell,
   Gem,
   LayoutDashboard,
   LogOut,
   MessageSquare,
   Package,
-  Plus,
   ShoppingBag,
   Tag,
   Users,
@@ -26,13 +25,12 @@ const ADMIN_EMAILS = [
 const navItems = [
   { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
   { label: 'Products', href: '/admin/products', icon: Package },
-  { label: 'Add Product', href: '/admin/products/new', icon: Plus },
-  { label: 'Diamonds', href: '/admin/diamonds', icon: Gem },
   { label: 'Orders', href: '/admin/orders', icon: ShoppingBag },
-  { label: 'Support', href: '/admin/support', icon: MessageSquare },
-  { label: 'Discount Codes', href: '/admin/discounts', icon: Tag },
+  { label: 'Analytics', href: '/admin/analytics', icon: BarChart2 },
+  { label: 'Diamonds', href: '/admin/diamonds', icon: Gem },
+  { label: 'Discount', href: '/admin/discount-codes', icon: Tag },
   { label: 'Customers', href: '/admin/customers', icon: Users },
-  { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
+  { label: 'Support', href: '/admin/support', icon: MessageSquare },
 ]
 
 function titleFor(pathname: string) {
@@ -50,6 +48,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [isChecking, setIsChecking] = useState(true)
   const [showDropdown, setShowDropdown] = useState(false)
   const [supportUnreadCount, setSupportUnreadCount] = useState(0)
+  const [ordersReceivedCount, setOrdersReceivedCount] = useState(0)
   const title = useMemo(() => titleFor(pathname), [pathname])
 
   useEffect(() => {
@@ -88,10 +87,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }, [router])
 
   useEffect(() => {
-    const loadUnread = async () => {
+    const loadBadges = async () => {
       try {
-        const response = await fetch('/api/admin/conversations')
-        const payload = (await response.json()) as {
+        const supportResponse = await fetch('/api/admin/conversations')
+        const payload = (await supportResponse.json()) as {
           conversations?: Array<{ isReadByAdmin?: boolean }>
         }
         const count = (payload.conversations || []).filter((item) => item.isReadByAdmin === false).length
@@ -99,9 +98,16 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       } catch {
         setSupportUnreadCount(0)
       }
+
+      const { count } = await supabaseAuth
+        .from('Order')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'received')
+
+      setOrdersReceivedCount(count || 0)
     }
 
-    void loadUnread()
+    void loadBadges()
   }, [pathname])
 
   const handleSignOut = async () => {
@@ -153,6 +159,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 {item.href === '/admin/support' && supportUnreadCount > 0 && (
                   <span style={{ marginLeft: 'auto', background: '#E8C4D0', color: '#6B2D44', borderRadius: '999px', fontSize: '10px', padding: '1px 7px' }}>
                     {supportUnreadCount}
+                  </span>
+                )}
+                {item.href === '/admin/orders' && ordersReceivedCount > 0 && (
+                  <span style={{ marginLeft: 'auto', background: '#C9A961', color: '#1A1014', borderRadius: '999px', fontSize: '10px', padding: '1px 7px' }}>
+                    {ordersReceivedCount}
                   </span>
                 )}
               </Link>
