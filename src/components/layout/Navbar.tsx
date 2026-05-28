@@ -249,11 +249,47 @@ export function Navbar() {
           }}
         >
           <Link href="/" className="jb-logo-link" style={{ textDecoration: 'none', flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-              <span style={{ fontFamily: 'var(--font-italianno)', fontSize: '28px', color: '#C9A961', lineHeight: 1 }}>just</span>
-              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '13px', letterSpacing: '0.28em', color: '#1A1014', fontWeight: 500 }}>
-                BECAUSE
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-start',
+              gap: '1px',
+              lineHeight: 1,
+            }}>
+              <span style={{
+                fontFamily: 'var(--font-italianno)',
+                fontSize: '28px',
+                color: '#C9A961',
+                lineHeight: 0.85,
+                letterSpacing: '0.02em',
+              }}>
+                just
               </span>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+              }}>
+                <div style={{
+                  width: '12px',
+                  height: '0.5px',
+                  background: '#1A1014',
+                }} />
+                <span style={{
+                  fontFamily: 'var(--font-inter)',
+                  fontSize: '9px',
+                  letterSpacing: '0.38em',
+                  color: '#1A1014',
+                  fontWeight: 500,
+                }}>
+                  BECAUSE
+                </span>
+                <div style={{
+                  width: '12px',
+                  height: '0.5px',
+                  background: '#1A1014',
+                }} />
+              </div>
             </div>
           </Link>
 
@@ -417,9 +453,19 @@ export function Navbar() {
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '0.5px solid #EDD9AF' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-            <span style={{ fontFamily: 'var(--font-italianno)', fontSize: '24px', color: '#C9A961' }}>just</span>
-            <span style={{ fontFamily: 'var(--font-inter)', fontSize: '12px', letterSpacing: '0.25em', color: '#1A1014', fontWeight: 500 }}>BECAUSE</span>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            gap: '1px',
+            lineHeight: 1,
+          }}>
+            <span style={{ fontFamily: 'var(--font-italianno)', fontSize: '26px', color: '#C9A961', lineHeight: 0.85, letterSpacing: '0.02em' }}>just</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <div style={{ width: '12px', height: '0.5px', background: '#1A1014' }} />
+              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.38em', color: '#1A1014', fontWeight: 500 }}>BECAUSE</span>
+              <div style={{ width: '12px', height: '0.5px', background: '#1A1014' }} />
+            </div>
           </div>
           <button onClick={() => setMobileOpen(false)} aria-label="Close menu" style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px' }}>
             <X size={20} color="#B8A090" />

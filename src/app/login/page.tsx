@@ -1,91 +1,67 @@
-'use client'
+"use client"
 
-import { FormEvent, Suspense, useState } from 'react'
-import Image from 'next/image'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { Eye, EyeOff } from 'lucide-react'
-import { motion } from 'framer-motion'
+import Image from 'next/image'
 import { createClient } from '@supabase/supabase-js'
-import { signIn } from '@/lib/auth'
+import { Eye, EyeOff } from 'lucide-react'
 
-const adminEmail = 'ujjwalbana@gmail.com'
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
-function LoginContent() {
+export default function LoginPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [error, setError] = useState(searchParams.get('error') || '')
-  const [isLoading, setIsLoading] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  const handleSignIn = async () => {
+    if (!email || !password) {
+      setError('Please fill in all fields')
+      return
+    }
+
+    setLoading(true)
     setError('')
-    setIsLoading(true)
 
-    const { data, error: signInError } = await signIn(email, password)
-    setIsLoading(false)
-
-    if (signInError) {
-      setError(signInError.message)
-      return
-    }
-
-    if (data.user?.email === adminEmail) {
-      router.push('/admin')
-      return
-    }
-
-    router.push(searchParams.get('redirect') || searchParams.get('next') || '/')
-  }
-
-  const handleGoogleSignIn = async () => {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-    const target = searchParams.get('redirect') || searchParams.get('next') || '/'
-    const baseRedirect = process.env.NEXT_PUBLIC_APP_URL
-      ? `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`
-      : `${window.location.origin}/auth/callback`
-    const redirectTo = `${baseRedirect}?next=${encodeURIComponent(target)}`
-
-    const { error: googleError } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent',
-        },
-      },
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     })
 
-    if (googleError) {
-      setError('Google sign in failed. Please try email instead.')
+    if (signInError) {
+      setError('Invalid email or password')
+      setLoading(false)
+      return
     }
+
+    router.push('/')
   }
 
   return (
-    <main className="flex min-h-screen flex-col lg:flex-row">
-      <motion.div
-        initial={{ opacity: 0, x: -24 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.55, ease: [0.4, 0, 0.2, 1] }}
-        style={{
-          flex: 1,
-          position: 'relative',
-          overflow: 'hidden',
-          minHeight: '100vh',
-        }}
-      >
+    <div style={{
+      display: 'flex',
+      height: '100vh',
+      width: '100vw',
+      overflow: 'hidden',
+      background: '#FBF5F0',
+    }}>
+      <div style={{
+        width: '52%',
+        position: 'relative',
+        overflow: 'hidden',
+        flexShrink: 0,
+      }}>
         <Image
           src="/images/login-hero.jpg"
-          alt="Just Because diamonds"
+          alt="Just Because diamond ring"
           fill
-          style={{ objectFit: 'cover' }}
+          style={{ objectFit: 'cover', objectPosition: 'center' }}
           priority
           quality={95}
         />
@@ -93,67 +69,98 @@ function LoginContent() {
         <div style={{
           position: 'absolute',
           inset: 0,
-          background: 'linear-gradient(to bottom, rgba(26,16,20,0.05) 0%, rgba(26,16,20,0.55) 100%)',
+          background: `linear-gradient(
+            to bottom,
+            rgba(26,16,20,0.72) 0%,
+            rgba(26,16,20,0.15) 35%,
+            rgba(26,16,20,0.08) 55%,
+            rgba(26,16,20,0.65) 100%
+          )`,
         }} />
 
         <div style={{
-          position: 'relative',
+          position: 'absolute',
+          top: '40px',
+          left: '48px',
           zIndex: 2,
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          padding: '52px 48px',
         }}>
-          <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-            <span style={{
-              fontFamily: 'var(--font-italianno)',
-              fontSize: '32px',
-              color: '#FBF5F0',
-              lineHeight: 1,
-            }}>just</span>
-            <span style={{
-              fontFamily: 'var(--font-inter)',
-              fontSize: '13px',
-              letterSpacing: '0.28em',
-              color: '#FBF5F0',
-              fontWeight: 500,
-            }}>BECAUSE</span>
-          </Link>
+          <AuthLogo />
+        </div>
 
-          <div>
-            <h2 style={{
-              fontFamily: 'var(--font-playfair)',
-              fontSize: '44px',
-              fontWeight: 400,
-              color: '#FBF5F0',
-              lineHeight: 1.1,
-              marginBottom: '12px',
-            }}>
-              Welcome back.
-            </h2>
-            <p style={{
-              fontSize: '14px',
-              color: 'rgba(251,245,240,0.75)',
-              fontFamily: 'var(--font-inter)',
-              lineHeight: 1.6,
-              marginBottom: '40px',
-            }}>
-              Sign in to your Just Because account.
-            </p>
+        <div style={{
+          position: 'absolute',
+          bottom: '48px',
+          left: '48px',
+          right: '48px',
+          zIndex: 2,
+        }}>
+          <div style={{
+            width: '40px',
+            height: '1px',
+            background: '#C9A961',
+            marginBottom: '16px',
+          }} />
 
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '20px',
-            }}>
-              {[
-                { q: '"The most beautiful buying experience I have had online."', name: 'Priya M.' },
-                { q: '"It felt personal, considered, and quietly luxurious."', name: 'Sarah K.' },
-                { q: '"Everything about it felt like a boutique appointment."', name: 'Aaron L.' },
-              ].map((r, i) => (
-                <div key={i}>
-                  <div style={{ fontSize: '13px', color: '#C9A961', marginBottom: '3px' }}>★</div>
+          <h2 style={{
+            fontFamily: 'var(--font-playfair)',
+            fontSize: '52px',
+            fontWeight: 400,
+            color: '#FBF5F0',
+            lineHeight: 1,
+            marginBottom: '8px',
+          }}>
+            Welcome
+          </h2>
+          <h2 style={{
+            fontFamily: 'var(--font-playfair)',
+            fontSize: '52px',
+            fontWeight: 400,
+            fontStyle: 'italic',
+            color: '#C9A961',
+            lineHeight: 1,
+            marginBottom: '24px',
+          }}>
+            back.
+          </h2>
+
+          <p style={{
+            fontSize: '13px',
+            color: 'rgba(251,245,240,0.7)',
+            fontFamily: 'var(--font-inter)',
+            letterSpacing: '0.05em',
+            marginBottom: '28px',
+          }}>
+            Sign in to your Just Because account.
+          </p>
+
+          <div style={{
+            width: '100%',
+            height: '0.5px',
+            background: 'rgba(201,169,97,0.3)',
+            marginBottom: '24px',
+          }} />
+
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+          }}>
+            {[
+              { q: '"The most beautiful buying experience."', name: 'Priya M.' },
+              { q: '"Quietly luxurious, from start to finish."', name: 'Sarah K.' },
+            ].map((r, i) => (
+              <div key={i} style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '10px',
+              }}>
+                <span style={{
+                  color: '#C9A961',
+                  fontSize: '12px',
+                  flexShrink: 0,
+                  marginTop: '1px',
+                }}>★</span>
+                <div>
                   <p style={{
                     fontFamily: 'var(--font-playfair)',
                     fontStyle: 'italic',
@@ -162,88 +169,272 @@ function LoginContent() {
                     lineHeight: 1.5,
                     marginBottom: '3px',
                   }}>{r.q}</p>
-                  <div style={{
+                  <span style={{
                     fontSize: '11px',
-                    color: 'rgba(251,245,240,0.5)',
+                    color: 'rgba(201,169,97,0.7)',
                     fontFamily: 'var(--font-inter)',
-                    letterSpacing: '0.05em',
-                  }}>{r.name}</div>
+                    letterSpacing: '0.08em',
+                  }}>{r.name}</span>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
         </div>
-      </motion.div>
 
-      <section className="flex flex-1 items-center justify-center px-6 py-12 lg:w-[55%] lg:px-[60px]" style={{ backgroundColor: '#FBF5F0' }}>
-        <motion.form
-          onSubmit={handleSubmit}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.55, ease: [0.4, 0, 0.2, 1] }}
-          className="w-full max-w-[420px]"
-        >
-          <h2 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '32px', fontWeight: 400, marginBottom: '8px' }}>Sign in</h2>
-          <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '13px', marginBottom: '30px' }}>
-            Don&apos;t have an account?{' '}
-            <Link href="/signup" style={{ color: '#C9A961', textDecoration: 'none' }}>Create one →</Link>
-          </p>
+        <div style={{
+          position: 'absolute',
+          top: '40px',
+          right: '32px',
+          zIndex: 2,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-end',
+          gap: '3px',
+        }}>
+          <div style={{ width: '24px', height: '0.5px', background: 'rgba(201,169,97,0.4)' }} />
+          <div style={{ width: '16px', height: '0.5px', background: 'rgba(201,169,97,0.3)' }} />
+          <div style={{ width: '8px', height: '0.5px', background: 'rgba(201,169,97,0.2)' }} />
+        </div>
+      </div>
+
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: '48px 64px',
+        background: '#FBF5F0',
+        overflow: 'hidden',
+      }}>
+        <div style={{
+          width: '100%',
+          maxWidth: '400px',
+        }}>
+          <div style={{ marginBottom: '40px' }}>
+            <h1 style={{
+              fontFamily: 'var(--font-playfair)',
+              fontSize: '36px',
+              fontWeight: 400,
+              color: '#1A1014',
+              marginBottom: '8px',
+              lineHeight: 1.1,
+            }}>
+              Sign in
+            </h1>
+            <p style={{
+              fontSize: '13px',
+              color: '#B8A090',
+              fontFamily: 'var(--font-inter)',
+            }}>
+              Don&apos;t have an account?{' '}
+              <Link href="/signup" style={{
+                color: '#C9A961',
+                textDecoration: 'none',
+                fontWeight: 500,
+              }}>
+                Create one →
+              </Link>
+            </p>
+          </div>
 
           {error && (
-            <div style={{ backgroundColor: '#FFF0F0', border: '1px solid #A85C6A', borderRadius: '2px', color: '#A85C6A', fontFamily: 'var(--font-inter)', fontSize: '13px', marginBottom: '18px', padding: '12px 16px' }}>
+            <div style={{
+              background: '#FFF0F0',
+              border: '1px solid #A85C6A',
+              padding: '12px 16px',
+              marginBottom: '20px',
+              fontSize: '13px',
+              color: '#A85C6A',
+              fontFamily: 'var(--font-inter)',
+            }}>
               {error}
             </div>
           )}
 
-          <label style={{ color: '#C9A961', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '10px' }}>EMAIL ADDRESS</label>
-          <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" required style={{ backgroundColor: '#FDF8F2', border: '1px solid #EDD9AF', borderRadius: '2px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '14px', marginBottom: '18px', outlineColor: '#1A1014', padding: '14px 16px', width: '100%' }} />
-
-          <label style={{ color: '#C9A961', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '10px' }}>PASSWORD</label>
-          <div style={{ marginBottom: '8px', position: 'relative' }}>
-            <input value={password} onChange={(event) => setPassword(event.target.value)} type={showPassword ? 'text' : 'password'} required style={{ backgroundColor: '#FDF8F2', border: '1px solid #EDD9AF', borderRadius: '2px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '14px', outlineColor: '#1A1014', padding: '14px 48px 14px 16px', width: '100%' }} />
-            <button type="button" onClick={() => setShowPassword((value) => !value)} style={{ color: '#B8A090', position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }}>
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '9px',
+              letterSpacing: '0.25em',
+              color: '#C9A961',
+              fontFamily: 'var(--font-inter)',
+              marginBottom: '8px',
+            }}>
+              EMAIL ADDRESS
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') void handleSignIn()
+              }}
+              placeholder="your@email.com"
+              style={{
+                width: '100%',
+                padding: '14px 16px',
+                background: '#FDF8F2',
+                border: '1px solid #EDD9AF',
+                color: '#1A1014',
+                fontSize: '14px',
+                fontFamily: 'var(--font-inter)',
+                outline: 'none',
+                transition: 'border-color 0.2s',
+                boxSizing: 'border-box',
+              }}
+              onFocus={(event) => {
+                event.target.style.borderColor = '#1A1014'
+              }}
+              onBlur={(event) => {
+                event.target.style.borderColor = '#EDD9AF'
+              }}
+            />
           </div>
 
-          <div className="mb-6 flex justify-end">
-            <Link href="#" style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', textDecoration: 'none' }}>Forgot password?</Link>
+          <div style={{ marginBottom: '10px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '9px',
+              letterSpacing: '0.25em',
+              color: '#C9A961',
+              fontFamily: 'var(--font-inter)',
+              marginBottom: '8px',
+            }}>
+              PASSWORD
+            </label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') void handleSignIn()
+                }}
+                placeholder="••••••••"
+                style={{
+                  width: '100%',
+                  padding: '14px 48px 14px 16px',
+                  background: '#FDF8F2',
+                  border: '1px solid #EDD9AF',
+                  color: '#1A1014',
+                  fontSize: '14px',
+                  fontFamily: 'var(--font-inter)',
+                  outline: 'none',
+                  transition: 'border-color 0.2s',
+                  boxSizing: 'border-box',
+                }}
+                onFocus={(event) => {
+                  event.target.style.borderColor = '#1A1014'
+                }}
+                onBlur={(event) => {
+                  event.target.style.borderColor = '#EDD9AF'
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '14px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  color: '#B8A090',
+                }}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </div>
 
-          <button disabled={isLoading} style={{ backgroundColor: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '11px', height: '52px', letterSpacing: '0.2em', opacity: isLoading ? 0.7 : 1, width: '100%' }}>
-            {isLoading ? 'SIGNING IN...' : 'SIGN IN'}
+          <div style={{
+            textAlign: 'right',
+            marginBottom: '28px',
+          }}>
+            <Link
+              href="/forgot-password"
+              style={{
+                fontSize: '12px',
+                color: '#B8A090',
+                textDecoration: 'none',
+                fontFamily: 'var(--font-inter)',
+                transition: 'color 0.2s',
+              }}
+              onMouseEnter={(event) => {
+                event.currentTarget.style.color = '#C9A961'
+              }}
+              onMouseLeave={(event) => {
+                event.currentTarget.style.color = '#B8A090'
+              }}
+            >
+              Forgot password?
+            </Link>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void handleSignIn()}
+            disabled={loading}
+            style={{
+              width: '100%',
+              padding: '16px',
+              background: loading ? '#888' : '#1A1014',
+              color: '#FBF5F0',
+              border: 'none',
+              fontSize: '12px',
+              letterSpacing: '0.2em',
+              fontFamily: 'var(--font-inter)',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              transition: 'background 0.3s',
+              marginBottom: '20px',
+            }}
+            onMouseEnter={(event) => {
+              if (!loading) event.currentTarget.style.background = '#2A1E24'
+            }}
+            onMouseLeave={(event) => {
+              if (!loading) event.currentTarget.style.background = '#1A1014'
+            }}
+          >
+            {loading ? 'SIGNING IN...' : 'SIGN IN →'}
           </button>
 
-          <div className="my-7 flex items-center gap-4">
-            <span style={{ backgroundColor: '#EDD9AF', height: '0.5px', flex: 1 }} />
-            <span style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px' }}>or continue with</span>
-            <span style={{ backgroundColor: '#EDD9AF', height: '0.5px', flex: 1 }} />
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            marginBottom: '20px',
+          }}>
+            <div style={{ flex: 1, height: '0.5px', background: '#EDD9AF' }} />
+            <span style={{
+              fontSize: '11px',
+              color: '#B8A090',
+              fontFamily: 'var(--font-inter)',
+              whiteSpace: 'nowrap',
+            }}>or</span>
+            <div style={{ flex: 1, height: '0.5px', background: '#EDD9AF' }} />
           </div>
 
-          <button type="button" onClick={handleGoogleSignIn} className="flex items-center justify-center gap-3" style={{ backgroundColor: '#FDF8F2', border: '1px solid #EDD9AF', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', height: '52px', width: '100%' }}>
-            <span style={{ color: '#C9A961', fontWeight: 500 }}>G</span>
-            Continue with Google
-          </button>
-
-          <div style={{ backgroundColor: '#EDD9AF', height: '0.5px', marginTop: '18px', width: '100%' }} />
           <button
             type="button"
             onClick={() => router.push('/')}
             style={{
               width: '100%',
-              height: '52px',
+              padding: '14px',
               background: 'transparent',
-              border: '1px solid #EDD9AF',
               color: '#B8A090',
+              border: '1px solid #EDD9AF',
               fontSize: '11px',
-              letterSpacing: '0.2em',
-              cursor: 'pointer',
-              marginTop: '12px',
+              letterSpacing: '0.18em',
               fontFamily: 'var(--font-inter)',
-              transition: 'all 0.3s ease',
+              cursor: 'pointer',
+              transition: 'all 0.3s',
             }}
             onMouseEnter={(event) => {
-              event.currentTarget.style.borderColor = '#C9A961'
+              event.currentTarget.style.borderColor = '#1A1014'
               event.currentTarget.style.color = '#1A1014'
             }}
             onMouseLeave={(event) => {
@@ -258,43 +449,61 @@ function LoginContent() {
             textAlign: 'center',
             fontSize: '11px',
             color: '#B8A090',
-            marginTop: '12px',
             fontFamily: 'var(--font-inter)',
+            marginTop: '12px',
           }}>
             Browse our collection without an account
           </p>
-        </motion.form>
-      </section>
-    </main>
+        </div>
+      </div>
+    </div>
   )
 }
 
-export default function LoginPage() {
+function AuthLogo() {
   return (
-    <Suspense
-      fallback={
-        <div
-          style={{
-            minHeight: '100vh',
-            background: '#FBF5F0',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <div
-            style={{
-              fontFamily: 'var(--font-playfair)',
-              fontSize: '18px',
-              color: '#B8A090',
-            }}
-          >
-            Loading...
-          </div>
-        </div>
-      }
-    >
-      <LoginContent />
-    </Suspense>
+    <Link href="/" style={{
+      textDecoration: 'none',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '0px',
+    }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'baseline',
+        gap: '0px',
+      }}>
+        <span style={{
+          fontFamily: 'var(--font-italianno)',
+          fontSize: '42px',
+          color: '#FBF5F0',
+          lineHeight: 0.9,
+          letterSpacing: '-0.01em',
+        }}>just</span>
+      </div>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+      }}>
+        <div style={{
+          width: '20px',
+          height: '0.5px',
+          background: '#C9A961',
+        }} />
+        <span style={{
+          fontFamily: 'var(--font-inter)',
+          fontSize: '11px',
+          letterSpacing: '0.45em',
+          color: '#C9A961',
+          fontWeight: 400,
+        }}>BECAUSE</span>
+        <div style={{
+          width: '20px',
+          height: '0.5px',
+          background: '#C9A961',
+        }} />
+      </div>
+    </Link>
   )
 }

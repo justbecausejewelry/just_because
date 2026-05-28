@@ -10,8 +10,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const isAdmin = pathname.startsWith('/admin')
   const isCheckout = pathname.startsWith('/checkout')
+  const isAuth = pathname === '/login' || pathname === '/signup'
 
-  if (isAdmin) {
+  if (isAdmin || isAuth) {
     return <>{children}</>
   }
 
