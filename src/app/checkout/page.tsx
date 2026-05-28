@@ -136,58 +136,88 @@ export default function CheckoutPage() {
       setError('Your cart is empty.')
       return
     }
-    setIsPlacing(true)
-    await new Promise((resolve) => window.setTimeout(resolve, 2000))
-    const response = await fetch('/api/orders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        customerName: `${form.firstName} ${form.lastName}`.trim(),
-        customerEmail: form.email,
-        customerPhone: form.phone,
-        shippingAddress: {
-          address1: form.address1,
-          address2: form.address2,
-          city: form.city,
-          state: form.state,
-          zip: form.zip,
-          country: form.country,
-          method: shippingMethod,
-        },
-        items,
-        subtotal,
-        shippingAmount,
-        taxAmount: tax,
-        total,
-      }),
-    })
-    const payload = (await response.json()) as { orderNumber?: string; error?: string }
-    setIsPlacing(false)
-    if (!response.ok || !payload.orderNumber) {
-      setError(payload.error || 'Unable to place order.')
-      return
-    }
-    if (saveAddress && userId) {
-      await supabaseAuth
-        .from('SavedAddress')
-        .insert({
-          userId,
-          label: 'Home',
-          firstName: form.firstName,
-          lastName: form.lastName,
-          addressLine1: form.address1,
-          addressLine2: form.address2,
-          city: form.city,
-          state: form.state,
-          zipCode: form.zip,
-          country: form.country,
-          phone: form.phone,
-          isDefault: savedAddresses.length === 0,
-        })
-    }
 
-    await clearCart()
-    router.push(`/order-confirmed?order=${payload.orderNumber}`)
+    setIsPlacing(true)
+    try {
+      await new Promise((resolve) => window.setTimeout(resolve, 800))
+
+      const {
+        data: { user },
+      } = await supabaseAuth.auth.getUser()
+      const orderNumber = `JB-${Date.now().toString().slice(-6)}`
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerName: `${form.firstName} ${form.lastName}`.trim(),
+          customerEmail: form.email,
+          customerPhone: form.phone,
+          shippingAddress: {
+            firstName: form.firstName,
+            lastName: form.lastName,
+            addressLine1: form.address1,
+            addressLine2: form.address2 || '',
+            city: form.city,
+            state: form.state,
+            zipCode: form.zip,
+            country: form.country || 'India',
+            method: shippingMethod,
+          },
+          items: items.map((item) => ({
+            ...item,
+            totalPrice: item.unitPrice * item.quantity,
+          })),
+          subtotal,
+          shippingAmount,
+          shippingCost: shippingAmount,
+          taxAmount: tax,
+          discount: 0,
+          discountAmount: 0,
+          total,
+          status: 'received',
+          paymentMethod: 'pending',
+          paymentStatus: 'pending',
+          userId: user?.id || null,
+          orderNumber,
+        }),
+      })
+      const payload = (await response.json()) as {
+        order?: { id: string; orderNumber?: string | null }
+        orderNumber?: string
+        error?: string
+      }
+
+      if (!response.ok || !payload.order?.id) {
+        throw new Error(payload.error || 'Unable to place order.')
+      }
+
+      if (saveAddress && userId) {
+        await supabaseAuth
+          .from('SavedAddress')
+          .insert({
+            userId,
+            label: 'Home',
+            firstName: form.firstName,
+            lastName: form.lastName,
+            addressLine1: form.address1,
+            addressLine2: form.address2,
+            city: form.city,
+            state: form.state,
+            zipCode: form.zip,
+            country: form.country,
+            phone: form.phone,
+            isDefault: savedAddresses.length === 0,
+          })
+      }
+
+      await clearCart()
+      router.push(`/order-confirmed?order=${payload.order.id}&number=${payload.orderNumber || payload.order.orderNumber || orderNumber}`)
+    } catch (orderError) {
+      const message = orderError instanceof Error ? orderError.message : 'Unable to place order.'
+      console.error('Order error:', orderError)
+      setError(`Failed to place order: ${message}`)
+      setIsPlacing(false)
+    }
   }
 
   return (

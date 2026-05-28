@@ -16,7 +16,7 @@ const confetti = Array.from({ length: 20 }, (_, index) => ({
 
 function OrderConfirmedContent() {
   const searchParams = useSearchParams()
-  const orderNumber = searchParams.get('order') || 'JB-PENDING'
+  const orderNumber = searchParams.get('number') || searchParams.get('order') || 'JB-PENDING'
   const [copied, setCopied] = useState(false)
 
   const copyOrder = async () => {

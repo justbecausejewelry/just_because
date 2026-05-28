@@ -88,9 +88,48 @@ export default function LoginPage() {
           from { opacity: 0; transform: translateY(12px); }
           to { opacity: 1; transform: translateY(0); }
         }
+
+        @media (max-width: 768px) {
+          .login-wrap {
+            display: block !important;
+          }
+
+          .login-left {
+            display: none !important;
+          }
+
+          .login-right {
+            width: 100% !important;
+            height: 100vh !important;
+            padding: 40px 28px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: center !important;
+            align-items: stretch !important;
+            overflow: hidden !important;
+            border-left: none !important;
+          }
+
+          .login-form-inner {
+            max-width: 100% !important;
+            margin: 0 auto;
+          }
+
+          .mobile-logo {
+            display: block !important;
+          }
+
+          .login-input {
+            font-size: 16px !important;
+          }
+
+          .login-right button {
+            min-height: 52px;
+          }
+        }
       `}</style>
 
-      <div style={{
+      <div className="login-wrap" style={{
         display: 'grid',
         gridTemplateColumns: '52% 48%',
         height: '100vh',
@@ -99,7 +138,7 @@ export default function LoginPage() {
         background: '#FBF5F0',
       }}>
 
-        <div style={{
+        <div className="login-left" style={{
           position: 'relative',
           overflow: 'hidden',
         }}>
@@ -236,7 +275,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <div style={{
+        <div className="login-right" style={{
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
@@ -246,7 +285,36 @@ export default function LoginPage() {
           borderLeft: '0.5px solid #EDD9AF',
           overflowY: 'auto',
         }}>
-          <div style={{
+          <div className="mobile-logo" style={{
+            display: 'none',
+            marginBottom: '36px',
+          }}>
+            <Link href="/" style={{ textDecoration: 'none' }}>
+              <div style={{
+                fontFamily: "'Italianno', cursive",
+                fontSize: '40px',
+                color: '#1A1014',
+                lineHeight: 0.85,
+              }}>just</div>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                marginTop: '3px',
+              }}>
+                <div style={{ width: '12px', height: '0.5px', background: '#1A1014' }} />
+                <span style={{
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: '9px',
+                  letterSpacing: '0.4em',
+                  color: '#1A1014',
+                }}>BECAUSE</span>
+                <div style={{ width: '12px', height: '0.5px', background: '#1A1014' }} />
+              </div>
+            </Link>
+          </div>
+
+          <div className="login-form-inner" style={{
             width: '100%',
             maxWidth: '380px',
             animation: 'fadeIn 0.8s ease 0.2s both',

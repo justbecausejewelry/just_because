@@ -87,14 +87,56 @@ export default function SignupPage() {
   }
 
   return (
-    <div style={{
+    <>
+      <style>{`
+        @media (max-width: 768px) {
+          .login-wrap {
+            display: block !important;
+          }
+
+          .login-left {
+            display: none !important;
+          }
+
+          .login-right {
+            width: 100% !important;
+            height: 100vh !important;
+            padding: 40px 28px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: center !important;
+            align-items: stretch !important;
+            overflow: hidden !important;
+            border-left: none !important;
+          }
+
+          .login-form-inner {
+            max-width: 100% !important;
+            margin: 0 auto;
+          }
+
+          .mobile-logo {
+            display: block !important;
+          }
+
+          .signup-input {
+            font-size: 16px !important;
+          }
+
+          .login-right button {
+            min-height: 52px;
+          }
+        }
+      `}</style>
+
+      <div className="login-wrap" style={{
       display: 'flex',
       height: '100vh',
       width: '100vw',
       overflow: 'hidden',
       background: '#FBF5F0',
     }}>
-      <div style={{
+      <div className="login-left" style={{
         width: '52%',
         position: 'relative',
         overflow: 'hidden',
@@ -240,7 +282,7 @@ export default function SignupPage() {
         </div>
       </div>
 
-      <div style={{
+      <div className="login-right" style={{
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
@@ -251,7 +293,37 @@ export default function SignupPage() {
         borderLeft: '0.5px solid #EDD9AF',
         overflow: 'hidden',
       }}>
+        <div className="mobile-logo" style={{
+          display: 'none',
+          marginBottom: '36px',
+        }}>
+          <Link href="/" style={{ textDecoration: 'none' }}>
+            <div style={{
+              fontFamily: "'Italianno', cursive",
+              fontSize: '40px',
+              color: '#1A1014',
+              lineHeight: 0.85,
+            }}>just</div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              marginTop: '3px',
+            }}>
+              <div style={{ width: '12px', height: '0.5px', background: '#1A1014' }} />
+              <span style={{
+                fontFamily: 'Inter, sans-serif',
+                fontSize: '9px',
+                letterSpacing: '0.4em',
+                color: '#1A1014',
+              }}>BECAUSE</span>
+              <div style={{ width: '12px', height: '0.5px', background: '#1A1014' }} />
+            </div>
+          </Link>
+        </div>
+
         <form
+          className="login-form-inner"
           onSubmit={(event) => void handleSubmit(event)}
           style={{
             width: '100%',
@@ -327,6 +399,7 @@ export default function SignupPage() {
             </label>
             <div style={{ position: 'relative' }}>
               <input
+                className="signup-input"
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
@@ -441,6 +514,7 @@ export default function SignupPage() {
         </form>
       </div>
     </div>
+    </>
   )
 }
 
@@ -470,6 +544,7 @@ function AuthInput({
         {label}
       </label>
       <input
+        className="signup-input"
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
