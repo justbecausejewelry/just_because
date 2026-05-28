@@ -68,8 +68,8 @@ export default function LoginPage() {
         .login-input {
           width: 100%;
           padding: 14px 16px;
-          background: #FDF8F2;
-          border: 1px solid #EDD9AF;
+          background: #FFFFFF;
+          border: 1px solid #D4C4B0;
           color: #1A1014;
           font-size: 14px;
           font-family: Inter, sans-serif;
@@ -242,7 +242,8 @@ export default function LoginPage() {
           justifyContent: 'center',
           alignItems: 'center',
           padding: '0 64px',
-          background: '#FBF5F0',
+          background: '#FFFFFF',
+          borderLeft: '0.5px solid #EDD9AF',
           overflowY: 'auto',
         }}>
           <div style={{
@@ -262,14 +263,14 @@ export default function LoginPage() {
             <p style={{
               fontFamily: 'Inter, sans-serif',
               fontSize: '13px',
-              color: '#B8A090',
+              color: '#1A1014',
               marginBottom: '36px',
             }}>
               Don&apos;t have an account?{' '}
               <Link href="/signup" style={{
-                color: '#1A1014',
+                color: '#C9A961',
                 textDecoration: 'none',
-                fontWeight: 500,
+                fontWeight: 600,
                 borderBottom: '1px solid #EDD9AF',
                 paddingBottom: '1px',
               }}>Create one →</Link>
@@ -291,7 +292,7 @@ export default function LoginPage() {
               <div style={{
                 fontSize: '9px',
                 letterSpacing: '0.25em',
-                color: '#C9A961',
+                color: '#1A1014',
                 fontFamily: 'Inter, sans-serif',
                 marginBottom: '8px',
               }}>EMAIL ADDRESS</div>
@@ -311,7 +312,7 @@ export default function LoginPage() {
               <div style={{
                 fontSize: '9px',
                 letterSpacing: '0.25em',
-                color: '#C9A961',
+                color: '#1A1014',
                 fontFamily: 'Inter, sans-serif',
                 marginBottom: '8px',
               }}>PASSWORD</div>
@@ -345,9 +346,16 @@ export default function LoginPage() {
 
             <div style={{ textAlign: 'right', marginBottom: '28px' }}>
               <Link href="/forgot-password" style={{
-                fontSize: '12px', color: '#B8A090',
+                fontSize: '12px', color: '#1A1014',
                 textDecoration: 'none', fontFamily: 'Inter, sans-serif',
-              }}>Forgot password?</Link>
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = '#C9A961'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = '#1A1014'
+              }}
+              >Forgot password?</Link>
             </div>
 
             <button
@@ -376,7 +384,7 @@ export default function LoginPage() {
             }}>
               <div style={{ flex: 1, height: '0.5px', background: '#EDD9AF' }} />
               <span style={{
-                fontSize: '11px', color: '#B8A090',
+                fontSize: '11px', color: '#888',
                 fontFamily: 'Inter, sans-serif',
               }}>or</span>
               <div style={{ flex: 1, height: '0.5px', background: '#EDD9AF' }} />
@@ -388,8 +396,8 @@ export default function LoginPage() {
                 width: '100%',
                 padding: '14px',
                 background: 'transparent',
-                color: '#B8A090',
-                border: '1px solid #EDD9AF',
+                color: '#1A1014',
+                border: '1px solid #1A1014',
                 fontSize: '10px',
                 letterSpacing: '0.2em',
                 fontFamily: 'Inter, sans-serif',
@@ -397,12 +405,12 @@ export default function LoginPage() {
                 transition: 'all 0.3s',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#1A1014'
-                e.currentTarget.style.color = '#1A1014'
+                e.currentTarget.style.background = '#1A1014'
+                e.currentTarget.style.color = '#FBF5F0'
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#EDD9AF'
-                e.currentTarget.style.color = '#B8A090'
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.color = '#1A1014'
               }}
             >
               CONTINUE AS GUEST →
@@ -410,7 +418,7 @@ export default function LoginPage() {
 
             <p style={{
               textAlign: 'center',
-              fontSize: '11px', color: '#B8A090',
+              fontSize: '11px', color: '#888',
               fontFamily: 'Inter, sans-serif',
               marginTop: '10px',
             }}>

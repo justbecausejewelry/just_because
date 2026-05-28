@@ -247,7 +247,8 @@ export default function SignupPage() {
         justifyContent: 'center',
         alignItems: 'center',
         padding: '34px 64px',
-        background: '#FBF5F0',
+        background: '#FFFFFF',
+        borderLeft: '0.5px solid #EDD9AF',
         overflow: 'hidden',
       }}>
         <form
@@ -270,14 +271,14 @@ export default function SignupPage() {
             </h1>
             <p style={{
               fontSize: '13px',
-              color: '#B8A090',
+              color: '#1A1014',
               fontFamily: 'var(--font-inter)',
             }}>
               Already have an account?{' '}
               <Link href="/login" style={{
                 color: '#C9A961',
                 textDecoration: 'none',
-                fontWeight: 500,
+                fontWeight: 600,
               }}>
                 Sign in →
               </Link>
@@ -318,7 +319,7 @@ export default function SignupPage() {
               display: 'block',
               fontSize: '9px',
               letterSpacing: '0.25em',
-              color: '#C9A961',
+              color: '#1A1014',
               fontFamily: 'var(--font-inter)',
               marginBottom: '8px',
             }}>
@@ -335,7 +336,7 @@ export default function SignupPage() {
                   event.target.style.borderColor = '#1A1014'
                 }}
                 onBlur={(event) => {
-                  event.target.style.borderColor = '#EDD9AF'
+                  event.target.style.borderColor = '#D4C4B0'
                 }}
               />
               <button
@@ -373,7 +374,7 @@ export default function SignupPage() {
           />
 
           <label style={{
-            color: '#B8A090',
+            color: '#1A1014',
             display: 'flex',
             alignItems: 'flex-start',
             gap: '10px',
@@ -418,13 +419,21 @@ export default function SignupPage() {
               width: '100%',
               padding: '14px',
               background: 'transparent',
-              color: '#B8A090',
-              border: '1px solid #EDD9AF',
+              color: '#1A1014',
+              border: '1px solid #1A1014',
               fontSize: '11px',
               letterSpacing: '0.18em',
               fontFamily: 'var(--font-inter)',
               cursor: 'pointer',
               transition: 'all 0.3s',
+            }}
+            onMouseEnter={(event) => {
+              event.currentTarget.style.background = '#1A1014'
+              event.currentTarget.style.color = '#FBF5F0'
+            }}
+            onMouseLeave={(event) => {
+              event.currentTarget.style.background = 'transparent'
+              event.currentTarget.style.color = '#1A1014'
             }}
           >
             CONTINUE AS GUEST →
@@ -454,7 +463,7 @@ function AuthInput({
         display: 'block',
         fontSize: '9px',
         letterSpacing: '0.25em',
-        color: '#C9A961',
+        color: '#1A1014',
         fontFamily: 'var(--font-inter)',
         marginBottom: '8px',
       }}>
@@ -470,7 +479,7 @@ function AuthInput({
           event.target.style.borderColor = '#1A1014'
         }}
         onBlur={(event) => {
-          event.target.style.borderColor = '#EDD9AF'
+          event.target.style.borderColor = '#D4C4B0'
         }}
       />
     </div>
@@ -480,8 +489,8 @@ function AuthInput({
 const inputStyle: CSSProperties = {
   width: '100%',
   padding: '14px 16px',
-  background: '#FDF8F2',
-  border: '1px solid #EDD9AF',
+  background: '#FFFFFF',
+  border: '1px solid #D4C4B0',
   color: '#1A1014',
   fontSize: '14px',
   fontFamily: 'var(--font-inter)',
