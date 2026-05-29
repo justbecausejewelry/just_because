@@ -25,6 +25,12 @@ type Product = {
   description: string | null
   basePrice: number
   images: string[]
+  metalImages?: {
+    white_gold?: string[]
+    yellow_gold?: string[]
+    rose_gold?: string[]
+    platinum?: string[]
+  } | null
   availableMetals: string[]
   availableShapes: string[]
   isNewArrival: boolean
@@ -92,7 +98,7 @@ function SkeletonCard() {
 function ProductCard({ product }: { product: Product }) {
   const { toggleItem, isWishlisted } = useWishlist()
   const { showToast } = useToast()
-  const image = product.images?.[0]
+  const image = product.metalImages?.white_gold?.[0] || product.images?.[0]
   const badge = product.isNewArrival ? 'NEW' : product.basePrice < 2000 ? 'POPULAR' : null
   const wishlisted = isWishlisted(product.slug)
 

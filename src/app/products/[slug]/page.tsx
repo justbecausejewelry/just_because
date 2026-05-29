@@ -25,6 +25,7 @@ import { useToast } from '@/context/ToastContext'
 import { supabaseAuth } from '@/lib/auth'
 
 type PricingMap = Record<string, { enabled?: boolean; modifier?: number }>
+type MetalImages = Record<string, string[] | undefined>
 
 type Product = {
   id: string
@@ -48,6 +49,7 @@ type Product = {
   engravingAllowed: boolean
   engravingMaxChars: number
   images: string[]
+  metalImages?: MetalImages | null
 }
 
 type Review = {
@@ -254,12 +256,25 @@ export default function ProductDetailPage() {
   }, [product, selectedMetal, selectedCarat, selectedShape, selectedColor, selectedClarity])
 
   const images = useMemo(() => {
-    if (!product?.images?.length) {
-      return []
+    if (!product) return []
+
+    const metalKey = selectedMetal.toLowerCase().replace(/\s+/g, '_')
+    const metalImages = product.metalImages?.[metalKey]
+
+    if (metalImages?.length) {
+      return metalImages
     }
 
-    return product.images
-  }, [product])
+    return product.images || []
+  }, [product, selectedMetal])
+
+  const primaryImage = images[0] || product?.images?.[0] || ''
+
+  const handleMetalChange = (metal: string) => {
+    setSelectedMetal(metal)
+    setSelectedImage(0)
+    setIsZoomed(false)
+  }
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -301,11 +316,11 @@ export default function ProductDetailPage() {
         productId: product.id,
         productSlug: product.slug,
         productTitle: product.title,
-        productImage: product.images?.[0] || '',
+        productImage: primaryImage,
       })
       router.push(`/account/messages/new?${msgParams.toString()}`)
     })
-  }, [product, router])
+  }, [primaryImage, product, router])
 
   const averageRating = reviews.length
     ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
@@ -367,7 +382,7 @@ export default function ProductDetailPage() {
       productId: product.id,
       productSlug: product.slug,
       productTitle: product.title,
-      productImage: product.images?.[0] || '',
+      productImage: primaryImage,
       selectedMetal,
       selectedCarat,
       selectedShape,
@@ -391,7 +406,7 @@ export default function ProductDetailPage() {
       productId: product.id,
       productSlug: product.slug,
       productTitle: product.title,
-      productImage: product.images?.[0] || '',
+      productImage: primaryImage,
       selectedMetal,
       selectedCarat,
       selectedShape,
@@ -422,7 +437,7 @@ export default function ProductDetailPage() {
       productId: product.id,
       productSlug: product.slug,
       productTitle: product.title,
-      productImage: product.images?.[0] || '',
+      productImage: primaryImage,
     })
 
     router.push(`/account/messages/new?${params.toString()}`)
@@ -845,9 +860,20 @@ export default function ProductDetailPage() {
               <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '14px' }}>METAL</p>
               <div className="grid grid-cols-4 gap-3">
                 {product.availableMetals.map((metal) => (
-                  <button key={metal} onClick={() => setSelectedMetal(metal)} className="flex flex-col items-center gap-2">
+                  <button
+                    key={metal}
+                    onClick={() => handleMetalChange(metal)}
+                    className="flex flex-col items-center gap-2"
+                    style={{
+                      background: selectedMetal === metal ? '#1A1014' : 'transparent',
+                      border: selectedMetal === metal ? '1px solid #1A1014' : '1px solid #EDD9AF',
+                      color: selectedMetal === metal ? '#FBF5F0' : '#1A1014',
+                      padding: '12px 10px',
+                      transition: 'all 0.3s ease',
+                    }}
+                  >
                     <span style={{ width: 'clamp(44px, 8vw, 52px)', height: 'clamp(44px, 8vw, 52px)', borderRadius: '50%', background: metalGradients[metal] || '#EDD9AF', border: selectedMetal === metal ? '2px solid #1A1014' : '0.5px solid #EDD9AF', boxShadow: selectedMetal === metal ? '0 0 0 3px #FBF5F0, 0 0 0 5px #C9A961' : 'none', transition: 'all 0.3s' }} />
-                    <span style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px', textAlign: 'center' }}>{metal}</span>
+                    <span style={{ color: selectedMetal === metal ? '#FBF5F0' : '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px', textAlign: 'center' }}>{metal}</span>
                     <span style={{ color: modifier(product.metalPricing, metal) > 0 ? '#C9A961' : '#7A8F72', fontFamily: 'var(--font-inter)', fontSize: '10px' }}>
                       {modifier(product.metalPricing, metal) > 0 ? `+${formatPrice(modifier(product.metalPricing, metal))}` : 'Base'}
                     </span>

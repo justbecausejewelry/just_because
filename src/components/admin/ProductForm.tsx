@@ -8,6 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/context/ToastContext'
 
 type PricingMap = Record<string, { enabled: boolean; modifier: number }>
+type MetalTab = 'default' | 'white_gold' | 'yellow_gold' | 'rose_gold' | 'platinum'
+type MetalImages = {
+  white_gold: string[]
+  yellow_gold: string[]
+  rose_gold: string[]
+  platinum: string[]
+}
 
 type ProductFormData = {
   id?: string
@@ -33,6 +40,7 @@ type ProductFormData = {
   engravingAllowed: boolean
   engravingMaxChars: number
   images: string[]
+  metalImages: MetalImages
   videos: string[]
   certificateUrl: string
   isActive: boolean
@@ -159,6 +167,12 @@ function blankProduct(): ProductFormData {
     engravingAllowed: true,
     engravingMaxChars: 20,
     images: [],
+    metalImages: {
+      white_gold: [],
+      yellow_gold: [],
+      rose_gold: [],
+      platinum: [],
+    },
     videos: [],
     certificateUrl: '',
     isActive: true,
@@ -177,9 +191,20 @@ function withoutNulls(product?: IncomingProduct) {
     return {}
   }
 
-  return Object.fromEntries(
+  const cleaned = Object.fromEntries(
     Object.entries(product).filter(([, value]) => value !== null && value !== undefined)
   ) as Partial<ProductFormData>
+
+  if (cleaned.metalImages) {
+    cleaned.metalImages = {
+      white_gold: cleaned.metalImages.white_gold || [],
+      yellow_gold: cleaned.metalImages.yellow_gold || [],
+      rose_gold: cleaned.metalImages.rose_gold || [],
+      platinum: cleaned.metalImages.platinum || [],
+    }
+  }
+
+  return cleaned
 }
 
 function TextInput({
@@ -226,6 +251,108 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (checked: b
   )
 }
 
+function MetalImageUpload({
+  metal,
+  images,
+  slug,
+  onImagesChange,
+}: {
+  metal: Exclude<MetalTab, 'default'>
+  images: string[]
+  slug: string
+  onImagesChange: (images: string[]) => void
+}) {
+  const [uploading, setUploading] = useState(false)
+
+  const handleUpload = async (file: File) => {
+    setUploading(true)
+    try {
+      const body = new FormData()
+      body.append('file', file)
+      body.append('slug', `${slug || 'draft'}/${metal}`)
+
+      const response = await fetch('/api/admin/upload', { method: 'POST', body })
+      const payload = (await response.json()) as { publicUrl?: string; error?: string }
+
+      if (!response.ok || !payload.publicUrl) {
+        throw new Error(payload.error || 'Upload failed')
+      }
+
+      onImagesChange([...images, payload.publicUrl])
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : 'Upload failed'
+      window.alert(`Upload failed: ${message}`)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '16px' }}>
+        {images.map((url, index) => (
+          <div key={url} style={{ position: 'relative', aspectRatio: '1', border: '0.5px solid #EDD9AF', overflow: 'hidden', background: '#F5E8ED' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={url} alt={`${metal} ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <button
+              type="button"
+              onClick={() => onImagesChange(images.filter((_, imageIndex) => imageIndex !== index))}
+              style={{ position: 'absolute', top: '4px', right: '4px', width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(168,92,106,0.9)', border: 'none', color: '#FBF5F0', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              x
+            </button>
+            {index === 0 && (
+              <div style={{ position: 'absolute', bottom: '4px', left: '4px', background: 'rgba(201,169,97,0.9)', color: '#1A1014', fontSize: '8px', padding: '2px 6px', letterSpacing: '0.1em' }}>
+                MAIN
+              </div>
+            )}
+          </div>
+        ))}
+
+        {images.length < 4 && (
+          <button
+            type="button"
+            onClick={() => {
+              const input = document.createElement('input')
+              input.type = 'file'
+              input.accept = 'image/*'
+              input.onchange = (event) => {
+                const file = (event.target as HTMLInputElement).files?.[0]
+                if (file) {
+                  void handleUpload(file)
+                }
+              }
+              input.click()
+            }}
+            style={{ aspectRatio: '1', border: '2px dashed #EDD9AF', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: '#FDF8F2', transition: 'all 0.2s', gap: '8px' }}
+            onMouseEnter={(event) => {
+              event.currentTarget.style.borderColor = '#C9A961'
+              event.currentTarget.style.background = '#FBF5F0'
+            }}
+            onMouseLeave={(event) => {
+              event.currentTarget.style.borderColor = '#EDD9AF'
+              event.currentTarget.style.background = '#FDF8F2'
+            }}
+          >
+            {uploading ? (
+              <span style={{ fontSize: '11px', color: '#B8A090' }}>Uploading...</span>
+            ) : (
+              <>
+                <Upload color="#C9A961" size={20} />
+                <span style={{ fontSize: '10px', color: '#B8A090', letterSpacing: '0.1em', textAlign: 'center' }}>Add photo</span>
+              </>
+            )}
+          </button>
+        )}
+      </div>
+
+      <p style={{ fontSize: '11px', color: '#B8A090', fontFamily: 'var(--font-inter)' }}>
+        Upload up to 4 photos for {metal.replace('_', ' ')} variant. First photo is the main image shown when this metal is selected.
+      </p>
+    </div>
+  )
+}
+
 export function ProductForm({ product, mode }: { product?: IncomingProduct; mode: 'new' | 'edit' }) {
   const router = useRouter()
   const { showToast } = useToast()
@@ -238,6 +365,7 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
   const [status, setStatus] = useState('Not saved yet')
   const [lastSaved, setLastSaved] = useState('')
   const [activeTab, setActiveTab] = useState(0)
+  const [activeMetalTab, setActiveMetalTab] = useState<MetalTab>('default')
   const [isSaving, setIsSaving] = useState(false)
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([])
 
@@ -559,21 +687,64 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
 
         {activeTab === 2 && (
           <section style={{ backgroundColor: '#FBF5F0', border: '0.5px solid #EDD9AF', borderRadius: '4px', padding: '24px' }}>
-            <label className="block cursor-pointer text-center" style={{ backgroundColor: '#FDF8F2', border: '2px dashed #EDD9AF', borderRadius: '4px', padding: '40px' }}>
-              <Upload color="#C9A961" className="mx-auto mb-4" size={34} />
-              <p style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '22px' }}>Drag and drop product images here</p>
-              <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '13px' }}>or click to browse. PNG, JPG up to 10MB each.</p>
-              <input multiple onChange={handleFiles} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" />
-            </label>
-            <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-              {form.images.map((image, index) => (
-                <div key={image} style={{ aspectRatio: '1', backgroundColor: '#F5E8ED', position: 'relative' }}>
-                  <Image src={image} alt={`Product ${index + 1}`} fill sizes="160px" style={{ objectFit: 'cover' }} />
-                  {index === 0 && <span style={{ backgroundColor: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '9px', left: '8px', letterSpacing: '0.12em', padding: '4px 8px', position: 'absolute', top: '8px' }}>PRIMARY</span>}
-                  <button type="button" onClick={() => setField('images', form.images.filter((item) => item !== image))} style={{ backgroundColor: '#FBF5F0', borderRadius: '50%', color: '#1A1014', padding: '5px', position: 'absolute', right: '8px', top: '8px' }}><X size={14} /></button>
-                </div>
-              ))}
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{ fontSize: '9px', letterSpacing: '0.25em', color: '#C9A961', marginBottom: '12px', fontFamily: 'var(--font-inter)' }}>
+                IMAGES BY METAL VARIANT
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                {[
+                  { key: 'default', label: 'Default', dot: '#888' },
+                  { key: 'white_gold', label: 'White Gold', dot: '#E8E8E8' },
+                  { key: 'yellow_gold', label: 'Yellow Gold', dot: '#C9A961' },
+                  { key: 'rose_gold', label: 'Rose Gold', dot: '#D4956A' },
+                  { key: 'platinum', label: 'Platinum', dot: '#C0C0C0' },
+                ].map((tab) => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setActiveMetalTab(tab.key as MetalTab)}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: activeMetalTab === tab.key ? '#1A1014' : 'transparent', color: activeMetalTab === tab.key ? '#FBF5F0' : '#1A1014', border: `0.5px solid ${activeMetalTab === tab.key ? '#1A1014' : '#EDD9AF'}`, cursor: 'pointer', fontSize: '11px', letterSpacing: '0.1em', fontFamily: 'var(--font-inter)', transition: 'all 0.2s' }}
+                  >
+                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: tab.dot, border: '0.5px solid rgba(26,16,20,0.15)', flexShrink: 0 }} />
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {activeMetalTab === 'default' ? (
+                <>
+                  <label className="block cursor-pointer text-center" style={{ backgroundColor: '#FDF8F2', border: '2px dashed #EDD9AF', borderRadius: '4px', padding: '40px' }}>
+                    <Upload color="#C9A961" className="mx-auto mb-4" size={34} />
+                    <p style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '22px' }}>Drag and drop product images here</p>
+                    <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '13px' }}>or click to browse. PNG, JPG up to 10MB each.</p>
+                    <input multiple onChange={handleFiles} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" />
+                  </label>
+                  <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+                    {form.images.map((image, index) => (
+                      <div key={image} style={{ aspectRatio: '1', backgroundColor: '#F5E8ED', position: 'relative' }}>
+                        <Image src={image} alt={`Product ${index + 1}`} fill sizes="160px" style={{ objectFit: 'cover' }} />
+                        {index === 0 && <span style={{ backgroundColor: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '9px', left: '8px', letterSpacing: '0.12em', padding: '4px 8px', position: 'absolute', top: '8px' }}>PRIMARY</span>}
+                        <button type="button" onClick={() => setField('images', form.images.filter((item) => item !== image))} style={{ backgroundColor: '#FBF5F0', borderRadius: '50%', color: '#1A1014', padding: '5px', position: 'absolute', right: '8px', top: '8px' }}><X size={14} /></button>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <MetalImageUpload
+                  metal={activeMetalTab}
+                  images={form.metalImages[activeMetalTab]}
+                  slug={form.slug || slugify(form.title)}
+                  onImagesChange={(newImages) => {
+                    setField('metalImages', {
+                      ...form.metalImages,
+                      [activeMetalTab]: newImages,
+                    })
+                  }}
+                />
+              )}
             </div>
+
             <div className="mt-6 grid gap-5 md:grid-cols-2">
               <div>
                 <div style={{ fontSize: '9px', letterSpacing: '0.3em', color: '#C9A961', fontFamily: 'var(--font-inter)', marginBottom: '12px' }}>

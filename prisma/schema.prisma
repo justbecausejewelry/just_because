@@ -47,6 +47,7 @@ model Product {
 
   // Media
   images         String[]
+  metalImages    Json?
   hoverImage     String?
   videos         String[]
   certificateUrl String?
