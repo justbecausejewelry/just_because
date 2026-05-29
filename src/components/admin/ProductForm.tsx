@@ -644,10 +644,12 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
       const payload = {
         ...form,
         slug: form.slug || slugify(form.title),
-        isActive: publish ? true : form.isActive,
+        isActive: publish,
+        pricePerCarat: Number(form.pricePerCarat) || 300,
         certificateUrl: form.certificateUrl || null,
         hoverImage: null,
         modelUrl: null,
+        updatedAt: new Date().toISOString(),
       }
       const url = mode === 'new' ? '/api/admin/products' : `/api/admin/products/${form.id}`
       const response = await fetch(url, {
@@ -667,18 +669,21 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
 
       showToast(
         publish
-          ? `Product published successfully!${skippedColumns}`
-          : `Draft saved successfully!${skippedColumns}`,
+          ? `Product published - Now live${skippedColumns}`
+          : `Draft saved - Not visible to customers${skippedColumns}`,
         'success'
       )
 
       if (publish) {
         window.setTimeout(() => {
           router.push('/admin/products')
-        }, 1000)
+        }, 800)
       } else {
         if (mode === 'new' && data.product?.id) {
           router.replace(`/admin/products/${data.product.id}`)
+        }
+        if (data.product) {
+          setForm((current) => ({ ...current, ...withoutNulls(data.product) }))
         }
         setStatus('Last saved: just now')
         setLastSaved('just now')
@@ -1232,68 +1237,155 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
         )}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-between gap-4 px-6 py-4 lg:left-[260px] lg:px-8" style={{ backgroundColor: '#FBF5F0', borderTop: '0.5px solid #EDD9AF' }}>
-        {activeTab < 3 ? (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-            <span style={{ fontSize: '12px', color: '#B8A090', fontFamily: 'var(--font-inter)' }}>
-              Step {activeTab + 1} of 4
-            </span>
-            <div style={{ display: 'flex', gap: '12px' }}>
-              {activeTab > 0 && (
-                <button type="button" onClick={() => setActiveTab(activeTab - 1)} style={{ padding: '12px 24px', background: 'transparent', border: '1px solid #EDD9AF', color: '#1A1014', fontSize: '11px', letterSpacing: '0.15em', cursor: 'pointer', fontFamily: 'var(--font-inter)' }}>
-                  ← BACK
-                </button>
-              )}
-              <button type="button" onClick={() => setActiveTab(activeTab + 1)} style={{ padding: '12px 28px', background: '#1A1014', border: 'none', color: '#FBF5F0', fontSize: '11px', letterSpacing: '0.15em', cursor: 'pointer', fontFamily: 'var(--font-inter)' }}>
-                {activeTab === 0 && 'NEXT: PRICING →'}
-                {activeTab === 1 && 'NEXT: MEDIA →'}
-                {activeTab === 2 && 'NEXT: SETTINGS →'}
-              </button>
-            </div>
+      <div className="fixed bottom-0 left-0 right-0 z-40 px-6 py-4 lg:left-[260px] lg:px-8" style={{ backgroundColor: '#FBF5F0', borderTop: '0.5px solid #EDD9AF' }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '16px',
+          width: '100%',
+        }}>
+          <div style={{
+            fontSize: '11px',
+            color: '#B8A090',
+            fontFamily: 'var(--font-inter)',
+          }}>
+            Step {activeTab + 1} of 4
+            {activeTab === 3 && (lastSaved || status !== 'Not saved yet') ? (
+              <span style={{ marginLeft: '12px' }}>
+                {lastSaved ? `Last saved: ${lastSaved}` : status}
+              </span>
+            ) : null}
           </div>
-        ) : (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-            <div style={{ fontSize: '12px', color: '#B8A090', fontFamily: 'var(--font-inter)' }}>
-              {lastSaved ? `Last saved: ${lastSaved}` : status}
-            </div>
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button type="button" onClick={() => setActiveTab(2)} style={{ padding: '12px 24px', background: 'transparent', border: '1px solid #EDD9AF', color: '#1A1014', fontSize: '11px', letterSpacing: '0.15em', cursor: 'pointer', fontFamily: 'var(--font-inter)' }}>
-                ← BACK
-              </button>
-              <button type="button" onClick={() => void handleSave('draft')} disabled={isSaving} style={{ padding: '12px 24px', background: 'transparent', border: '1px solid #1A1014', color: '#1A1014', fontSize: '11px', letterSpacing: '0.15em', cursor: isSaving ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-inter)', opacity: isSaving ? 0.65 : 1 }}>
-                {isSaving ? 'SAVING...' : 'SAVE AS DRAFT'}
-              </button>
+
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {activeTab > 0 && (
               <button
                 type="button"
-                onClick={() => void handleSave('publish')}
-                disabled={isSaving}
+                onClick={() => setActiveTab(activeTab - 1)}
                 style={{
-                  padding: '12px 28px',
-                  background: isSaving ? '#B8A090' : '#1A1014',
+                  padding: '12px 24px',
+                  background: 'transparent',
+                  border: '0.5px solid #EDD9AF',
+                  color: '#B8A090',
+                  fontSize: '11px',
+                  letterSpacing: '0.15em',
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-inter)',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(event) => {
+                  event.currentTarget.style.borderColor = '#1A1014'
+                  event.currentTarget.style.color = '#1A1014'
+                }}
+                onMouseLeave={(event) => {
+                  event.currentTarget.style.borderColor = '#EDD9AF'
+                  event.currentTarget.style.color = '#B8A090'
+                }}
+              >
+                ← BACK
+              </button>
+            )}
+
+            {activeTab < 3 && (
+              <button
+                type="button"
+                onClick={() => setActiveTab(activeTab + 1)}
+                style={{
+                  padding: '12px 32px',
+                  background: '#1A1014',
                   border: 'none',
                   color: '#FBF5F0',
                   fontSize: '11px',
                   letterSpacing: '0.15em',
-                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                  cursor: 'pointer',
                   fontFamily: 'var(--font-inter)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
                   transition: 'background 0.2s',
                 }}
+                onMouseEnter={(event) => {
+                  event.currentTarget.style.background = '#2A1E24'
+                }}
+                onMouseLeave={(event) => {
+                  event.currentTarget.style.background = '#1A1014'
+                }}
               >
-                {isSaving ? (
-                  <>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
-                      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                    </svg>
-                    SAVING...
-                  </>
-                ) : 'SAVE & PUBLISH'}
+                NEXT →
               </button>
-            </div>
+            )}
+
+            {activeTab === 3 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => void handleSave('draft')}
+                  disabled={isSaving}
+                  style={{
+                    padding: '12px 28px',
+                    background: 'transparent',
+                    border: '0.5px solid #EDD9AF',
+                    color: '#1A1014',
+                    fontSize: '11px',
+                    letterSpacing: '0.15em',
+                    cursor: isSaving ? 'not-allowed' : 'pointer',
+                    fontFamily: 'var(--font-inter)',
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    opacity: isSaving ? 0.65 : 1,
+                  }}
+                  onMouseEnter={(event) => {
+                    event.currentTarget.style.borderColor = '#C9A961'
+                    event.currentTarget.style.color = '#C9A961'
+                  }}
+                  onMouseLeave={(event) => {
+                    event.currentTarget.style.borderColor = '#EDD9AF'
+                    event.currentTarget.style.color = '#1A1014'
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
+                    <polyline points="17 21 17 13 7 13 7 21" />
+                    <polyline points="7 3 7 8 15 8" />
+                  </svg>
+                  {isSaving ? 'SAVING...' : 'SAVE DRAFT'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => void handleSave('publish')}
+                  disabled={isSaving}
+                  style={{
+                    padding: '12px 32px',
+                    background: isSaving ? '#B8A090' : '#1A1014',
+                    border: 'none',
+                    color: '#FBF5F0',
+                    fontSize: '11px',
+                    letterSpacing: '0.15em',
+                    cursor: isSaving ? 'not-allowed' : 'pointer',
+                    fontFamily: 'var(--font-inter)',
+                    transition: 'background 0.2s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    opacity: isSaving ? 0.75 : 1,
+                  }}
+                  onMouseEnter={(event) => {
+                    if (!isSaving) event.currentTarget.style.background = '#2A1E24'
+                  }}
+                  onMouseLeave={(event) => {
+                    if (!isSaving) event.currentTarget.style.background = '#1A1014'
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  {isSaving ? 'PUBLISHING...' : 'PUBLISH ✦'}
+                </button>
+              </>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   )

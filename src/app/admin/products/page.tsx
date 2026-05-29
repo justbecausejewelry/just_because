@@ -135,7 +135,37 @@ export default function AdminProductsPage() {
                   </div>
                 </td>
                 <td style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>{product.sku}</td>
-                <td style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '16px' }}>{product.title}</td>
+                <td style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '16px' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                    {product.title}
+                    {!product.isActive && (
+                      <span style={{
+                        fontSize: '9px',
+                        letterSpacing: '0.15em',
+                        color: '#B8A090',
+                        background: '#F5F0EA',
+                        border: '0.5px solid #EDD9AF',
+                        padding: '2px 8px',
+                        fontFamily: 'var(--font-inter)',
+                      }}>
+                        DRAFT
+                      </span>
+                    )}
+                    {product.isActive && (
+                      <span style={{
+                        fontSize: '9px',
+                        letterSpacing: '0.15em',
+                        color: '#2E7D32',
+                        background: '#F0FFF4',
+                        border: '0.5px solid #A8D5A8',
+                        padding: '2px 8px',
+                        fontFamily: 'var(--font-inter)',
+                      }}>
+                        LIVE
+                      </span>
+                    )}
+                  </span>
+                </td>
                 <td style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>{prettify(product.productType)}</td>
                 <td style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>{formatMoney(product.basePrice)}</td>
                 <td><Toggle checked={product.isActive} onChange={() => patchProduct(product.id, { isActive: !product.isActive })} /></td>

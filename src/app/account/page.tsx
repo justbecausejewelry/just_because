@@ -92,13 +92,20 @@ export default function AccountPage() {
   const [pageLoading, setPageLoading] = useState(true)
 
   useEffect(() => {
+    let cancelled = false
+
     const loadAccount = async () => {
       const {
-        data: { user: currentUser },
-      } = await supabaseAuth.auth.getUser()
+        data: { session },
+      } = await supabaseAuth.auth.getSession()
+      const currentUser = session?.user
 
       if (!currentUser) {
         router.push('/login?redirect=/account')
+        return
+      }
+
+      if (cancelled) {
         return
       }
 
@@ -106,34 +113,49 @@ export default function AccountPage() {
       setPageLoading(false)
 
       void checkIsAdmin().then(({ isAdmin: hasAdminAccess, role }) => {
+        if (cancelled) return
         setIsAdmin(hasAdminAccess)
         setAdminRole(role)
         setAdminChecking(false)
       }).catch(() => {
+        if (cancelled) return
         setIsAdmin(false)
         setAdminRole(null)
         setAdminChecking(false)
       })
 
-      const currentProfile = await getOrCreateProfile(
+      void getOrCreateProfile(
         currentUser.id,
         currentUser.email || '',
         typeof currentUser.user_metadata?.name === 'string' ? currentUser.user_metadata.name : undefined
-      )
-      setProfile(currentProfile)
+      ).then((currentProfile) => {
+        if (!cancelled) {
+          setProfile(currentProfile)
+        }
+      })
 
-      const [{ count: orders }, { count: wishlist }, { count: unread }] = await Promise.all([
+      void Promise.all([
         supabaseAuth.from('Order').select('*', { count: 'exact', head: true }).eq('customerEmail', currentUser.email || ''),
         supabaseAuth.from('Wishlist').select('*', { count: 'exact', head: true }).eq('userId', currentUser.id),
         supabaseAuth.from('Conversation').select('*', { count: 'exact', head: true }).eq('customerId', currentUser.id).eq('isReadByCustomer', false),
-      ])
-
-      setOrderCount(orders || 0)
-      setWishlistCount(wishlist || 0)
-      setUnreadMessages(unread || 0)
+      ]).then(([{ count: orders }, { count: wishlist }, { count: unread }]) => {
+        if (cancelled) return
+        setOrderCount(orders || 0)
+        setWishlistCount(wishlist || 0)
+        setUnreadMessages(unread || 0)
+      }).catch(() => {
+        if (cancelled) return
+        setOrderCount(0)
+        setWishlistCount(0)
+        setUnreadMessages(0)
+      })
     }
 
     void loadAccount()
+
+    return () => {
+      cancelled = true
+    }
   }, [router])
 
   const handleSignOut = async () => {
@@ -145,7 +167,13 @@ export default function AccountPage() {
   if (pageLoading) {
     return (
       <div style={{ height: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FBF5F0' }}>
-        <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '32px', color: '#C9A961' }}>✦</div>
+        <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '32px', color: '#C9A961', animation: 'pulse 1.5s ease-in-out infinite' }}>✦</div>
+        <style>{`
+          @keyframes pulse {
+            0%,100%{opacity:0.3;transform:scale(1)}
+            50%{opacity:1;transform:scale(1.1)}
+          }
+        `}</style>
       </div>
     )
   }
