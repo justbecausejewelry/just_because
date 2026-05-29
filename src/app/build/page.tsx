@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import { useCart } from '@/context/CartContext'
 import { useToast } from '@/context/ToastContext'
-import { ALL_DIAMONDS, Diamond } from '@/lib/diamondCatalog'
+import { ALL_DIAMONDS, Diamond, SHAPE_DATA } from '@/lib/diamondCatalog'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -133,10 +133,26 @@ function BuildContent() {
     if (!requestedDiamond) return
 
     const diamond = ALL_DIAMONDS.find((item) => item.id === requestedDiamond)
-    if (diamond) {
-      setSelectedDiamond(diamond)
-      setStep(1)
+    const customCarat = Number(searchParams.get('carat'))
+    const customPrice = Number(searchParams.get('price'))
+    const shape = searchParams.get('shape') || diamond?.shape || 'Round'
+    const shapeImage = SHAPE_DATA.find((item) => item.name === shape)?.img || SHAPE_DATA[0].img
+    const nextDiamond: Diamond = {
+      id: requestedDiamond,
+      shape,
+      carat: Number.isFinite(customCarat) && customCarat > 0 ? customCarat : diamond?.carat || 1,
+      color: searchParams.get('color') || diamond?.color || 'G',
+      clarity: searchParams.get('clarity') || diamond?.clarity || 'VS1',
+      cut: diamond?.cut || 'Excellent',
+      price: Number.isFinite(customPrice) && customPrice > 0 ? customPrice : diamond?.price || 0,
+      depth: diamond?.depth || '62.0',
+      table: diamond?.table || '58',
+      measurements: diamond?.measurements || '6.50 x 6.50 x 4.00',
+      igi: diamond?.igi || requestedDiamond,
+      img: diamond?.img || shapeImage,
     }
+    setSelectedDiamond(nextDiamond)
+    setStep(1)
   }, [searchParams])
 
   useEffect(() => {

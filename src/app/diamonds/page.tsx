@@ -1,9 +1,38 @@
 'use client'
 
-import { CSSProperties, useMemo, useState } from 'react'
+import { CSSProperties, useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@supabase/supabase-js'
+import { useCart } from '@/context/CartContext'
+import { useToast } from '@/context/ToastContext'
 import { ALL_DIAMONDS, Diamond, SHAPE_DATA } from '@/lib/diamondCatalog'
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
+
+type DiamondRow = {
+  id?: string | number | null
+  shape?: string | null
+  caratWeight?: number | string | null
+  carat?: number | string | null
+  color?: string | null
+  clarity?: string | null
+  cut?: string | null
+  price?: number | string | null
+  images?: string[] | string | null
+  imageUrl?: string | null
+  depth?: number | string | null
+  table?: number | string | null
+  depthPercent?: number | string | null
+  tablePercent?: number | string | null
+  measurements?: string | null
+  igi?: string | null
+  certificateNumber?: string | null
+  reportNumber?: string | null
+}
 
 const inputStyle: CSSProperties = {
   width: '100%',
@@ -22,6 +51,93 @@ function parseNumber(value: string, fallback: number) {
   return Number.isFinite(nextValue) ? nextValue : fallback
 }
 
+function firstImage(images: DiamondRow['images'], imageUrl?: string | null) {
+  if (Array.isArray(images) && typeof images[0] === 'string') {
+    return images[0]
+  }
+
+  if (typeof images === 'string' && images.trim()) {
+    try {
+      const parsed = JSON.parse(images) as unknown
+      if (Array.isArray(parsed) && typeof parsed[0] === 'string') {
+        return parsed[0]
+      }
+    } catch {
+      return images
+    }
+  }
+
+  return imageUrl || ''
+}
+
+function mapDiamond(row: DiamondRow, index: number): Diamond {
+  const shape = row.shape || 'Round'
+  const carat = Number(row.caratWeight ?? row.carat ?? 1)
+  const price = Number(row.price ?? 0)
+  const fallback = ALL_DIAMONDS[index % ALL_DIAMONDS.length]
+  const shapeImage = SHAPE_DATA.find((item) => item.name === shape)?.img || fallback.img
+
+  return {
+    id: String(row.id || fallback.id),
+    shape,
+    carat: Number.isFinite(carat) && carat > 0 ? carat : fallback.carat,
+    color: row.color || fallback.color,
+    clarity: row.clarity || fallback.clarity,
+    cut: row.cut || fallback.cut,
+    price: Number.isFinite(price) && price > 0 ? price : fallback.price,
+    depth: String(row.depthPercent || row.depth || fallback.depth),
+    table: String(row.tablePercent || row.table || fallback.table),
+    measurements: row.measurements || fallback.measurements,
+    igi: row.igi || row.certificateNumber || row.reportNumber || fallback.igi,
+    img: firstImage(row.images, row.imageUrl) || shapeImage,
+  }
+}
+
+function calculateCustomPrice(carat: number, color: string, clarity: string) {
+  const basePerCarat = 500
+  const colorMultiplier: Record<string, number> = {
+    D: 1.6,
+    E: 1.45,
+    F: 1.28,
+    G: 1.12,
+    H: 1.0,
+    I: 0.88,
+  }
+  const clarityMultiplier: Record<string, number> = {
+    IF: 1.65,
+    VVS1: 1.45,
+    VVS2: 1.3,
+    VS1: 1.15,
+    VS2: 1.0,
+    SI1: 0.85,
+  }
+
+  return Math.round(
+    carat *
+      basePerCarat *
+      (colorMultiplier[color] || 1) *
+      (clarityMultiplier[clarity] || 1)
+  )
+}
+
+function colorDescription(color: string) {
+  if (color === 'D') return 'Exceptional white+'
+  if (color === 'E') return 'Exceptional white'
+  if (color === 'F') return 'Rare white+'
+  if (color === 'G') return 'Rare white'
+  if (color === 'H') return 'White'
+  return 'Slightly tinted'
+}
+
+function clarityDescription(clarity: string) {
+  if (clarity === 'IF') return 'Internally Flawless'
+  if (clarity === 'VVS1') return 'Very Very Slightly Included'
+  if (clarity === 'VVS2') return 'Very Very Slight'
+  if (clarity === 'VS1') return 'Very Slightly Included'
+  if (clarity === 'VS2') return 'Very Slight'
+  return 'Slightly Included'
+}
+
 function DiamondModal({
   diamond,
   onClose,
@@ -29,8 +145,56 @@ function DiamondModal({
 }: {
   diamond: Diamond
   onClose: () => void
-  onChoose: () => void
+  onChoose: (customDiamond: Diamond) => void
 }) {
+  const { addItem } = useCart()
+  const { showToast } = useToast()
+  const [customCarat, setCustomCarat] = useState(diamond.carat || 1)
+  const [customColor, setCustomColor] = useState(diamond.color || 'G')
+  const [customClarity, setCustomClarity] = useState(diamond.clarity || 'VS1')
+
+  useEffect(() => {
+    setCustomCarat(diamond.carat || 1)
+    setCustomColor(diamond.color || 'G')
+    setCustomClarity(diamond.clarity || 'VS1')
+  }, [diamond])
+
+  const customPrice = calculateCustomPrice(customCarat, customColor, customClarity)
+  const originalCustomPrice = calculateCustomPrice(diamond.carat || 1, diamond.color || 'G', diamond.clarity || 'VS1')
+  const customDiamond: Diamond = {
+    ...diamond,
+    carat: customCarat,
+    color: customColor,
+    clarity: customClarity,
+    price: customPrice,
+  }
+
+  const addLooseDiamond = async () => {
+    await addItem({
+      productId: diamond.id,
+      productSlug: `loose-diamond-${diamond.id}`,
+      productTitle: `${customCarat.toFixed(2)}ct ${diamond.shape} Diamond`,
+      productImage: diamond.img,
+      selectedMetal: 'Loose diamond',
+      selectedCarat: customCarat,
+      selectedShape: diamond.shape,
+      selectedColor: customColor,
+      selectedClarity: customClarity,
+      quantity: 1,
+      unitPrice: customPrice,
+      priceBreakdown: {
+        base: customPrice,
+        metal: 0,
+        carat: 0,
+        shape: 0,
+        color: 0,
+        clarity: 0,
+      },
+    })
+    onClose()
+    showToast('Diamond added to cart -', 'success')
+  }
+
   return (
     <div
       onClick={onClose}
@@ -60,6 +224,38 @@ function DiamondModal({
           gridTemplateColumns: '1fr 1fr',
         }}
       >
+        <style>{`
+          input[type='range'] {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 4px;
+            border-radius: 2px;
+            cursor: pointer;
+          }
+          input[type='range']::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #1A1014;
+            border: 3px solid #C9A961;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(26,16,20,0.3);
+            transition: transform 0.15s ease;
+          }
+          input[type='range']::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+          }
+          input[type='range']::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #1A1014;
+            border: 3px solid #C9A961;
+            cursor: pointer;
+          }
+        `}</style>
         <button
           onClick={onClose}
           aria-label="Close diamond details"
@@ -138,9 +334,9 @@ function DiamondModal({
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '1px', background: '#EDD9AF', border: '0.5px solid #EDD9AF', marginBottom: '24px' }}>
             {[
-              ['CARAT', diamond.carat],
-              ['COLOR', diamond.color],
-              ['CLARITY', diamond.clarity],
+              ['CARAT', customCarat.toFixed(2)],
+              ['COLOR', customColor],
+              ['CLARITY', customClarity],
               ['CUT', diamond.cut],
             ].map(([label, value]) => (
               <div key={label} style={{ background: '#FBF5F0', padding: '14px 8px', textAlign: 'center' }}>
@@ -148,6 +344,155 @@ function DiamondModal({
                 <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '18px', color: '#1A1014' }}>{value}</div>
               </div>
             ))}
+          </div>
+
+          <div style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', padding: '20px', marginBottom: '20px' }}>
+            <div style={{ fontSize: '10px', letterSpacing: '0.25em', color: '#C9A961', marginBottom: '16px', fontFamily: 'var(--font-inter)' }}>
+              - CUSTOMIZE YOUR DIAMOND
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'baseline' }}>
+                <span style={{ fontSize: '12px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontWeight: 500 }}>
+                  Your diamond: {customCarat.toFixed(2)} ct
+                </span>
+                <div style={{ background: '#1A1014', color: '#FBF5F0', padding: '4px 12px', fontSize: '13px', fontFamily: 'var(--font-inter)', fontWeight: 500 }}>
+                  {customCarat.toFixed(2)} ct
+                </div>
+              </div>
+              <div style={{ position: 'relative', padding: '4px 0' }}>
+                <input
+                  type="range"
+                  min={0.25}
+                  max={5}
+                  step={0.01}
+                  value={customCarat}
+                  onChange={(event) => setCustomCarat(Number(event.target.value))}
+                  style={{
+                    width: '100%',
+                    height: '4px',
+                    appearance: 'none',
+                    background: `linear-gradient(to right, #C9A961 ${((customCarat - 0.25) / (5 - 0.25)) * 100}%, #EDD9AF ${((customCarat - 0.25) / (5 - 0.25)) * 100}%)`,
+                    outline: 'none',
+                    cursor: 'pointer',
+                    borderRadius: '2px',
+                  }}
+                />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
+                {[0.25, 0.5, 1, 1.5, 2, 3, 4, 5].map((carat) => (
+                  <button
+                    key={carat}
+                    onClick={() => setCustomCarat(carat)}
+                    style={{
+                      fontSize: '10px',
+                      color: Math.abs(customCarat - carat) < 0.05 ? '#C9A961' : '#B8A090',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontFamily: 'var(--font-inter)',
+                      fontWeight: Math.abs(customCarat - carat) < 0.05 ? 500 : 400,
+                      padding: '0',
+                    }}
+                  >
+                    {carat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', gap: '12px' }}>
+                <span style={{ fontSize: '12px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontWeight: 500 }}>Color</span>
+                <span style={{ fontSize: '11px', color: '#B8A090', fontFamily: 'var(--font-inter)' }}>{colorDescription(customColor)}</span>
+              </div>
+              <div style={{ display: 'flex', gap: '4px', marginBottom: '8px' }}>
+                {['D', 'E', 'F', 'G', 'H', 'I'].map((color, index) => {
+                  const selected = customColor === color
+                  const gradients = ['#FAFAFA', '#F5F5F5', '#F0F0F0', '#EBEBEB', '#E3E0D0', '#D8D0B8']
+                  return (
+                    <button
+                      key={color}
+                      onClick={() => setCustomColor(color)}
+                      title={color}
+                      style={{
+                        flex: 1,
+                        height: '36px',
+                        background: gradients[index],
+                        border: selected ? '2px solid #1A1014' : '1px solid #EDD9AF',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '12px',
+                        fontWeight: selected ? 500 : 400,
+                        color: '#1A1014',
+                        fontFamily: 'var(--font-inter)',
+                        transition: 'all 0.2s',
+                        borderRadius: '2px',
+                        boxShadow: selected ? '0 2px 8px rgba(26,16,20,0.15)' : 'none',
+                      }}
+                    >
+                      {color}
+                    </button>
+                  )
+                })}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: '#B8A090', fontFamily: 'var(--font-inter)', letterSpacing: '0.05em' }}>
+                <span>&lt;- COLORLESS</span>
+                <span>NEAR COLORLESS -&gt;</span>
+              </div>
+            </div>
+
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', gap: '12px' }}>
+                <span style={{ fontSize: '12px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontWeight: 500 }}>Clarity</span>
+                <span style={{ fontSize: '11px', color: '#B8A090', fontFamily: 'var(--font-inter)' }}>{clarityDescription(customClarity)}</span>
+              </div>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                {['IF', 'VVS1', 'VVS2', 'VS1', 'VS2', 'SI1'].map((clarity) => (
+                  <button
+                    key={clarity}
+                    onClick={() => setCustomClarity(clarity)}
+                    style={{
+                      flex: 1,
+                      padding: '8px 4px',
+                      border: customClarity === clarity ? '2px solid #1A1014' : '1px solid #EDD9AF',
+                      background: customClarity === clarity ? '#1A1014' : '#FBF5F0',
+                      color: customClarity === clarity ? '#FBF5F0' : '#1A1014',
+                      fontSize: '10px',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      fontFamily: 'var(--font-inter)',
+                      transition: 'all 0.2s',
+                      borderRadius: '2px',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {clarity}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ background: customPrice !== originalCustomPrice ? 'rgba(201,169,97,0.06)' : 'transparent', border: '0.5px solid #EDD9AF', padding: '16px 20px', marginBottom: '20px', transition: 'all 0.3s' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '16px' }}>
+              <div>
+                <div style={{ fontSize: '10px', color: '#B8A090', letterSpacing: '0.2em', fontFamily: 'var(--font-inter)', marginBottom: '4px' }}>YOUR DIAMOND PRICE</div>
+                <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '36px', color: '#1A1014', lineHeight: 1, transition: 'all 0.3s' }}>${customPrice.toLocaleString()}</div>
+                <div style={{ fontSize: '11px', color: '#B8A090', fontFamily: 'var(--font-inter)', marginTop: '4px' }}>
+                  {customCarat.toFixed(2)}ct - {customColor} - {customClarity}
+                  <br />
+                  Starting at ${Math.round(customPrice / 12).toLocaleString()}/mo
+                </div>
+              </div>
+              {customPrice !== originalCustomPrice ? (
+                <div style={{ fontSize: '11px', color: customPrice > originalCustomPrice ? '#A85C6A' : '#2E7D32', fontFamily: 'var(--font-inter)', textAlign: 'right' }}>
+                  {customPrice > originalCustomPrice ? '↑' : '↓'} Custom selection
+                </div>
+              ) : null}
+            </div>
           </div>
 
           <div style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', padding: '16px 20px', marginBottom: '20px' }}>
@@ -174,16 +519,11 @@ function DiamondModal({
             </div>
           </div>
 
-          <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '36px', color: '#1A1014', marginBottom: '6px' }}>${diamond.price.toLocaleString()}</div>
-          <div style={{ fontSize: '12px', color: '#B8A090', marginBottom: '24px', fontFamily: 'var(--font-inter)' }}>
-            Starting at ${Math.round(diamond.price / 12).toLocaleString()}/mo
-          </div>
-
           <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
-            <button onClick={onChoose} style={{ flex: 1, padding: '16px', background: '#1A1014', color: '#FBF5F0', border: 'none', fontSize: '11px', letterSpacing: '0.18em', cursor: 'pointer', fontFamily: 'var(--font-inter)' }}>
+            <button onClick={() => onChoose(customDiamond)} style={{ flex: 1, padding: '16px', background: '#1A1014', color: '#FBF5F0', border: 'none', fontSize: '11px', letterSpacing: '0.18em', cursor: 'pointer', fontFamily: 'var(--font-inter)' }}>
               CHOOSE THIS DIAMOND
             </button>
-            <button style={{ padding: '16px 20px', background: 'transparent', border: '0.5px solid #EDD9AF', color: '#1A1014', fontSize: '11px', letterSpacing: '0.18em', cursor: 'pointer', fontFamily: 'var(--font-inter)' }}>
+            <button onClick={() => void addLooseDiamond()} style={{ padding: '16px 20px', background: 'transparent', border: '0.5px solid #EDD9AF', color: '#1A1014', fontSize: '11px', letterSpacing: '0.18em', cursor: 'pointer', fontFamily: 'var(--font-inter)' }}>
               ADD TO CART
             </button>
           </div>
@@ -195,6 +535,8 @@ function DiamondModal({
 
 export default function DiamondsPage() {
   const router = useRouter()
+  const [diamonds, setDiamonds] = useState<Diamond[]>(ALL_DIAMONDS)
+  const [loading, setLoading] = useState(true)
   const [selectedShape, setSelectedShape] = useState('All')
   const [selectedColor, setSelectedColor] = useState<string[]>([])
   const [selectedClarity, setSelectedClarity] = useState<string[]>([])
@@ -204,8 +546,36 @@ export default function DiamondsPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [selectedDiamond, setSelectedDiamond] = useState<Diamond | null>(null)
 
+  useEffect(() => {
+    const fetchDiamonds = async () => {
+      const { data, error } = await supabaseAdmin
+        .from('Diamond')
+        .select('*')
+        .order('price', { ascending: true })
+
+      if (!error && data && data.length > 0) {
+        setDiamonds((data as DiamondRow[]).map(mapDiamond))
+      } else {
+        try {
+          const response = await fetch('/api/admin/diamonds')
+          const payload = (await response.json()) as { diamonds?: DiamondRow[] }
+          if (response.ok && payload.diamonds?.length) {
+            setDiamonds(payload.diamonds.map(mapDiamond))
+          } else {
+            setDiamonds(ALL_DIAMONDS)
+          }
+        } catch {
+          setDiamonds(ALL_DIAMONDS)
+        }
+      }
+      setLoading(false)
+    }
+
+    void fetchDiamonds()
+  }, [])
+
   const filtered = useMemo(() => {
-    return ALL_DIAMONDS.filter((diamond) => {
+    return diamonds.filter((diamond) => {
       if (selectedShape !== 'All' && diamond.shape !== selectedShape) return false
       if (selectedColor.length && !selectedColor.includes(diamond.color)) return false
       if (selectedClarity.length && !selectedClarity.includes(diamond.clarity)) return false
@@ -219,7 +589,7 @@ export default function DiamondsPage() {
       if (sortBy === 'carat_low') return a.carat - b.carat
       return 0
     })
-  }, [caratRange, priceRange, selectedClarity, selectedColor, selectedShape, sortBy])
+  }, [caratRange, diamonds, priceRange, selectedClarity, selectedColor, selectedShape, sortBy])
 
   return (
     <div style={{ background: '#FBF5F0', minHeight: '100vh' }}>
@@ -344,7 +714,7 @@ export default function DiamondsPage() {
         <main style={{ padding: '32px' }}>
           <div className="diamond-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '28px', paddingBottom: '20px', borderBottom: '0.5px solid #EDD9AF' }}>
             <div style={{ fontSize: '13px', color: '#B8A090', fontFamily: 'var(--font-inter)' }}>
-              <span style={{ color: '#C9A961', fontWeight: 500 }}>{filtered.length}</span> diamonds found
+              <span style={{ color: '#C9A961', fontWeight: 500 }}>{loading ? '...' : filtered.length}</span> diamonds found
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '11px', color: '#B8A090', fontFamily: 'var(--font-inter)' }}>SORT:</span>
@@ -366,6 +736,9 @@ export default function DiamondsPage() {
             </div>
           </div>
 
+          {loading ? (
+            <div style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', padding: '40px 0' }}>Loading diamonds...</div>
+          ) : (
           <div style={{ display: 'grid', gridTemplateColumns: viewMode === 'grid' ? 'repeat(auto-fill, minmax(220px, 1fr))' : '1fr', gap: '16px' }}>
             {filtered.map((diamond) => (
               <button
@@ -396,6 +769,7 @@ export default function DiamondsPage() {
               </button>
             ))}
           </div>
+          )}
         </main>
       </div>
 
@@ -403,9 +777,17 @@ export default function DiamondsPage() {
         <DiamondModal
           diamond={selectedDiamond}
           onClose={() => setSelectedDiamond(null)}
-          onChoose={() => {
+          onChoose={(customDiamond) => {
             setSelectedDiamond(null)
-            router.push(`/build?diamond=${selectedDiamond.id}`)
+            const params = new URLSearchParams({
+              diamond: customDiamond.id,
+              carat: customDiamond.carat.toString(),
+              color: customDiamond.color,
+              clarity: customDiamond.clarity,
+              price: customDiamond.price.toString(),
+              shape: customDiamond.shape,
+            })
+            router.push(`/build?${params.toString()}`)
           }}
         />
       ) : null}
