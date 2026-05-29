@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "prisma generate && next build --turbopack",
+    "update-images": "npx ts-node --project tsconfig.json scripts/updateProductImages.ts",
     "postinstall": "prisma generate",
     "start": "next start",
     "lint": "next lint"
@@ -40,6 +41,7 @@
     "eslint-config-next": "15.5.18",
     "prisma": "^7.8.0",
     "tailwindcss": "^4",
+    "ts-node": "^10.9.2",
     "tsx": "^4.22.3",
     "typescript": "^5"
   }

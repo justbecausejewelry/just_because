@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { Gem } from 'lucide-react'
 import { useToast } from '@/context/ToastContext'
 import { useWishlist } from '@/context/WishlistContext'
 
@@ -47,11 +46,18 @@ function formatPrice(price: number) {
 
 function ProductPlaceholder() {
   return (
-    <div
-      className="flex h-full w-full items-center justify-center"
-      style={{ backgroundColor: '#F5E8ED' }}
-    >
-      <Gem color="#C9A961" size={46} strokeWidth={1.1} />
+    <div style={{
+      width: '100%',
+      height: '100%',
+      background: 'linear-gradient(135deg, #F5E8ED, #FDF8F2)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}>
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,97,0.4)" strokeWidth="0.8">
+        <path d="M6 3h12l4 6-10 13L2 9z" />
+        <path d="M2 9h20" />
+      </svg>
     </div>
   )
 }
@@ -153,7 +159,8 @@ function ProductCard({ product }: { product: Product }) {
                 src={image}
                 alt={product.title}
                 fill
-                sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                sizes="(max-width: 768px) 100vw, 33vw"
+                quality={90}
                 style={{ objectFit: 'cover', transition: 'transform 0.6s cubic-bezier(0.4,0,0.2,1)' }}
               />
             ) : (

@@ -76,8 +76,18 @@ function prettify(value: string) {
 
 function ProductPlaceholder({ size = 52 }: { size?: number }) {
   return (
-    <div className="flex h-full w-full items-center justify-center" style={{ backgroundColor: '#F5E8ED' }}>
-      <Gem color="#C9A961" size={size} strokeWidth={1.1} />
+    <div style={{
+      width: '100%',
+      height: '100%',
+      background: 'linear-gradient(135deg, #F5E8ED, #FDF8F2)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}>
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,97,0.4)" strokeWidth="0.8">
+        <path d="M6 3h12l4 6-10 13L2 9z" />
+        <path d="M2 9h20" />
+      </svg>
     </div>
   )
 }
@@ -141,7 +151,8 @@ function ProductCard({ product }: { product: Product }) {
                 src={image}
                 alt={product.title}
                 fill
-                sizes="(max-width: 768px) 50vw, (max-width: 1024px) 50vw, 33vw"
+                sizes="(max-width: 768px) 100vw, 33vw"
+                quality={90}
                 style={{ objectFit: 'cover', transition: 'transform 0.6s cubic-bezier(0.4,0,0.2,1)' }}
               />
             ) : (
@@ -541,22 +552,52 @@ export default function ProductsPage() {
       fallback={
         <div
           style={{
-            minHeight: '100vh',
-            background: '#FBF5F0',
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            background: '#0A0612',
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
+            gap: '8px',
           }}
         >
-          <div
-            style={{
-              fontFamily: 'var(--font-playfair)',
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+            <span style={{
+              fontFamily: "'Italianno', cursive",
+              fontSize: '64px',
+              color: '#C9A961',
+              lineHeight: 0.85,
+              animation: 'breathe 1.5s ease-in-out infinite',
+            }}>just</span>
+            <span style={{
+              fontFamily: 'var(--font-inter)',
               fontSize: '18px',
-              color: '#B8A090',
-            }}
-          >
-            Loading...
+              letterSpacing: '0.35em',
+              color: 'rgba(201,169,97,0.7)',
+              fontWeight: 400,
+              marginLeft: '4px',
+            }}>BECAUSE</span>
           </div>
+          <div style={{
+            width: '40px',
+            height: '1px',
+            background: 'linear-gradient(to right, transparent, #C9A961, transparent)',
+            animation: 'expandLine 1.5s ease-in-out infinite',
+            marginTop: '8px',
+          }} />
+          <style>{`
+            @keyframes breathe {
+              0%, 100% { opacity: 0.5; transform: scale(1); }
+              50% { opacity: 1; transform: scale(1.05); }
+            }
+
+            @keyframes expandLine {
+              0%,100% { width: 20px; opacity: 0.3; }
+              50% { width: 60px; opacity: 1; }
+            }
+          `}</style>
         </div>
       }
     >
