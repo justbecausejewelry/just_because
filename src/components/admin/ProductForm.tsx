@@ -92,6 +92,20 @@ const optionSets = {
   clarities: ['IF', 'VVS1', 'VVS2', 'VS1', 'VS2'],
 }
 
+type MetalPricingKey = 'white_gold' | 'yellow_gold' | 'rose_gold' | 'platinum'
+
+const metalModifierOptions: Array<{
+  key: MetalPricingKey
+  label: string
+  legacyKey: string
+  dot: string
+}> = [
+  { key: 'white_gold', label: 'White Gold', legacyKey: 'White Gold', dot: '#E8E8E8' },
+  { key: 'yellow_gold', label: 'Yellow Gold', legacyKey: 'Yellow Gold', dot: '#C9A961' },
+  { key: 'rose_gold', label: 'Rose Gold', legacyKey: 'Rose Gold', dot: '#D4956A' },
+  { key: 'platinum', label: 'Platinum', legacyKey: 'Platinum', dot: '#C0C0C0' },
+]
+
 function mapFromOptions(options: string[], defaults: Record<string, number> = {}) {
   return Object.fromEntries(options.map((option) => [option, { enabled: true, modifier: defaults[option] || 0 }]))
 }
@@ -102,6 +116,27 @@ function slugify(value: string) {
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value || 0)
+}
+
+function isRingProduct(productType: string) {
+  return ['engagement_ring', 'wedding_ring', 'ring'].includes(productType.toLowerCase())
+}
+
+function getCaratSamples(productType: string, category: string) {
+  const combined = `${productType} ${category}`.toLowerCase()
+  if (combined.includes('earring') || combined.includes('stud') || combined.includes('hoop') || combined.includes('huggie')) {
+    return [0.25, 2, 6]
+  }
+  if (combined.includes('bracelet') || combined.includes('bangle')) {
+    return [3, 8, 15]
+  }
+  if (combined.includes('pendant')) {
+    return [0.25, 1, 2]
+  }
+  if (combined.includes('necklace') || combined.includes('choker') || combined.includes('tennis')) {
+    return [5, 10, 20]
+  }
+  return [1, 3, 5]
 }
 
 function validateForm(formData: ProductFormData): ValidationError[] {
@@ -134,11 +169,6 @@ function validateForm(formData: ProductFormData): ValidationError[] {
   const hasEnabledMetal = Object.values(formData.metalPricing || {}).some((metal) => metal?.enabled === true)
   if (!hasEnabledMetal) {
     errors.push({ field: 'metalPricing', message: 'At least one metal option must be enabled', tab: 1 })
-  }
-
-  const hasEnabledCarat = Object.values(formData.caratPricing || {}).some((carat) => carat?.enabled === true)
-  if (!hasEnabledCarat) {
-    errors.push({ field: 'caratPricing', message: 'At least one carat option must be enabled', tab: 1 })
   }
 
   return errors
@@ -409,9 +439,32 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
   }, [product])
 
   const categoryOptions = categories[form.productType] || []
-  const samplePrice = useMemo(() => {
-    return form.basePrice + (form.metalPricing['White Gold']?.modifier || 0) + form.pricePerCarat
-  }, [form])
+  const ringProduct = isRingProduct(form.productType)
+  const whiteGoldModifier = form.metalPricing['White Gold']?.modifier || form.metalPricing.white_gold?.modifier || 0
+  const caratSamples = useMemo(
+    () => getCaratSamples(form.productType, form.category),
+    [form.productType, form.category]
+  )
+  const samplePriceRows = useMemo(() => {
+    if (ringProduct) {
+      return [{
+        label: 'White Gold',
+        carat: null,
+        caratCost: 0,
+        total: form.basePrice + whiteGoldModifier,
+      }]
+    }
+
+    return caratSamples.map((carat) => {
+      const caratCost = carat * form.pricePerCarat
+      return {
+        label: `White Gold, ${carat}ct`,
+        carat,
+        caratCost,
+        total: form.basePrice + whiteGoldModifier + caratCost,
+      }
+    })
+  }, [caratSamples, form.basePrice, form.pricePerCarat, ringProduct, whiteGoldModifier])
 
   const setField = <K extends keyof ProductFormData>(key: K, value: ProductFormData[K]) => {
     setForm((current) => ({ ...current, [key]: value }))
@@ -420,15 +473,19 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
 
   const getFieldError = (field: string) => validationErrors.find((error) => error.field === field)?.message
 
-  const updatePricing = (group: keyof Pick<ProductFormData, 'metalPricing' | 'caratPricing' | 'shapePricing' | 'colorPricing' | 'clarityPricing'>, option: string, patch: Partial<{ enabled: boolean; modifier: number }>) => {
+  const updateMetalModifier = (metal: (typeof metalModifierOptions)[number], modifier: number) => {
     setForm((current) => ({
       ...current,
-      [group]: {
-        ...current[group],
-        [option]: { ...current[group][option], ...patch },
+      metalPricing: {
+        ...current.metalPricing,
+        [metal.legacyKey]: {
+          ...current.metalPricing[metal.legacyKey],
+          enabled: true,
+          modifier,
+        },
       },
     }))
-    setValidationErrors((current) => current.filter((error) => error.field !== group))
+    setValidationErrors((current) => current.filter((error) => error.field !== 'metalPricing'))
   }
 
   const handleFiles = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -673,7 +730,7 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
               <span style={{ color: getFieldError('description') ? '#A85C6A' : '#C9A961', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '8px' }}>INTERNAL DESCRIPTION *</span>
               <textarea value={form.description ?? ''} onChange={(event) => setField('description', event.target.value)} style={{ backgroundColor: '#FDF8F2', border: getFieldError('description') ? '1px solid #A85C6A' : '1px solid #EDD9AF', borderRadius: '2px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', minHeight: '120px', outlineColor: getFieldError('description') ? '#A85C6A' : '#1A1014', padding: '12px 14px', transition: 'border-color 0.2s', width: '100%' }} />
               <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', lineHeight: 1.6, marginTop: '8px' }}>
-                Saved for admin context and search. This copy is no longer displayed on the product detail page.
+                Description is used for SEO only. It is not displayed to customers on the product page.
               </p>
               <FieldError message={getFieldError('description')} />
             </label>
@@ -688,47 +745,94 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
         {activeTab === 1 && (
           <section className="grid gap-6 lg:grid-cols-[1fr_320px]">
             <div className="grid gap-5">
-              <div style={{ backgroundColor: '#FBF5F0', border: '0.5px solid #EDD9AF', borderRadius: '4px', padding: '20px' }}>
-                <TextInput
-                  label="PRICE PER CARAT"
-                  value={form.pricePerCarat}
-                  type="number"
-                  onChange={(value) => setField('pricePerCarat', Number(value))}
-                />
-                <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', lineHeight: 1.6, marginTop: '8px' }}>
-                  Used for product-type customizers: base price + metal modifier + selected carat weight times this value.
+              <div style={{ backgroundColor: '#FBF5F0', border: getFieldError('metalPricing') ? '1px solid #A85C6A' : '0.5px solid #EDD9AF', borderRadius: '4px', padding: '22px 24px' }}>
+                <p style={{ color: getFieldError('metalPricing') ? '#A85C6A' : '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '6px' }}>
+                  METAL MODIFIERS
                 </p>
+                <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', lineHeight: 1.6, marginBottom: '16px' }}>
+                  Price added or subtracted per metal.
+                </p>
+                <FieldError message={getFieldError('metalPricing')} />
+
+                {metalModifierOptions.map((metal) => {
+                  const value = form.metalPricing[metal.legacyKey]?.modifier || form.metalPricing[metal.key]?.modifier || 0
+                  return (
+                    <div key={metal.key} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 0', borderBottom: '0.5px solid #EDD9AF' }}>
+                      <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: metal.dot, border: '1px solid rgba(26,16,20,0.1)', flexShrink: 0 }} />
+                      <span style={{ flex: 1, fontSize: '13px', color: '#1A1014', fontFamily: 'var(--font-inter)' }}>
+                        {metal.label}
+                      </span>
+                      <span style={{ fontSize: '13px', color: value >= 0 ? '#7A8F72' : '#A85C6A', fontFamily: 'var(--font-inter)', fontWeight: 500, width: '16px' }}>
+                        {value >= 0 ? '+' : ''}
+                      </span>
+                      <input
+                        type="number"
+                        value={value}
+                        onChange={(event) => updateMetalModifier(metal, Number.parseInt(event.target.value, 10) || 0)}
+                        style={{ width: '100px', padding: '8px 12px', background: '#FDF8F2', border: '1px solid #EDD9AF', color: '#1A1014', fontSize: '13px', fontFamily: 'var(--font-inter)', textAlign: 'right', outline: 'none' }}
+                      />
+                      <span style={{ fontSize: '12px', color: '#B8A090', fontFamily: 'var(--font-inter)' }}>
+                        USD
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
 
-              {[
-                ['METAL', 'metalPricing', optionSets.metals],
-                ['CARAT', 'caratPricing', optionSets.carats],
-                ['SHAPE', 'shapePricing', optionSets.shapes],
-                ['COLOR', 'colorPricing', optionSets.colors],
-                ['CLARITY', 'clarityPricing', optionSets.clarities],
-              ].map(([label, group, options]) => (
-                <div key={label as string} style={{ backgroundColor: '#FBF5F0', border: getFieldError(group as string) ? '1px solid #A85C6A' : '0.5px solid #EDD9AF', borderRadius: '4px', padding: '20px' }}>
-                  <p style={{ color: getFieldError(group as string) ? '#A85C6A' : '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '12px' }}>{label as string}</p>
-                  <FieldError message={getFieldError(group as string)} />
-                  <div className="grid gap-2">
-                    {(options as string[]).map((option) => {
-                      const map = form[group as keyof Pick<ProductFormData, 'metalPricing' | 'caratPricing' | 'shapePricing' | 'colorPricing' | 'clarityPricing'>] as PricingMap
-                      return (
-                        <div key={option} className="grid grid-cols-[auto_1fr_120px] items-center gap-3">
-                          <input checked={map[option]?.enabled} onChange={(event) => updatePricing(group as keyof Pick<ProductFormData, 'metalPricing' | 'caratPricing' | 'shapePricing' | 'colorPricing' | 'clarityPricing'>, option, { enabled: event.target.checked })} type="checkbox" style={{ accentColor: '#1A1014' }} />
-                          <span style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px' }}>{option}</span>
-                          <input value={map[option]?.modifier || 0} onChange={(event) => updatePricing(group as keyof Pick<ProductFormData, 'metalPricing' | 'caratPricing' | 'shapePricing' | 'colorPricing' | 'clarityPricing'>, option, { modifier: Number(event.target.value) })} type="number" style={{ backgroundColor: '#FDF8F2', border: '1px solid #EDD9AF', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '12px', padding: '8px 10px' }} />
-                        </div>
-                      )
-                    })}
+              {!ringProduct && (
+                <div style={{ backgroundColor: '#FBF5F0', border: '0.5px solid #EDD9AF', borderRadius: '4px', padding: '22px 24px' }}>
+                  <div style={{ fontSize: '9px', letterSpacing: '0.25em', color: '#C9A961', marginBottom: '8px', fontFamily: 'var(--font-inter)' }}>
+                    PRICE PER CARAT
                   </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                    <input
+                      type="number"
+                      value={form.pricePerCarat || 300}
+                      onChange={(event) => setField('pricePerCarat', Number.parseInt(event.target.value, 10) || 0)}
+                      style={{ width: '140px', padding: '12px 16px', background: '#FDF8F2', border: '1px solid #EDD9AF', color: '#1A1014', fontSize: '14px', fontFamily: 'var(--font-inter)', outline: 'none' }}
+                    />
+                    <span style={{ fontSize: '13px', color: '#B8A090', fontFamily: 'var(--font-inter)' }}>
+                      USD per carat
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '11px', color: '#B8A090', marginTop: '8px', fontFamily: 'var(--font-inter)', lineHeight: 1.6 }}>
+                    Customer price = Base price + Metal modifier + selected carats times this value.
+                  </p>
                 </div>
-              ))}
+              )}
             </div>
             <aside style={{ backgroundColor: '#1A1014', borderRadius: '4px', color: '#FBF5F0', height: 'fit-content', padding: '20px 24px', position: 'sticky', top: '100px' }}>
-              <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.2em' }}>SAMPLE PRICE PREVIEW</p>
-              <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', lineHeight: 1.7, marginTop: '12px' }}>White Gold + 9ct + Round + G + VS1</p>
-              <p style={{ color: '#FBF5F0', fontFamily: 'var(--font-playfair)', fontSize: '38px', marginTop: '16px' }}>{formatMoney(samplePrice)}</p>
+              <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.2em' }}>PRICE PREVIEW</p>
+              <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', lineHeight: 1.7, marginTop: '12px' }}>
+                White Gold sample calculations
+              </p>
+              <div style={{ display: 'grid', gap: '18px', marginTop: '18px' }}>
+                {samplePriceRows.map((row) => (
+                  <div key={row.label} style={{ borderTop: '0.5px solid rgba(237,217,175,0.25)', paddingTop: '14px' }}>
+                    <p style={{ color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '12px', fontWeight: 500, marginBottom: '10px' }}>{row.label}</p>
+                    <div style={{ display: 'grid', gap: '8px', color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
+                        <span>Base price</span>
+                        <span>{formatMoney(form.basePrice)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
+                        <span>+ White Gold</span>
+                        <span>{whiteGoldModifier >= 0 ? '+' : ''}{formatMoney(whiteGoldModifier)}</span>
+                      </div>
+                      {row.carat !== null && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
+                          <span>+ {row.carat}ct x {formatMoney(form.pricePerCarat)}</span>
+                          <span>+ {formatMoney(row.caratCost)}</span>
+                        </div>
+                      )}
+                      <div style={{ borderTop: '0.5px solid rgba(237,217,175,0.25)', display: 'flex', justifyContent: 'space-between', gap: '16px', marginTop: '4px', paddingTop: '10px' }}>
+                        <span style={{ color: '#C9A961' }}>Total</span>
+                        <span style={{ color: '#FBF5F0', fontFamily: 'var(--font-playfair)', fontSize: '22px' }}>{formatMoney(row.total)}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </aside>
           </section>
         )}
