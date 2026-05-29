@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { Heart, LogOut, MessageSquare, Settings, ShoppingBag } from 'lucide-react'
 import type { User } from '@supabase/supabase-js'
 import { supabaseAuth } from '@/lib/auth'
-import { checkIsAdmin } from '@/lib/adminAuth'
+import { checkIsAdmin, clearAdminCache } from '@/lib/adminAuth'
 import { getOrCreateProfile, type UserProfile } from '@/lib/userProfile'
 
 type MenuCardProps = {
@@ -88,7 +88,8 @@ export default function AccountPage() {
   const [unreadMessages, setUnreadMessages] = useState(0)
   const [isAdmin, setIsAdmin] = useState(false)
   const [adminRole, setAdminRole] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [adminChecking, setAdminChecking] = useState(true)
+  const [pageLoading, setPageLoading] = useState(true)
 
   useEffect(() => {
     const loadAccount = async () => {
@@ -102,6 +103,18 @@ export default function AccountPage() {
       }
 
       setUser(currentUser)
+      setPageLoading(false)
+
+      void checkIsAdmin().then(({ isAdmin: hasAdminAccess, role }) => {
+        setIsAdmin(hasAdminAccess)
+        setAdminRole(role)
+        setAdminChecking(false)
+      }).catch(() => {
+        setIsAdmin(false)
+        setAdminRole(null)
+        setAdminChecking(false)
+      })
+
       const currentProfile = await getOrCreateProfile(
         currentUser.id,
         currentUser.email || '',
@@ -118,26 +131,22 @@ export default function AccountPage() {
       setOrderCount(orders || 0)
       setWishlistCount(wishlist || 0)
       setUnreadMessages(unread || 0)
-
-      const adminCheck = await checkIsAdmin()
-      setIsAdmin(adminCheck.isAdmin)
-      setAdminRole(adminCheck.role)
-      setIsLoading(false)
     }
 
     void loadAccount()
   }, [router])
 
   const handleSignOut = async () => {
+    clearAdminCache()
     await supabaseAuth.auth.signOut()
     router.push('/')
   }
 
-  if (isLoading) {
+  if (pageLoading) {
     return (
-      <main style={{ background: '#FBF5F0', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#B8A090', fontFamily: 'var(--font-playfair)', fontSize: '20px' }}>
-        Loading account...
-      </main>
+      <div style={{ height: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FBF5F0' }}>
+        <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '32px', color: '#C9A961' }}>✦</div>
+      </div>
     )
   }
 
@@ -201,7 +210,16 @@ export default function AccountPage() {
         <MenuCard href="/account/messages" icon={MessageSquare} title="Messages" description="Chat with our team" badge={unreadMessages} />
         <MenuCard href="/wishlist" icon={Heart} title="Wishlist" description="Your saved pieces" />
         <MenuCard href="/account/settings" icon={Settings} title="Account Settings" description="Update your profile" />
-        {isAdmin && (
+        {adminChecking ? (
+          <div style={{
+            height: '80px',
+            background: 'rgba(201,169,97,0.05)',
+            border: '0.5px solid #EDD9AF',
+            borderRadius: '4px',
+            animation: 'pulse 1.5s ease-in-out infinite',
+            gridColumn: '1 / -1',
+          }} />
+        ) : isAdmin ? (
           <Link
             href="/admin"
             style={{
@@ -268,7 +286,7 @@ export default function AccountPage() {
               fontFamily: 'var(--font-playfair)',
             }}>→</span>
           </Link>
-        )}
+        ) : null}
       </section>
 
       <button

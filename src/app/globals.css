@@ -713,6 +713,15 @@ button[aria-pressed]:hover,
   }
 }
 
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
 @keyframes chatPulse {
   0%,
   100% {

@@ -8,7 +8,7 @@ import { MiniCartDrawer } from '@/components/cart/MiniCartDrawer'
 import { useCart } from '@/context/CartContext'
 import { useWishlist } from '@/context/WishlistContext'
 import { supabaseAuth } from '@/lib/auth'
-import { checkIsAdmin } from '@/lib/adminAuth'
+import { checkIsAdmin, clearAdminCache } from '@/lib/adminAuth'
 
 type MegaMenuLink = {
   label: string
@@ -279,6 +279,7 @@ export function Navbar() {
         const { isAdmin: hasAdminAccess } = await checkIsAdmin()
         setIsAdmin(hasAdminAccess)
       } else {
+        clearAdminCache()
         setIsAdmin(false)
       }
     })
