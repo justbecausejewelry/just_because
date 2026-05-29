@@ -586,14 +586,20 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
-      const data = (await response.json()) as { product?: ProductFormData; error?: string }
+      const data = (await response.json()) as { product?: ProductFormData; error?: string; omittedColumns?: string[] }
 
       if (!response.ok || data.error) {
         throw new Error(data.error || 'Unable to save product.')
       }
 
+      const skippedColumns = data.omittedColumns?.length
+        ? ` Some newer fields were skipped until Supabase refreshes: ${data.omittedColumns.join(', ')}.`
+        : ''
+
       showToast(
-        publish ? 'Product published successfully!' : 'Draft saved successfully!',
+        publish
+          ? `Product published successfully!${skippedColumns}`
+          : `Draft saved successfully!${skippedColumns}`,
         'success'
       )
 
@@ -611,7 +617,7 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : 'Failed to save product'
       setStatus(message)
-      showToast('Failed to save product', 'error')
+      showToast(`Failed to save product: ${message}`, 'error')
     } finally {
       setIsSaving(false)
     }
