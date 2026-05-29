@@ -14,7 +14,10 @@ type CustomizerOptions = {
   showMetal: boolean
   showSize: boolean
   showCarat: boolean
+  showLength: boolean
+  sizeType?: 'ring'
   caratKey?: keyof typeof CARAT_OPTIONS
+  lengthOptions?: string[]
 }
 
 interface ProductCustomizerProps {
@@ -22,6 +25,7 @@ interface ProductCustomizerProps {
   onSelectionChange: (selections: {
     metal: string
     size?: string
+    length?: string
     caratWeight?: number
     totalPrice: number
   }) => void
@@ -51,48 +55,53 @@ const RING_SIZES = [
 ]
 
 function getOptionsForType(productType: string, category: string): CustomizerOptions {
-  const type = productType.toLowerCase()
-  const cat = category.toLowerCase()
-  const combined = `${type} ${cat}`
+  const type = (productType || '').toLowerCase()
+  const cat = (category || '').toLowerCase()
 
   if (
-    combined.includes('ring') ||
-    combined.includes('band') ||
-    combined.includes('engagement') ||
-    combined.includes('wedding')
+    type === 'engagement_ring' ||
+    type === 'wedding_ring' ||
+    type === 'ring' ||
+    cat === 'engagement' ||
+    cat === 'wedding'
   ) {
-    return { showMetal: true, showSize: true, showCarat: false }
-  }
-
-  if (
-    combined.includes('earring') ||
-    combined.includes('stud') ||
-    combined.includes('hoop') ||
-    combined.includes('huggie')
-  ) {
-    return { showMetal: true, showSize: false, showCarat: true, caratKey: 'earring' }
-  }
-
-  if (combined.includes('bracelet') || combined.includes('bangle')) {
-    return { showMetal: true, showSize: false, showCarat: true, caratKey: 'bracelet' }
+    return { showMetal: true, showSize: true, showCarat: false, showLength: false, sizeType: 'ring' }
   }
 
   if (
-    combined.includes('necklace') ||
-    combined.includes('pendant') ||
-    combined.includes('choker') ||
-    combined.includes('tennis')
+    type === 'earring' ||
+    type === 'stud' ||
+    cat.includes('earring') ||
+    cat.includes('stud') ||
+    cat.includes('hoop')
   ) {
-    if (combined.includes('tennis')) {
-      return { showMetal: true, showSize: false, showCarat: true, caratKey: 'tennis_necklace' }
-    }
-    if (combined.includes('pendant')) {
-      return { showMetal: true, showSize: false, showCarat: true, caratKey: 'pendant' }
-    }
-    return { showMetal: true, showSize: false, showCarat: true, caratKey: 'necklace' }
+    return { showMetal: true, showSize: false, showCarat: true, caratKey: 'earring', showLength: false }
   }
 
-  return { showMetal: true, showSize: false, showCarat: false }
+  if (
+    type === 'bracelet' ||
+    cat.includes('bracelet') ||
+    cat.includes('bangle') ||
+    cat.includes('tennis_bracelet')
+  ) {
+    return { showMetal: true, showSize: false, showCarat: true, caratKey: 'bracelet', showLength: true, lengthOptions: ['6.5"', '7"', '7.5"', '8"'] }
+  }
+
+  if (
+    type === 'necklace' ||
+    cat.includes('necklace') ||
+    cat.includes('choker') ||
+    cat.includes('tennis_necklace')
+  ) {
+    const isTennis = cat.includes('tennis')
+    return { showMetal: true, showSize: false, showCarat: true, caratKey: isTennis ? 'tennis_necklace' : 'necklace', showLength: true, lengthOptions: ['14"', '16"', '18"', '20"', '22"'] }
+  }
+
+  if (type === 'pendant' || cat.includes('pendant')) {
+    return { showMetal: true, showSize: false, showCarat: true, caratKey: 'pendant', showLength: true, lengthOptions: ['16"', '18"', '20"'] }
+  }
+
+  return { showMetal: true, showSize: false, showCarat: false, showLength: false }
 }
 
 export function productNeedsRingSize(productType?: string | null, category?: string | null) {
@@ -106,6 +115,7 @@ export default function ProductCustomizer({
   const [selectedMetal, setSelectedMetal] = useState(METALS[0])
   const [selectedSize, setSelectedSize] = useState<string | null>(null)
   const [selectedCarat, setSelectedCarat] = useState<number | null>(null)
+  const [selectedLength, setSelectedLength] = useState<string | null>(null)
 
   const options = useMemo(
     () => getOptionsForType(product.productType || '', product.category || ''),
@@ -119,8 +129,9 @@ export default function ProductCustomizer({
 
   useEffect(() => {
     setSelectedSize(null)
+    setSelectedLength(options.showLength && options.lengthOptions?.length ? options.lengthOptions[0] : null)
     setSelectedCarat(options.showCarat && caratList.length > 0 ? caratList[0] : null)
-  }, [caratList, options.showCarat])
+  }, [caratList, options.lengthOptions, options.showCarat, options.showLength])
 
   useEffect(() => {
     const metalPrice = selectedMetal.value === 'platinum' ? 800
@@ -135,10 +146,20 @@ export default function ProductCustomizer({
     onSelectionChange({
       metal: selectedMetal.fullLabel,
       size: selectedSize || undefined,
+      length: selectedLength || undefined,
       caratWeight: selectedCarat || undefined,
       totalPrice: (product.basePrice || 0) + metalPrice + caratPrice,
     })
-  }, [onSelectionChange, options.showCarat, product.basePrice, product.pricePerCarat, selectedCarat, selectedMetal, selectedSize])
+  }, [onSelectionChange, options.showCarat, product.basePrice, product.pricePerCarat, selectedCarat, selectedLength, selectedMetal, selectedSize])
+
+  const productType = product.productType || ''
+  const lengthLabel = productType.includes('necklace')
+    ? 'Necklace Length:'
+    : productType.includes('bracelet')
+      ? 'Bracelet Length:'
+      : productType.includes('pendant')
+        ? 'Chain Length:'
+        : 'Length:'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -286,6 +307,53 @@ export default function ProductCustomizer({
                 }}
               >
                 {carat}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {options.showLength && options.lengthOptions && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <span style={{ fontSize: '12px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontWeight: 500 }}>
+              {lengthLabel}
+            </span>
+            {selectedLength && (
+              <span style={{ fontSize: '13px', color: '#1A1014', fontFamily: 'var(--font-inter)' }}>
+                {selectedLength}
+              </span>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {options.lengthOptions.map((length) => (
+              <button
+                key={length}
+                onClick={() => setSelectedLength(length)}
+                style={{
+                  padding: '8px 16px',
+                  minWidth: '60px',
+                  border: selectedLength === length ? '1.5px solid #1A1014' : '1px solid #EDD9AF',
+                  background: selectedLength === length ? '#1A1014' : '#FBF5F0',
+                  color: selectedLength === length ? '#FBF5F0' : '#1A1014',
+                  fontSize: '13px',
+                  fontFamily: 'var(--font-inter)',
+                  cursor: 'pointer',
+                  borderRadius: '2px',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(event) => {
+                  if (selectedLength !== length) {
+                    event.currentTarget.style.borderColor = '#1A1014'
+                  }
+                }}
+                onMouseLeave={(event) => {
+                  if (selectedLength !== length) {
+                    event.currentTarget.style.borderColor = '#EDD9AF'
+                  }
+                }}
+              >
+                {length}
               </button>
             ))}
           </div>

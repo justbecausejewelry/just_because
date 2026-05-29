@@ -71,6 +71,7 @@ const productTypes = [
   ['earring', 'Earring'],
   ['necklace', 'Necklace'],
   ['bracelet', 'Bracelet'],
+  ['pendant', 'Pendant'],
   ['gemstone', 'Gemstone'],
 ]
 
@@ -80,6 +81,7 @@ const categories: Record<string, string[]> = {
   necklace: ['pendant', 'choker', 'tennis'],
   bracelet: ['tennis', 'bangle', 'cuff'],
   earring: ['stud', 'drop', 'hoop'],
+  pendant: ['solitaire', 'halo', 'station'],
   diamond: ['loose_stone'],
   gemstone: ['sapphire', 'emerald', 'ruby'],
 }
@@ -106,6 +108,64 @@ const metalModifierOptions: Array<{
   { key: 'platinum', label: 'Platinum', legacyKey: 'Platinum', dot: '#C0C0C0' },
 ]
 
+const ringSizeOptions = ['3', '3.5', '4', '4.5', '5', '5.5', '6', '6.5', '7', '7.5', '8', '8.5', '9', '9.5', '10']
+
+type ProductTypeConfig = {
+  label: string
+  fields: {
+    sizes: boolean
+    caratWeights: boolean
+    lengths: boolean
+    bandWidth?: boolean
+    backType?: boolean
+  }
+  caratOptions?: number[]
+  lengthOptions?: string[]
+  description: string
+}
+
+const productTypeConfig: Record<string, ProductTypeConfig> = {
+  engagement_ring: {
+    label: 'Engagement Ring',
+    fields: { sizes: true, caratWeights: false, lengths: false, bandWidth: true },
+    caratOptions: [],
+    description: 'Configure metal modifiers and available ring sizes.',
+  },
+  wedding_ring: {
+    label: 'Wedding Ring / Band',
+    fields: { sizes: true, caratWeights: false, lengths: false, bandWidth: true },
+    caratOptions: [],
+    description: 'Configure metal modifiers, band width, and ring sizes.',
+  },
+  earring: {
+    label: 'Earrings / Studs',
+    fields: { sizes: false, caratWeights: true, lengths: false, backType: true },
+    caratOptions: [0.25, 0.5, 0.75, 1, 1.5, 2, 2.5, 3, 4, 5, 6],
+    description: 'Configure metal modifiers and carat weight options per pair.',
+  },
+  bracelet: {
+    label: 'Bracelet',
+    fields: { sizes: false, caratWeights: true, lengths: true },
+    caratOptions: [3, 5, 8, 10, 12, 15],
+    lengthOptions: ['6.5"', '7"', '7.5"', '8"'],
+    description: 'Configure metal modifiers, total carat weights, and bracelet lengths.',
+  },
+  necklace: {
+    label: 'Necklace',
+    fields: { sizes: false, caratWeights: true, lengths: true },
+    caratOptions: [5, 7, 10, 15, 20],
+    lengthOptions: ['14"', '16"', '18"', '20"', '22"'],
+    description: 'Configure metal modifiers, total carat weights, and necklace lengths.',
+  },
+  pendant: {
+    label: 'Pendant',
+    fields: { sizes: false, caratWeights: true, lengths: true },
+    caratOptions: [0.25, 0.5, 0.75, 1, 1.5, 2],
+    lengthOptions: ['16"', '18"', '20"'],
+    description: 'Configure metal modifiers, diamond sizes, and chain lengths.',
+  },
+}
+
 function mapFromOptions(options: string[], defaults: Record<string, number> = {}) {
   return Object.fromEntries(options.map((option) => [option, { enabled: true, modifier: defaults[option] || 0 }]))
 }
@@ -122,21 +182,16 @@ function isRingProduct(productType: string) {
   return ['engagement_ring', 'wedding_ring', 'ring'].includes(productType.toLowerCase())
 }
 
-function getCaratSamples(productType: string, category: string) {
-  const combined = `${productType} ${category}`.toLowerCase()
-  if (combined.includes('earring') || combined.includes('stud') || combined.includes('hoop') || combined.includes('huggie')) {
-    return [0.25, 2, 6]
+function getConfigForProductType(productType: string) {
+  return productTypeConfig[productType] || productTypeConfig.engagement_ring
+}
+
+function getCaratSamples(productType: string) {
+  const options = getConfigForProductType(productType).caratOptions || []
+  if (options.length >= 3) {
+    return [options[0], options[Math.floor(options.length / 2)], options[options.length - 1]]
   }
-  if (combined.includes('bracelet') || combined.includes('bangle')) {
-    return [3, 8, 15]
-  }
-  if (combined.includes('pendant')) {
-    return [0.25, 1, 2]
-  }
-  if (combined.includes('necklace') || combined.includes('choker') || combined.includes('tennis')) {
-    return [5, 10, 20]
-  }
-  return [1, 3, 5]
+  return options.length ? options : [1, 3, 5]
 }
 
 function validateForm(formData: ProductFormData): ValidationError[] {
@@ -195,7 +250,7 @@ function blankProduct(): ProductFormData {
     availableColors: optionSets.colors,
     availableClarities: optionSets.clarities,
     availableCuts: [],
-    availableSizes: ['4', '4.5', '5', '5.5', '6', '6.5', '7', '7.5', '8', '8.5', '9'],
+    availableSizes: ringSizeOptions,
     engravingAllowed: true,
     engravingMaxChars: 20,
     images: [],
@@ -439,11 +494,12 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
   }, [product])
 
   const categoryOptions = categories[form.productType] || []
+  const selectedProductConfig = getConfigForProductType(form.productType)
   const ringProduct = isRingProduct(form.productType)
   const whiteGoldModifier = form.metalPricing['White Gold']?.modifier || form.metalPricing.white_gold?.modifier || 0
   const caratSamples = useMemo(
-    () => getCaratSamples(form.productType, form.category),
-    [form.productType, form.category]
+    () => getCaratSamples(form.productType),
+    [form.productType]
   )
   const samplePriceRows = useMemo(() => {
     if (ringProduct) {
@@ -469,6 +525,19 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
   const setField = <K extends keyof ProductFormData>(key: K, value: ProductFormData[K]) => {
     setForm((current) => ({ ...current, [key]: value }))
     setValidationErrors((current) => current.filter((error) => error.field !== key))
+  }
+
+  const handleProductTypeChange = (value: string) => {
+    const nextConfig = getConfigForProductType(value)
+    const nextCategory = categories[value]?.[0] || ''
+    setForm((current) => ({
+      ...current,
+      productType: value,
+      category: nextCategory,
+      availableCarats: nextConfig.caratOptions || [],
+      availableSizes: nextConfig.fields.sizes ? ringSizeOptions : nextConfig.lengthOptions || [],
+    }))
+    setValidationErrors((current) => current.filter((error) => error.field !== 'productType' && error.field !== 'category'))
   }
 
   const getFieldError = (field: string) => validationErrors.find((error) => error.field === field)?.message
@@ -703,7 +772,7 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
             <div className="grid gap-5 md:grid-cols-2">
               <label>
                 <span style={{ color: getFieldError('productType') ? '#A85C6A' : '#C9A961', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '8px' }}>PRODUCT TYPE *</span>
-                <Select value={form.productType} onValueChange={(value) => { setField('productType', value); setField('category', categories[value]?.[0] || '') }}>
+                <Select value={form.productType} onValueChange={handleProductTypeChange}>
                   <SelectTrigger style={{ backgroundColor: '#FDF8F2', border: getFieldError('productType') ? '1px solid #A85C6A' : '1px solid #EDD9AF', borderRadius: '2px', color: '#1A1014', width: '100%' }}><SelectValue /></SelectTrigger>
                   <SelectContent style={{ backgroundColor: '#FDF8F2', border: '1px solid #EDD9AF' }}>{productTypes.map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent>
                 </Select>
@@ -751,6 +820,15 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
         {activeTab === 1 && (
           <section className="grid gap-6 lg:grid-cols-[1fr_320px]">
             <div className="grid gap-5">
+              <div style={{ background: 'rgba(201,169,97,0.08)', border: '0.5px solid rgba(201,169,97,0.3)', padding: '14px 20px' }}>
+                <div style={{ fontSize: '11px', color: '#C9A961', letterSpacing: '0.15em', fontFamily: 'var(--font-inter)', fontWeight: 500, marginBottom: '4px' }}>
+                  {selectedProductConfig.label.toUpperCase()} PRICING
+                </div>
+                <div style={{ fontSize: '12px', color: '#B8A090', fontFamily: 'var(--font-inter)' }}>
+                  {selectedProductConfig.description}
+                </div>
+              </div>
+
               <div style={{ backgroundColor: '#FBF5F0', border: getFieldError('metalPricing') ? '1px solid #A85C6A' : '0.5px solid #EDD9AF', borderRadius: '4px', padding: '22px 24px' }}>
                 <p style={{ color: getFieldError('metalPricing') ? '#A85C6A' : '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '6px' }}>
                   METAL MODIFIERS
@@ -785,7 +863,7 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
                 })}
               </div>
 
-              {!ringProduct && (
+              {selectedProductConfig.fields.caratWeights && (
                 <div style={{ backgroundColor: '#FBF5F0', border: '0.5px solid #EDD9AF', borderRadius: '4px', padding: '22px 24px' }}>
                   <div style={{ fontSize: '9px', letterSpacing: '0.25em', color: '#C9A961', marginBottom: '8px', fontFamily: 'var(--font-inter)' }}>
                     PRICE PER CARAT
@@ -804,6 +882,97 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
                   <p style={{ fontSize: '11px', color: '#B8A090', marginTop: '8px', fontFamily: 'var(--font-inter)', lineHeight: 1.6 }}>
                     Customer price = Base price + Metal modifier + selected carats times this value.
                   </p>
+
+                  <div style={{ marginTop: '24px' }}>
+                    <div style={{ fontSize: '9px', letterSpacing: '0.25em', color: '#C9A961', marginBottom: '12px', fontFamily: 'var(--font-inter)' }}>
+                      AVAILABLE CARAT WEIGHTS
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(74px, 1fr))', gap: '6px' }}>
+                      {(selectedProductConfig.caratOptions || []).map((carat) => {
+                        const selected = form.availableCarats.includes(carat)
+                        return (
+                          <label key={carat} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px', border: '0.5px solid #EDD9AF', background: selected ? '#FDF8F2' : '#FBF5F0', cursor: 'pointer', fontSize: '12px', color: '#1A1014', fontFamily: 'var(--font-inter)' }}>
+                            <input
+                              type="checkbox"
+                              checked={selected}
+                              onChange={(event) => {
+                                const next = event.target.checked
+                                  ? [...form.availableCarats, carat].sort((a, b) => a - b)
+                                  : form.availableCarats.filter((item) => item !== carat)
+                                setField('availableCarats', next)
+                              }}
+                              style={{ accentColor: '#1A1014' }}
+                            />
+                            {carat}
+                          </label>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {selectedProductConfig.fields.lengths && selectedProductConfig.lengthOptions && (
+                <div style={{ backgroundColor: '#FBF5F0', border: '0.5px solid #EDD9AF', borderRadius: '4px', padding: '22px 24px' }}>
+                  <div style={{ fontSize: '9px', letterSpacing: '0.25em', color: '#C9A961', marginBottom: '12px', fontFamily: 'var(--font-inter)' }}>
+                    AVAILABLE LENGTHS
+                  </div>
+                  <p style={{ fontSize: '11px', color: '#B8A090', marginBottom: '12px', fontFamily: 'var(--font-inter)', lineHeight: 1.6 }}>
+                    Check which chain or bracelet lengths are offered for this product.
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(82px, 1fr))', gap: '6px' }}>
+                    {selectedProductConfig.lengthOptions.map((length) => {
+                      const selected = form.availableSizes.includes(length)
+                      return (
+                        <label key={length} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px', border: '0.5px solid #EDD9AF', background: selected ? '#FDF8F2' : '#FBF5F0', cursor: 'pointer', fontSize: '12px', color: '#1A1014', fontFamily: 'var(--font-inter)' }}>
+                          <input
+                            type="checkbox"
+                            checked={selected}
+                            onChange={(event) => {
+                              const next = event.target.checked
+                                ? [...form.availableSizes, length]
+                                : form.availableSizes.filter((item) => item !== length)
+                              setField('availableSizes', next)
+                            }}
+                            style={{ accentColor: '#1A1014' }}
+                          />
+                          {length}
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {selectedProductConfig.fields.sizes && (
+                <div style={{ backgroundColor: '#FBF5F0', border: '0.5px solid #EDD9AF', borderRadius: '4px', padding: '22px 24px' }}>
+                  <div style={{ fontSize: '9px', letterSpacing: '0.25em', color: '#C9A961', marginBottom: '12px', fontFamily: 'var(--font-inter)' }}>
+                    AVAILABLE RING SIZES
+                  </div>
+                  <p style={{ fontSize: '11px', color: '#B8A090', marginBottom: '12px', fontFamily: 'var(--font-inter)', lineHeight: 1.6 }}>
+                    Check which sizes are available for this ring. Most styles support sizes 3 through 10.
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(56px, 1fr))', gap: '6px' }}>
+                    {ringSizeOptions.map((size) => {
+                      const selected = form.availableSizes.includes(size)
+                      return (
+                        <label key={size} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px', border: '0.5px solid #EDD9AF', background: selected ? '#FDF8F2' : '#FBF5F0', cursor: 'pointer', fontSize: '12px', color: '#1A1014', fontFamily: 'var(--font-inter)' }}>
+                          <input
+                            type="checkbox"
+                            checked={selected}
+                            onChange={(event) => {
+                              const next = event.target.checked
+                                ? [...form.availableSizes, size]
+                                : form.availableSizes.filter((item) => item !== size)
+                              setField('availableSizes', next)
+                            }}
+                            style={{ accentColor: '#1A1014' }}
+                          />
+                          {size}
+                        </label>
+                      )
+                    })}
+                  </div>
                 </div>
               )}
             </div>
