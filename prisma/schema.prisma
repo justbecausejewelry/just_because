@@ -24,6 +24,7 @@ model Product {
   title       String
   description String?
   basePrice   Float
+  pricePerCarat Float? @default(300)
 
   // Pricing modifiers stored as JSON
   // Format: { "White Gold": { "enabled": true, "modifier": 0 }, ... }

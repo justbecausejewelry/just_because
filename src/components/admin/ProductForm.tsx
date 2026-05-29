@@ -25,6 +25,7 @@ type ProductFormData = {
   slug: string
   description: string
   basePrice: number
+  pricePerCarat: number
   metalPricing: PricingMap
   caratPricing: PricingMap
   shapePricing: PricingMap
@@ -152,6 +153,7 @@ function blankProduct(): ProductFormData {
     slug: '',
     description: '',
     basePrice: 0,
+    pricePerCarat: 300,
     metalPricing: mapFromOptions(optionSets.metals, { 'Yellow Gold': 200, 'Rose Gold': 150, Platinum: 800 }),
     caratPricing: mapFromOptions(optionSets.carats, { '9': 3000, '12': 7000 }),
     shapePricing: mapFromOptions(optionSets.shapes),
@@ -408,7 +410,7 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
 
   const categoryOptions = categories[form.productType] || []
   const samplePrice = useMemo(() => {
-    return form.basePrice + (form.metalPricing['White Gold']?.modifier || 0) + (form.caratPricing['9']?.modifier || 0) + (form.shapePricing.Round?.modifier || 0) + (form.colorPricing.G?.modifier || 0) + (form.clarityPricing.VS1?.modifier || 0)
+    return form.basePrice + (form.metalPricing['White Gold']?.modifier || 0) + form.pricePerCarat
   }, [form])
 
   const setField = <K extends keyof ProductFormData>(key: K, value: ProductFormData[K]) => {
@@ -668,8 +670,11 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
               <button type="button" onClick={() => setField('sku', `JB-${form.productType.split('_')[0].slice(0, 4).toUpperCase()}-${Date.now()}`)} style={{ alignSelf: 'end', backgroundColor: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '11px', height: '43px', letterSpacing: '0.12em', padding: '0 16px' }}>AUTO-GENERATE</button>
             </div>
             <label>
-              <span style={{ color: getFieldError('description') ? '#A85C6A' : '#C9A961', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '8px' }}>DESCRIPTION *</span>
+              <span style={{ color: getFieldError('description') ? '#A85C6A' : '#C9A961', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '8px' }}>INTERNAL DESCRIPTION *</span>
               <textarea value={form.description ?? ''} onChange={(event) => setField('description', event.target.value)} style={{ backgroundColor: '#FDF8F2', border: getFieldError('description') ? '1px solid #A85C6A' : '1px solid #EDD9AF', borderRadius: '2px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', minHeight: '120px', outlineColor: getFieldError('description') ? '#A85C6A' : '#1A1014', padding: '12px 14px', transition: 'border-color 0.2s', width: '100%' }} />
+              <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', lineHeight: 1.6, marginTop: '8px' }}>
+                Saved for admin context and search. This copy is no longer displayed on the product detail page.
+              </p>
               <FieldError message={getFieldError('description')} />
             </label>
             <div>
@@ -683,6 +688,18 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
         {activeTab === 1 && (
           <section className="grid gap-6 lg:grid-cols-[1fr_320px]">
             <div className="grid gap-5">
+              <div style={{ backgroundColor: '#FBF5F0', border: '0.5px solid #EDD9AF', borderRadius: '4px', padding: '20px' }}>
+                <TextInput
+                  label="PRICE PER CARAT"
+                  value={form.pricePerCarat}
+                  type="number"
+                  onChange={(value) => setField('pricePerCarat', Number(value))}
+                />
+                <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', lineHeight: 1.6, marginTop: '8px' }}>
+                  Used for product-type customizers: base price + metal modifier + selected carat weight times this value.
+                </p>
+              </div>
+
               {[
                 ['METAL', 'metalPricing', optionSets.metals],
                 ['CARAT', 'caratPricing', optionSets.carats],

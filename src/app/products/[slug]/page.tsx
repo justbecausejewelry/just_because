@@ -6,20 +6,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Gem, Heart, RotateCcw, Share2, ShieldCheck, Sparkles, Star } from 'lucide-react'
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import ProductCustomizer, { productNeedsRingSize } from '@/components/products/ProductCustomizer'
 import { useCart } from '@/context/CartContext'
 import { useToast } from '@/context/ToastContext'
 import { supabaseAuth } from '@/lib/auth'
@@ -35,6 +22,7 @@ type Product = {
   title: string
   description: string | null
   basePrice: number
+  pricePerCarat?: number | null
   metalPricing: PricingMap
   caratPricing: PricingMap
   shapePricing: PricingMap
@@ -61,39 +49,6 @@ type Review = {
   createdAt: string
 }
 
-type PriceResponse = {
-  breakdown: {
-    base: number
-    metal: number
-    carat: number
-    shape: number
-    color: number
-    clarity: number
-  }
-  total: number
-  formatted: string
-  error?: string
-}
-
-const metalGradients: Record<string, string> = {
-  'White Gold': 'linear-gradient(135deg, #FBF5F0 0%, #E8E8E8 52%, #BDBDBD 100%)',
-  'Yellow Gold': 'linear-gradient(135deg, #EDD9AF 0%, #C9A961 52%, #8E7133 100%)',
-  'Rose Gold': 'linear-gradient(135deg, #FCF0F4 0%, #E8B5A8 54%, #B97868 100%)',
-  Platinum: 'linear-gradient(135deg, #FDF8F2 0%, #D0D0D0 52%, #A8A8A8 100%)',
-}
-
-const shapeFileNames: Record<string, string> = {
-  Round: 'round',
-  Oval: 'oval',
-  Cushion: 'cushion',
-  Princess: 'princess',
-  Emerald: 'emerald',
-  Pear: 'pear',
-  Marquise: 'marquise',
-  Heart: 'heart',
-  Asscher: 'asscher',
-}
-
 function formatPrice(price: number) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -104,10 +59,6 @@ function formatPrice(price: number) {
 
 function prettify(value: string) {
   return value.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
-}
-
-function modifier(map: PricingMap | undefined, key: string | number) {
-  return map?.[String(key)]?.modifier || 0
 }
 
 function ProductPlaceholder({ size = 72 }: { size?: number }) {
@@ -163,14 +114,9 @@ export default function ProductDetailPage() {
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 })
   const [showZoomLens, setShowZoomLens] = useState(false)
   const [selectedMetal, setSelectedMetal] = useState('')
-  const [selectedCarat, setSelectedCarat] = useState<number>(6)
-  const [selectedShape, setSelectedShape] = useState('')
-  const [selectedColor, setSelectedColor] = useState('G')
-  const [selectedClarity, setSelectedClarity] = useState('VS1')
-  const [ringSize, setRingSize] = useState('6')
-  const [engraving, setEngraving] = useState('')
-  const [price, setPrice] = useState<PriceResponse | null>(null)
-  const [priceLoading, setPriceLoading] = useState(false)
+  const [selectedCarat, setSelectedCarat] = useState<number | null>(null)
+  const [selectedSize, setSelectedSize] = useState<string | null>(null)
+  const [calculatedPrice, setCalculatedPrice] = useState(0)
   const [addedToCart, setAddedToCart] = useState(false)
   const imageRef = useRef<HTMLDivElement>(null)
   const touchStartX = useRef(0)
@@ -195,12 +141,10 @@ export default function ProductDetailPage() {
       const incoming = payload.product
       setProduct(incoming)
       setReviews(payload.reviews || [])
-      setSelectedMetal(incoming.availableMetals?.[0] || 'White Gold')
-      setSelectedCarat(incoming.availableCarats?.[0] || 6)
-      setSelectedShape(incoming.availableShapes?.[0] || 'Round')
-      setSelectedColor(incoming.availableColors?.[3] || incoming.availableColors?.[0] || 'G')
-      setSelectedClarity(incoming.availableClarities?.[3] || incoming.availableClarities?.[0] || 'VS1')
-      setRingSize('')
+      setSelectedMetal('14K White Gold')
+      setSelectedCarat(null)
+      setSelectedSize(null)
+      setCalculatedPrice(incoming.basePrice)
       setSelectedImage(0)
       setIsZoomed(false)
     } catch (caught) {
@@ -214,51 +158,10 @@ export default function ProductDetailPage() {
     void loadProduct()
   }, [loadProduct])
 
-  useEffect(() => {
-    if (!product) {
-      return
-    }
-
-    const calculatePrice = async () => {
-      setPriceLoading(true)
-      try {
-        const response = await fetch('/api/price/calculate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            productId: product.id,
-            selections: {
-              metal: selectedMetal,
-              carat: selectedCarat,
-              shape: selectedShape,
-              color: selectedColor,
-              clarity: selectedClarity,
-            },
-          }),
-        })
-        const payload = (await response.json()) as PriceResponse
-        if (!response.ok) {
-          throw new Error(payload.error || 'Unable to calculate price.')
-        }
-        setPrice(payload)
-      } catch {
-        setPrice({
-          breakdown: { base: product.basePrice, metal: 0, carat: 0, shape: 0, color: 0, clarity: 0 },
-          total: product.basePrice,
-          formatted: formatPrice(product.basePrice),
-        })
-      } finally {
-        setPriceLoading(false)
-      }
-    }
-
-    void calculatePrice()
-  }, [product, selectedMetal, selectedCarat, selectedShape, selectedColor, selectedClarity])
-
   const images = useMemo(() => {
     if (!product) return []
 
-    const metalKey = selectedMetal.toLowerCase().replace(/\s+/g, '_')
+    const metalKey = selectedMetal.toLowerCase().replace(/^14k\s+/, '').replace(/\s+/g, '_')
     const metalImages = product.metalImages?.[metalKey]
 
     if (metalImages?.length) {
@@ -270,11 +173,6 @@ export default function ProductDetailPage() {
 
   const primaryImage = images[0] || product?.images?.[0] || ''
 
-  const handleMetalChange = (metal: string) => {
-    setSelectedMetal(metal)
-    setSelectedImage(0)
-    setIsZoomed(false)
-  }
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -326,18 +224,33 @@ export default function ProductDetailPage() {
     ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
     : 4.9
 
-  const currentPrice = price?.formatted || formatPrice(product?.basePrice || 0)
+  const currentPrice = formatPrice(calculatedPrice || product?.basePrice || 0)
   const cartItem = items.find((item) => item.productSlug === product?.slug)
   const isInCart = Boolean(cartItem)
-  const calculatedPrice = price?.total || product?.basePrice || 0
-  const priceBreakdown = price?.breakdown || {
+  const needsRingSize = productNeedsRingSize(product?.productType, product?.category)
+  const canAddToCart = !needsRingSize || Boolean(selectedSize)
+  const priceBreakdown = {
     base: product?.basePrice || 0,
     metal: 0,
-    carat: 0,
+    carat: selectedCarat ? selectedCarat * (product?.pricePerCarat || 300) : 0,
     shape: 0,
     color: 0,
     clarity: 0,
   }
+
+  const handleCustomizerChange = useCallback((selections: {
+    metal: string
+    size?: string
+    caratWeight?: number
+    totalPrice: number
+  }) => {
+    setSelectedMetal(selections.metal)
+    setSelectedSize(selections.size || null)
+    setSelectedCarat(selections.caratWeight || null)
+    setCalculatedPrice(selections.totalPrice)
+    setSelectedImage(0)
+    setIsZoomed(false)
+  }, [])
 
   if (isLoading) {
     return (
@@ -373,7 +286,7 @@ export default function ProductDetailPage() {
   }
 
   const handleAddToCart = async () => {
-    if (!ringSize) return
+    if (!canAddToCart) return
 
     if (cartItem) {
       await removeItem(cartItem.id)
@@ -384,12 +297,12 @@ export default function ProductDetailPage() {
       productTitle: product.title,
       productImage: primaryImage,
       selectedMetal,
-      selectedCarat,
-      selectedShape,
-      selectedColor,
-      selectedClarity,
-      ringSize,
-      engraving,
+      selectedCarat: selectedCarat || 0,
+      selectedShape: product.category,
+      selectedColor: undefined,
+      selectedClarity: undefined,
+      ringSize: selectedSize || undefined,
+      engraving: undefined,
       quantity: 1,
       unitPrice: calculatedPrice,
       priceBreakdown,
@@ -400,7 +313,7 @@ export default function ProductDetailPage() {
   }
 
   const handleBuyNow = async () => {
-    if (!ringSize) return
+    if (!canAddToCart) return
 
     await addItem({
       productId: product.id,
@@ -408,12 +321,12 @@ export default function ProductDetailPage() {
       productTitle: product.title,
       productImage: primaryImage,
       selectedMetal,
-      selectedCarat,
-      selectedShape,
-      selectedColor,
-      selectedClarity,
-      ringSize,
-      engraving,
+      selectedCarat: selectedCarat || 0,
+      selectedShape: product.category,
+      selectedColor: undefined,
+      selectedClarity: undefined,
+      ringSize: selectedSize || undefined,
+      engraving: undefined,
       quantity: 1,
       unitPrice: calculatedPrice,
       priceBreakdown,
@@ -812,12 +725,8 @@ export default function ProductDetailPage() {
           <h1 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: 'clamp(28px, 5vw, 42px)', fontWeight: 400, lineHeight: 1.1, margin: '0 0 10px' }}>
             {product.title}
           </h1>
-          <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '14px', lineHeight: 1.7, marginBottom: '24px' }}>
-            {product.description}
-          </p>
-
           <div>
-            <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', marginBottom: '6px' }}>Calculated price</p>
+            <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', marginBottom: '6px' }}>From</p>
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentPrice}
@@ -827,119 +736,18 @@ export default function ProductDetailPage() {
                 transition={{ duration: 0.25 }}
                 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: 'clamp(34px, 5vw, 42px)', letterSpacing: '-0.02em' }}
               >
-                {priceLoading ? 'Calculating...' : currentPrice}
+                {currentPrice}
               </motion.div>
             </AnimatePresence>
-            <Accordion type="single" collapsible>
-              <AccordionItem value="breakdown" style={{ borderBottom: '0.5px solid #EDD9AF' }}>
-                <AccordionTrigger style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.12em', padding: '12px 0' }}>
-                  View breakdown →
-                </AccordionTrigger>
-                <AccordionContent>
-                  <div style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>
-                    {Object.entries(price?.breakdown || { base: product.basePrice }).map(([label, amount]) => (
-                      <div key={label} className="flex justify-between py-2" style={{ borderBottom: label === 'clarity' ? '0.5px solid #EDD9AF' : 'none' }}>
-                        <span style={{ color: '#B8A090' }}>{prettify(label)}</span>
-                        <span>{amount >= 0 && label !== 'base' ? '+' : ''}{formatPrice(amount)}</span>
-                      </div>
-                    ))}
-                    <div className="flex justify-between pt-3" style={{ color: '#C9A961', borderTop: '0.5px solid #EDD9AF', fontWeight: 500 }}>
-                      <span>Total</span>
-                      <span>{currentPrice}</span>
-                    </div>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
           </div>
 
           <div style={{ borderTop: '0.5px solid #EDD9AF', margin: '24px 0' }} />
 
           <div className="space-y-7">
-            <div>
-              <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '14px' }}>METAL</p>
-              <div className="grid grid-cols-4 gap-3">
-                {product.availableMetals.map((metal) => (
-                  <button
-                    key={metal}
-                    onClick={() => handleMetalChange(metal)}
-                    className="flex flex-col items-center gap-2"
-                    style={{
-                      background: selectedMetal === metal ? '#1A1014' : 'transparent',
-                      border: selectedMetal === metal ? '1px solid #1A1014' : '1px solid #EDD9AF',
-                      color: selectedMetal === metal ? '#FBF5F0' : '#1A1014',
-                      padding: '12px 10px',
-                      transition: 'all 0.3s ease',
-                    }}
-                  >
-                    <span style={{ width: 'clamp(44px, 8vw, 52px)', height: 'clamp(44px, 8vw, 52px)', borderRadius: '50%', background: metalGradients[metal] || '#EDD9AF', border: selectedMetal === metal ? '2px solid #1A1014' : '0.5px solid #EDD9AF', boxShadow: selectedMetal === metal ? '0 0 0 3px #FBF5F0, 0 0 0 5px #C9A961' : 'none', transition: 'all 0.3s' }} />
-                    <span style={{ color: selectedMetal === metal ? '#FBF5F0' : '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px', textAlign: 'center' }}>{metal}</span>
-                    <span style={{ color: modifier(product.metalPricing, metal) > 0 ? '#C9A961' : '#7A8F72', fontFamily: 'var(--font-inter)', fontSize: '10px' }}>
-                      {modifier(product.metalPricing, metal) > 0 ? `+${formatPrice(modifier(product.metalPricing, metal))}` : 'Base'}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '14px' }}>CARAT WEIGHT</p>
-              <div className="grid grid-cols-3 gap-3">
-                {product.availableCarats.map((carat) => {
-                  const isSelected = selectedCarat === carat
-                  return (
-                    <button key={carat} onClick={() => setSelectedCarat(carat)} style={{ alignItems: 'center', backgroundColor: isSelected ? '#1A1014' : 'transparent', border: isSelected ? '1px solid #1A1014' : '1px solid #EDD9AF', color: isSelected ? '#FBF5F0' : '#1A1014', display: 'flex', flexDirection: 'column', gap: '4px', padding: '14px 20px' }}>
-                      <span style={{ fontFamily: 'var(--font-playfair)', fontSize: '18px' }}>{carat}ct</span>
-                      <span style={{ color: isSelected ? '#EDD9AF' : '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px' }}>~{carat}mm</span>
-                      <span style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '11px' }}>{formatPrice(modifier(product.caratPricing, carat))}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            <div>
-              <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '14px' }}>DIAMOND SHAPE</p>
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-3">
-                {product.availableShapes.slice(0, 9).map((shape) => {
-                  const file = shapeFileNames[shape] || shape.toLowerCase()
-                  return (
-                    <button key={shape} onClick={() => setSelectedShape(shape)} className="flex flex-col items-center justify-center gap-1" style={{ width: '100%', minHeight: '70px', backgroundColor: selectedShape === shape ? '#FDF8F2' : 'transparent', border: selectedShape === shape ? '1px solid #C9A961' : '0.5px solid #EDD9AF', color: '#1A1014' }}>
-                      <Image src={`/images/shapes/${file}.png`} alt={`${shape} cut`} width={38} height={38} style={{ objectFit: 'contain', mixBlendMode: 'multiply' }} />
-                      <span style={{ color: selectedShape === shape ? '#C9A961' : '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '9px' }}>{shape}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            <div className="grid gap-5 md:grid-cols-2">
-              <div>
-                <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '14px' }}>RING SIZE</p>
-                <Select value={ringSize} onValueChange={setRingSize}>
-                  <SelectTrigger style={{ backgroundColor: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '2px', color: '#1A1014', fontFamily: 'var(--font-inter)', width: '100%' }}>
-                    <SelectValue placeholder="Select size" />
-                  </SelectTrigger>
-                  <SelectContent style={{ backgroundColor: '#FDF8F2', border: '0.5px solid #EDD9AF', color: '#1A1014' }}>
-                    {product.availableSizes.map((size) => <SelectItem key={size} value={size}>Size {size}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Link href="#" style={{ color: '#C9A961', display: 'inline-block', fontFamily: 'var(--font-inter)', fontSize: '11px', marginTop: '9px', textDecoration: 'none' }}>View size guide →</Link>
-              </div>
-
-              <div>
-                <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '14px' }}>ENGRAVING (OPTIONAL)</p>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    value={engraving}
-                    onChange={(event) => setEngraving(event.target.value.slice(0, product.engravingMaxChars))}
-                    placeholder="Add a personal message..."
-                    style={{ backgroundColor: '#FDF8F2', border: '0.5px solid #EDD9AF', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '12px', outline: 'none', padding: '11px 50px 11px 12px', width: '100%' }}
-                  />
-                  <span style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px', position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)' }}>{engraving.length}/{product.engravingMaxChars}</span>
-                </div>
-              </div>
-            </div>
+            <ProductCustomizer
+              product={product}
+              onSelectionChange={handleCustomizerChange}
+            />
 
             {isInCart && (
               <div style={{
@@ -964,7 +772,7 @@ export default function ProductDetailPage() {
                       This item is in your cart
                     </div>
                     <div style={{ fontSize: '10px', color: '#B8A090', fontFamily: 'var(--font-inter)', marginTop: '2px' }}>
-                      {cartItem?.selectedMetal} · {cartItem?.selectedCarat}ct · {cartItem?.selectedShape} · Size {cartItem?.ringSize}
+                      {[cartItem?.selectedMetal, cartItem?.selectedCarat ? `${cartItem.selectedCarat}ct` : null, cartItem?.ringSize ? `Size ${cartItem.ringSize}` : null].filter(Boolean).join(' - ')}
                     </div>
                   </div>
                 </div>
@@ -985,7 +793,7 @@ export default function ProductDetailPage() {
             >
               <button
                 onClick={handleAddToCart}
-                disabled={addedToCart || !ringSize}
+                disabled={addedToCart || !canAddToCart}
                 style={{
                   flex: 1,
                   height: '56px',
@@ -994,17 +802,17 @@ export default function ProductDetailPage() {
                   color: '#1A1014',
                   fontSize: '11px',
                   letterSpacing: '0.2em',
-                  cursor: !ringSize ? 'not-allowed' : 'pointer',
+                  cursor: !canAddToCart ? 'not-allowed' : 'pointer',
                   fontFamily: 'var(--font-inter)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '8px',
                   transition: 'all 0.3s ease',
-                  opacity: !ringSize ? 0.5 : 1,
+                  opacity: !canAddToCart ? 0.5 : 1,
                 }}
                 onMouseEnter={(event) => {
-                  if (!addedToCart && ringSize) {
+                  if (!addedToCart && canAddToCart) {
                     event.currentTarget.style.background = '#1A1014'
                     event.currentTarget.style.color = '#FBF5F0'
                   }
@@ -1037,16 +845,16 @@ export default function ProductDetailPage() {
 
               <button
                 onClick={handleBuyNow}
-                disabled={!ringSize}
+                disabled={!canAddToCart}
                 style={{
                   flex: 1,
                   height: '56px',
-                  background: !ringSize ? '#888' : '#C9A961',
+                  background: !canAddToCart ? '#B8A090' : '#C9A961',
                   border: 'none',
                   color: '#1A1014',
                   fontSize: '11px',
                   letterSpacing: '0.2em',
-                  cursor: !ringSize ? 'not-allowed' : 'pointer',
+                  cursor: !canAddToCart ? 'not-allowed' : 'pointer',
                   fontFamily: 'var(--font-inter)',
                   fontWeight: 500,
                   display: 'flex',
@@ -1056,13 +864,13 @@ export default function ProductDetailPage() {
                   transition: 'all 0.3s ease',
                 }}
                 onMouseEnter={(event) => {
-                  if (ringSize) {
+                  if (canAddToCart) {
                     event.currentTarget.style.background = '#EDD9AF'
                     event.currentTarget.style.transform = 'translateY(-1px)'
                   }
                 }}
                 onMouseLeave={(event) => {
-                  event.currentTarget.style.background = ringSize ? '#C9A961' : '#888'
+                  event.currentTarget.style.background = canAddToCart ? '#C9A961' : '#B8A090'
                   event.currentTarget.style.transform = 'translateY(0)'
                 }}
               >
@@ -1073,7 +881,7 @@ export default function ProductDetailPage() {
               </button>
             </div>
 
-            {!ringSize && (
+            {!canAddToCart && (
               <p
                 style={{
                   fontSize: '11px',
@@ -1181,46 +989,6 @@ export default function ProductDetailPage() {
       </div>
 
       <section className="mx-auto max-w-[1400px] px-6 pb-20 md:px-10 lg:px-20">
-        <Tabs defaultValue="description">
-          <TabsList variant="line" style={{ borderBottom: '0.5px solid #EDD9AF', borderRadius: 0, color: '#B8A090', width: '100%' }}>
-            {['description', 'details', 'shipping'].map((tab) => (
-              <TabsTrigger key={tab} value={tab} style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.15em', padding: '14px 18px', textTransform: 'uppercase' }}>
-                {tab === 'shipping' ? 'Shipping & Returns' : prettify(tab)}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-          <TabsContent value="description">
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} style={{ maxWidth: '720px', paddingTop: '28px' }}>
-              <p style={{ color: '#3D3028', fontFamily: 'var(--font-inter)', fontSize: '14px', lineHeight: 1.8 }}>{product.description}</p>
-              <p style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '22px', fontStyle: 'italic', lineHeight: 1.5, marginTop: '24px' }}>
-                “A reason does not need to be grand to be worth remembering.”
-              </p>
-            </motion.div>
-          </TabsContent>
-          <TabsContent value="details">
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} style={{ maxWidth: '520px', paddingTop: '28px' }}>
-              {[
-                ['Metal', selectedMetal],
-                ['Diamond', `${selectedCarat}ct ${selectedShape}`],
-                ['Setting', prettify(product.category)],
-                ['Certificate', 'IGI'],
-                ['Delivery', '3-5 weeks'],
-              ].map(([label, value]) => (
-                <div key={label} className="flex justify-between py-3" style={{ borderBottom: '0.5px solid #EDD9AF', fontFamily: 'var(--font-inter)', fontSize: '13px' }}>
-                  <span style={{ color: '#B8A090' }}>{label}</span>
-                  <span style={{ color: '#1A1014', fontWeight: 500 }}>{value}</span>
-                </div>
-              ))}
-            </motion.div>
-          </TabsContent>
-          <TabsContent value="shipping">
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} style={{ color: '#3D3028', fontFamily: 'var(--font-inter)', fontSize: '14px', lineHeight: 1.8, maxWidth: '720px', paddingTop: '28px' }}>
-              <p>Free shipping worldwide on every piece. Each ring is made to order and arrives in 3-5 weeks.</p>
-              <p style={{ marginTop: '12px' }}>Returns are accepted within 30 days on non-engraved pieces. Lifetime warranty covers manufacturing defects.</p>
-            </motion.div>
-          </TabsContent>
-        </Tabs>
-
         <div className="mt-16 grid gap-8 lg:grid-cols-[260px_1fr]">
           <div>
             <div style={{ color: '#C9A961', fontFamily: 'var(--font-playfair)', fontSize: '48px', lineHeight: 1 }}>{averageRating.toFixed(1)}</div>
