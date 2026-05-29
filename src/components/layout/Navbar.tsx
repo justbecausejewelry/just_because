@@ -7,6 +7,8 @@ import { Heart, Menu, Search, ShoppingBag, User, X } from 'lucide-react'
 import { MiniCartDrawer } from '@/components/cart/MiniCartDrawer'
 import { useCart } from '@/context/CartContext'
 import { useWishlist } from '@/context/WishlistContext'
+import { supabaseAuth } from '@/lib/auth'
+import { checkIsAdmin } from '@/lib/adminAuth'
 
 type MegaMenuLink = {
   label: string
@@ -255,6 +257,7 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [cartOpen, setCartOpen] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
   const menuTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pathname = usePathname()
   const router = useRouter()
@@ -266,6 +269,21 @@ export function Navbar() {
     window.addEventListener('scroll', handleScroll)
     handleScroll()
     return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  useEffect(() => {
+    void checkIsAdmin().then(({ isAdmin: hasAdminAccess }) => setIsAdmin(hasAdminAccess))
+
+    const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        const { isAdmin: hasAdminAccess } = await checkIsAdmin()
+        setIsAdmin(hasAdminAccess)
+      } else {
+        setIsAdmin(false)
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   useEffect(() => {
@@ -496,6 +514,12 @@ export function Navbar() {
               <User size={18} color="#1A1014" />
             </Link>
 
+            {isAdmin && (
+              <Link href="/admin" className="desktop-nav-icon" style={{ alignItems: 'center', color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '11px', fontWeight: 500, letterSpacing: '0.08em', textDecoration: 'none' }}>
+                ADMIN
+              </Link>
+            )}
+
             <Link href="/wishlist" className="desktop-nav-icon" style={{ position: 'relative', alignItems: 'center' }} aria-label="Wishlist">
               <Heart size={18} color="#1A1014" />
               {wishlistCount > 0 && (
@@ -609,6 +633,15 @@ export function Navbar() {
                 {label}
               </Link>
             ))}
+            {isAdmin && (
+              <Link
+                href="/admin"
+                onClick={() => setMobileOpen(false)}
+                style={{ borderBottom: '0.5px solid #EDD9AF', color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '13px', fontWeight: 500, letterSpacing: '0.08em', padding: '10px 0', textDecoration: 'none' }}
+              >
+                Admin Panel
+              </Link>
+            )}
           </div>
         </aside>
       )}

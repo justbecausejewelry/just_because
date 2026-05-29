@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { Heart, LogOut, MessageSquare, Settings, ShoppingBag } from 'lucide-react'
 import type { User } from '@supabase/supabase-js'
 import { supabaseAuth } from '@/lib/auth'
+import { checkIsAdmin } from '@/lib/adminAuth'
 import { getOrCreateProfile, type UserProfile } from '@/lib/userProfile'
 
 type MenuCardProps = {
@@ -85,6 +86,8 @@ export default function AccountPage() {
   const [orderCount, setOrderCount] = useState(0)
   const [wishlistCount, setWishlistCount] = useState(0)
   const [unreadMessages, setUnreadMessages] = useState(0)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [adminRole, setAdminRole] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -115,6 +118,10 @@ export default function AccountPage() {
       setOrderCount(orders || 0)
       setWishlistCount(wishlist || 0)
       setUnreadMessages(unread || 0)
+
+      const adminCheck = await checkIsAdmin()
+      setIsAdmin(adminCheck.isAdmin)
+      setAdminRole(adminCheck.role)
       setIsLoading(false)
     }
 
@@ -194,6 +201,74 @@ export default function AccountPage() {
         <MenuCard href="/account/messages" icon={MessageSquare} title="Messages" description="Chat with our team" badge={unreadMessages} />
         <MenuCard href="/wishlist" icon={Heart} title="Wishlist" description="Your saved pieces" />
         <MenuCard href="/account/settings" icon={Settings} title="Account Settings" description="Update your profile" />
+        {isAdmin && (
+          <Link
+            href="/admin"
+            style={{
+              background: '#1A1014',
+              border: '0.5px solid rgba(201,169,97,0.3)',
+              borderRadius: '4px',
+              padding: '24px',
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
+              gridColumn: '1 / -1',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={(event) => {
+              event.currentTarget.style.background = '#2A1E24'
+              event.currentTarget.style.borderColor = 'rgba(201,169,97,0.6)'
+            }}
+            onMouseLeave={(event) => {
+              event.currentTarget.style.background = '#1A1014'
+              event.currentTarget.style.borderColor = 'rgba(201,169,97,0.3)'
+            }}
+          >
+            <div style={{
+              width: '44px',
+              height: '44px',
+              borderRadius: '50%',
+              background: 'rgba(201,169,97,0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9A961" strokeWidth="1.5">
+                <rect x="3" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="14" width="7" height="7" rx="1" />
+                <rect x="3" y="14" width="7" height="7" rx="1" />
+              </svg>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{
+                fontSize: '14px',
+                fontWeight: 500,
+                color: '#FBF5F0',
+                marginBottom: '3px',
+                fontFamily: 'var(--font-inter)',
+              }}>
+                Admin Panel
+              </div>
+              <div style={{
+                fontSize: '11px',
+                color: 'rgba(201,169,97,0.7)',
+                fontFamily: 'var(--font-inter)',
+              }}>
+                {adminRole === 'super_admin'
+                  ? '✦ Super Admin · Full access'
+                  : '✦ Admin · Manage store'}
+              </div>
+            </div>
+            <span style={{
+              color: '#C9A961',
+              fontSize: '20px',
+              fontFamily: 'var(--font-playfair)',
+            }}>→</span>
+          </Link>
+        )}
       </section>
 
       <button
