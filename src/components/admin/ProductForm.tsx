@@ -263,6 +263,18 @@ function MetalImageUpload({
   onImagesChange: (images: string[]) => void
 }) {
   const [uploading, setUploading] = useState(false)
+  const metalColors: Record<string, string> = {
+    white_gold: '#E8E8E8',
+    yellow_gold: '#C9A961',
+    rose_gold: '#D4956A',
+    platinum: '#C0C0C0',
+  }
+  const metalLabels: Record<string, string> = {
+    white_gold: 'WHITE GOLD',
+    yellow_gold: 'YELLOW GOLD',
+    rose_gold: 'ROSE GOLD',
+    platinum: 'PLATINUM',
+  }
 
   const handleUpload = async (file: File) => {
     setUploading(true)
@@ -292,6 +304,9 @@ function MetalImageUpload({
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '16px' }}>
         {images.map((url, index) => (
           <div key={url} style={{ position: 'relative', aspectRatio: '1', border: '0.5px solid #EDD9AF', overflow: 'hidden', background: '#F5E8ED' }}>
+            <div style={{ position: 'absolute', top: '6px', left: '6px', background: metalColors[metal] || '#C9A961', color: '#1A1014', fontSize: '7px', padding: '2px 6px', letterSpacing: '0.12em', fontFamily: 'var(--font-inter)', fontWeight: 500, zIndex: 2 }}>
+              {metalLabels[metal]}
+            </div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={url} alt={`${metal} ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             <button
@@ -349,6 +364,22 @@ function MetalImageUpload({
       <p style={{ fontSize: '11px', color: '#B8A090', fontFamily: 'var(--font-inter)' }}>
         Upload up to 4 photos for {metal.replace('_', ' ')} variant. First photo is the main image shown when this metal is selected.
       </p>
+
+      {images.length === 0 && (
+        <div style={{ padding: '16px 20px', background: 'rgba(201,169,97,0.08)', border: '0.5px solid rgba(201,169,97,0.25)', borderRadius: '2px', marginTop: '8px' }}>
+          <div style={{ fontSize: '11px', color: '#C9A961', fontFamily: 'var(--font-inter)', letterSpacing: '0.1em', marginBottom: '6px', fontWeight: 500 }}>
+            ✦ TIP FOR {metal.replace('_', ' ').toUpperCase()} PHOTOS
+          </div>
+          <div style={{ fontSize: '12px', color: '#B8A090', fontFamily: 'var(--font-inter)', lineHeight: 1.6 }}>
+            Upload photos that show this product in <strong style={{ color: '#1A1014' }}>{metal.replace('_', ' ')} metal only</strong>. These images will automatically display when a customer selects this metal option on the product page.
+          </div>
+          <div style={{ marginTop: '10px', fontSize: '11px', color: '#B8A090', fontFamily: 'var(--font-inter)' }}>
+            Recommended: 4 photos per metal variant
+            <br />
+            Angles: Front · Side · Detail · Lifestyle
+          </div>
+        </div>
+      )}
     </div>
   )
 }
