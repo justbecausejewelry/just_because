@@ -1,29 +1,75 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
-import Lenis from 'lenis'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Gem, Heart, Search, ShoppingBag, Sparkles } from 'lucide-react'
 import { gsap } from 'gsap'
+import Lenis from 'lenis'
 import * as THREE from 'three'
 
-const scenePalette = {
-  background: '#0A0612',
-  surface: '#1A1014',
+const palette = {
   pearl: '#FBF5F0',
   gold: '#C9A961',
-  brightGold: '#EDD9AF',
   blush: '#E8C4D0',
-  fire: '#B8D4F8',
+  noir: '#1A1014',
   taupe: '#B8A090',
-}
+  ivory: '#FDF8F2',
+  petal: '#FCF0F4',
+  rose: '#F5E8ED',
+  goldTint: '#EDD9AF',
+} as const
 
-function buildDiamondGeometry(scale = 1) {
+const jewelryImages = [
+  'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=900&q=85',
+  'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=900&q=85',
+  'https://images.unsplash.com/photo-1617038220319-276d3cfab638?auto=format&fit=crop&w=900&q=85',
+  'https://images.unsplash.com/photo-1601121141461-9d6647bca1ed?auto=format&fit=crop&w=900&q=85',
+  'https://images.unsplash.com/photo-1603561591411-07134e71a2a9?auto=format&fit=crop&w=900&q=85',
+  'https://images.unsplash.com/photo-1603974372039-adc49044b6bd?auto=format&fit=crop&w=900&q=85',
+  'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=900&q=85',
+  'https://images.unsplash.com/photo-1589674781759-c21c37956a44?auto=format&fit=crop&w=900&q=85',
+]
+
+const featurePanels = [
+  {
+    eyebrow: 'CULTIVATED LIGHT',
+    title: 'Solar-grown brilliance, cut for everyday ceremony.',
+    body: 'Each lab-grown diamond is selected for fire, balance, and quiet drama before being set in recycled gold.',
+    stat: '0',
+    statLabel: 'MINING REQUIRED',
+    img: jewelryImages[1],
+  },
+  {
+    eyebrow: 'PRIVATE APPOINTMENT ENERGY',
+    title: 'A digital boutique that feels composed, cinematic, and personal.',
+    body: 'Choose the silhouette, metal, and mood, then move from inspiration to selection without breaking the spell.',
+    stat: '48',
+    statLabel: 'COUNTRIES SERVED',
+    img: jewelryImages[4],
+  },
+]
+
+const shapes = ['Round', 'Oval', 'Emerald', 'Cushion', 'Pear', 'Marquise', 'Princess', 'Asscher', 'Heart']
+
+const reviews = [
+  { name: 'Priya M.', place: 'Mumbai', quote: 'Just because. Best decision.', img: jewelryImages[0], height: 260 },
+  { name: 'Sarah K.', place: 'Brooklyn', quote: 'The diamond outshines everything.', img: jewelryImages[1], height: 340 },
+  { name: 'Aisha R.', place: 'Dubai', quote: 'Three compliments at dinner.', img: jewelryImages[2], height: 300 },
+  { name: 'Emma L.', place: 'London', quote: 'Quietly luxurious.', img: jewelryImages[3], height: 380 },
+  { name: 'Mia C.', place: 'Paris', quote: 'Worth every penny.', img: jewelryImages[4], height: 320 },
+  { name: 'Aaron L.', place: 'Toronto', quote: 'Like a boutique appointment.', img: jewelryImages[5], height: 280 },
+  { name: 'Yuki T.', place: 'Tokyo', quote: 'Packaging made me cry.', img: jewelryImages[6], height: 360 },
+  { name: 'Zara N.', place: 'New York', quote: 'My everyday ring.', img: jewelryImages[7], height: 310 },
+]
+
+function createDiamondGeometry(scale: number) {
   const positions: number[] = []
   const indices: number[] = []
-  const girdleRadius = 1 * scale
-  const tableRadius = 0.55 * scale
+  const girdleRadius = scale
+  const tableRadius = 0.56 * scale
   const crownHeight = 0.38 * scale
-  const pavilionHeight = 1.05 * scale
+  const pavilionHeight = 1.08 * scale
   const girdleCount = 32
   const tableCount = 8
 
@@ -50,7 +96,7 @@ function buildDiamondGeometry(scale = 1) {
     const t0 = tableStart + (Math.floor((index * tableCount) / girdleCount) % tableCount)
     const t1 = tableStart + ((Math.floor((index * tableCount) / girdleCount) + 1) % tableCount)
     indices.push(g0, g1, t0)
-    if (index % (girdleCount / tableCount) === (girdleCount / tableCount) - 1) {
+    if (index % (girdleCount / tableCount) === girdleCount / tableCount - 1) {
       indices.push(t0, g1, t1)
     }
   }
@@ -72,15 +118,52 @@ function buildDiamondGeometry(scale = 1) {
   return geometry
 }
 
+function useCounters(isLoaded: boolean) {
+  const [counters, setCounters] = useState({ customers: 0, reviews: 0, countries: 0, mining: 0 })
+
+  useEffect(() => {
+    if (!isLoaded) return
+
+    const targets = { customers: 29847, reviews: 2847, countries: 48, mining: 0 }
+    const duration = 2500
+    const start = performance.now()
+    let rafId = 0
+
+    const tick = (time: number) => {
+      const progress = Math.min((time - start) / duration, 1)
+      const eased = 1 - (1 - progress) ** 4
+      setCounters({
+        customers: Math.floor(targets.customers * eased),
+        reviews: Math.floor(targets.reviews * eased),
+        countries: Math.floor(targets.countries * eased),
+        mining: 0,
+      })
+
+      if (progress < 1) {
+        rafId = requestAnimationFrame(tick)
+      }
+    }
+
+    rafId = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafId)
+  }, [isLoaded])
+
+  return counters
+}
+
 export default function TestExperience() {
-  const heroCanvasRef = useRef<HTMLCanvasElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
   const mouseRef = useRef({ x: 0, y: 0 })
   const scrollRef = useRef(0)
   const [loaded, setLoaded] = useState(false)
+  const [activeShape, setActiveShape] = useState('Round')
+  const counters = useCounters(loaded)
+
+  const galleryRow = useMemo(() => [...jewelryImages, ...jewelryImages], [])
 
   useEffect(() => {
     const lenis = new Lenis({
-      duration: 1.4,
+      duration: 1.35,
       easing: (value: number) => Math.min(1, 1.001 - 2 ** (-10 * value)),
       smoothWheel: true,
     })
@@ -90,11 +173,6 @@ export default function TestExperience() {
       lenis.raf(time)
       rafId = requestAnimationFrame(raf)
     }
-    rafId = requestAnimationFrame(raf)
-
-    const handleScroll = () => {
-      scrollRef.current = window.scrollY
-    }
 
     const handleMouse = (event: MouseEvent) => {
       mouseRef.current = {
@@ -103,17 +181,22 @@ export default function TestExperience() {
       }
     }
 
-    window.addEventListener('scroll', handleScroll)
-    window.addEventListener('mousemove', handleMouse)
+    const handleScroll = () => {
+      scrollRef.current = window.scrollY
+    }
 
-    const loadingTimer = window.setTimeout(() => setLoaded(true), 300)
+    rafId = requestAnimationFrame(raf)
+    window.addEventListener('mousemove', handleMouse)
+    window.addEventListener('scroll', handleScroll)
+
+    const timer = window.setTimeout(() => setLoaded(true), 520)
 
     return () => {
-      lenis.destroy()
       cancelAnimationFrame(rafId)
-      window.clearTimeout(loadingTimer)
-      window.removeEventListener('scroll', handleScroll)
+      lenis.destroy()
+      window.clearTimeout(timer)
       window.removeEventListener('mousemove', handleMouse)
+      window.removeEventListener('scroll', handleScroll)
     }
   }, [])
 
@@ -123,14 +206,8 @@ export default function TestExperience() {
     const ctx = gsap.context(() => {
       gsap.fromTo(
         '.scene-reveal',
-        { opacity: 0, y: 32 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 1,
-          ease: 'power3.out',
-          stagger: 0.12,
-        }
+        { opacity: 0, y: 28 },
+        { opacity: 1, y: 0, duration: 1, ease: 'power3.out', stagger: 0.1 }
       )
     })
 
@@ -138,106 +215,86 @@ export default function TestExperience() {
   }, [loaded])
 
   useEffect(() => {
-    const canvas = heroCanvasRef.current
+    const canvas = canvasRef.current
     if (!canvas) return
 
     const scene = new THREE.Scene()
-    scene.fog = new THREE.FogExp2(0x0a0612, 0.035)
+    scene.fog = new THREE.FogExp2(0x1a1014, 0.045)
 
-    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100)
-    camera.position.set(0, 0, 6)
+    const camera = new THREE.PerspectiveCamera(44, window.innerWidth / window.innerHeight, 0.1, 100)
+    camera.position.set(0, 0.2, 5.6)
 
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
-    renderer.setSize(window.innerWidth, window.innerHeight)
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    renderer.setSize(window.innerWidth, window.innerHeight)
+    renderer.setClearColor(0x1a1014, 0)
     renderer.toneMapping = THREE.ACESFilmicToneMapping
-    renderer.toneMappingExposure = 1.8
-    renderer.setClearColor(0x0a0612, 0)
+    renderer.toneMappingExposure = 1.85
 
-    const diamondGeometry = buildDiamondGeometry(1)
+    const diamondGeometry = createDiamondGeometry(1)
     const diamondMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0xffffff,
+      color: 0xfdf8f2,
       metalness: 0,
-      roughness: 0,
+      roughness: 0.03,
       transmission: 1,
-      thickness: 2.5,
+      thickness: 2.2,
       ior: 2.42,
       reflectivity: 1,
-      iridescence: 0.6,
-      iridescenceIOR: 1.8,
       clearcoat: 1,
       clearcoatRoughness: 0,
+      iridescence: 0.35,
+      iridescenceIOR: 1.8,
       transparent: true,
-      opacity: 1,
+      opacity: 0.98,
       envMapIntensity: 4,
       side: THREE.DoubleSide,
     })
-
     const diamond = new THREE.Mesh(diamondGeometry, diamondMaterial)
     scene.add(diamond)
 
-    const keyLight = new THREE.PointLight(0xc9a961, 18, 25)
-    keyLight.position.set(4, 6, 4)
-    scene.add(keyLight)
+    const glowGeometry = createDiamondGeometry(1.08)
+    const glowMaterial = new THREE.MeshBasicMaterial({
+      color: 0xc9a961,
+      transparent: true,
+      opacity: 0.045,
+      side: THREE.BackSide,
+    })
+    const glow = new THREE.Mesh(glowGeometry, glowMaterial)
+    scene.add(glow)
 
-    const fillLight = new THREE.PointLight(0xb8d4f8, 10, 20)
-    fillLight.position.set(-4, 2, 3)
-    scene.add(fillLight)
+    scene.add(new THREE.AmbientLight(0x1a1014, 2.6))
 
-    const rimLight = new THREE.PointLight(0xe8c4d0, 8, 18)
-    rimLight.position.set(0, -3, -5)
-    scene.add(rimLight)
+    const key = new THREE.PointLight(0xc9a961, 18, 24)
+    key.position.set(4, 6, 4)
+    scene.add(key)
 
-    const topLight = new THREE.DirectionalLight(0xfffdf5, 4)
-    topLight.position.set(0, 10, 5)
-    scene.add(topLight)
-    scene.add(new THREE.AmbientLight(0x1a1014, 1.5))
+    const fill = new THREE.PointLight(0xedd9af, 12, 22)
+    fill.position.set(-4, 2, 3)
+    scene.add(fill)
 
-    const sparkles: THREE.PointLight[] = []
-    for (let index = 0; index < 4; index += 1) {
-      const sparkle = new THREE.PointLight(index % 2 ? 0xc9a961 : 0xffffff, 3, 8)
-      sparkles.push(sparkle)
+    const rim = new THREE.PointLight(0xe8c4d0, 8, 18)
+    rim.position.set(0, -3, -5)
+    scene.add(rim)
+
+    const sparkles = Array.from({ length: 4 }, (_, index) => {
+      const sparkle = new THREE.PointLight(index % 2 === 0 ? 0xc9a961 : 0xe8c4d0, 3, 8)
       scene.add(sparkle)
-    }
+      return sparkle
+    })
 
-    const beams: THREE.Mesh<THREE.ConeGeometry, THREE.MeshBasicMaterial>[] = []
-    for (let index = 0; index < 5; index += 1) {
-      const angle = (index / 5) * Math.PI * 2
-      const geometry = new THREE.ConeGeometry(0.15, 12, 4, 1, true)
-      geometry.translate(0, 6, 0)
-      const material = new THREE.MeshBasicMaterial({
-        color: 0xc9a961,
-        transparent: true,
-        opacity: 0.04,
-        blending: THREE.AdditiveBlending,
-        side: THREE.DoubleSide,
-      })
-      const beam = new THREE.Mesh(geometry, material)
-      beam.rotation.z = angle * 0.4
-      beam.rotation.x = Math.PI / 3
-      beam.position.set(Math.cos(angle) * 3, 0, Math.sin(angle) * 3)
-      beams.push(beam)
-      scene.add(beam)
-    }
-
-    const particleCount = 800
+    const particleCount = 650
     const particlePositions = new Float32Array(particleCount * 3)
     const particleColors = new Float32Array(particleCount * 3)
-    const gold = new THREE.Color(0xc9a961)
-    const blush = new THREE.Color(0xe8c4d0)
-    const pearl = new THREE.Color(0xfbf5f0)
-    const fire = new THREE.Color(0xb8d4f8)
+    const colors = [new THREE.Color(0xc9a961), new THREE.Color(0xedd9af), new THREE.Color(0xe8c4d0), new THREE.Color(0xfbf5f0)]
 
     for (let index = 0; index < particleCount; index += 1) {
       const angle = Math.random() * Math.PI * 2
-      const radius = 3 + Math.random() * 14
-      const height = (Math.random() - 0.5) * 20
+      const radius = 3 + Math.random() * 12
       particlePositions[index * 3] = Math.cos(angle) * radius
-      particlePositions[index * 3 + 1] = height
+      particlePositions[index * 3 + 1] = (Math.random() - 0.5) * 18
       particlePositions[index * 3 + 2] = Math.sin(angle) * radius - 4
 
-      const random = Math.random()
-      const color = random > 0.7 ? gold : random > 0.5 ? blush : random > 0.3 ? fire : pearl
+      const color = colors[Math.floor(Math.random() * colors.length)]
       particleColors[index * 3] = color.r
       particleColors[index * 3 + 1] = color.g
       particleColors[index * 3 + 2] = color.b
@@ -249,33 +306,15 @@ export default function TestExperience() {
 
     const particleMaterial = new THREE.PointsMaterial({
       vertexColors: true,
-      size: 0.06,
+      size: 0.055,
       transparent: true,
-      opacity: 0.9,
+      opacity: 0.82,
       sizeAttenuation: true,
       blending: THREE.AdditiveBlending,
     })
 
     const particles = new THREE.Points(particleGeometry, particleMaterial)
     scene.add(particles)
-
-    const pmrem = new THREE.PMREMGenerator(renderer)
-    const envScene = new THREE.Scene()
-    const envLights = [
-      { color: 0xc9a961, position: [5, 5, 5] as const, intensity: 20 },
-      { color: 0xb8d4f8, position: [-5, 3, -5] as const, intensity: 15 },
-      { color: 0xe8c4d0, position: [3, -4, 4] as const, intensity: 10 },
-      { color: 0xfffdf5, position: [0, 8, -3] as const, intensity: 12 },
-    ]
-    envLights.forEach(({ color, position, intensity }) => {
-      const light = new THREE.PointLight(color, intensity)
-      light.position.set(position[0], position[1], position[2])
-      envScene.add(light)
-      envScene.add(new THREE.AmbientLight(color, 1))
-    })
-    const envMap = pmrem.fromScene(envScene).texture
-    scene.environment = envMap
-    pmrem.dispose()
 
     const startTime = performance.now()
     let rafId = 0
@@ -286,41 +325,35 @@ export default function TestExperience() {
       const mouse = mouseRef.current
       const scroll = scrollRef.current
 
-      diamond.rotation.y += (mouse.x * 0.5 - diamond.rotation.y + time * 0.15) * 0.02
-      diamond.rotation.x += (mouse.y * 0.3 - diamond.rotation.x) * 0.02
-      diamond.position.y = Math.sin(time * 0.4) * 0.15
+      diamond.rotation.y += (mouse.x * 0.5 + time * 0.12 - diamond.rotation.y) * 0.025
+      diamond.rotation.x += (mouse.y * 0.25 - diamond.rotation.x) * 0.025
+      diamond.position.y = Math.sin(time * 0.45) * 0.16
 
-      camera.position.z = 6 + Math.min(scroll / 200, 4)
-      camera.position.y = -scroll * 0.003
-      camera.lookAt(0, -scroll * 0.003, 0)
+      glow.rotation.copy(diamond.rotation)
+      glow.position.copy(diamond.position)
+
+      camera.position.z = 5.6 + Math.min(scroll / 220, 2.6)
+      camera.position.y = -scroll * 0.002
+      camera.lookAt(0, -scroll * 0.002, 0)
 
       sparkles.forEach((sparkle, index) => {
-        const angle = time * (0.8 + index * 0.2) + index
-        sparkle.position.set(Math.cos(angle) * 2.5, Math.sin(angle * 0.7) * 1.8, Math.sin(angle) * 2.5)
-        sparkle.intensity = 2 + Math.sin(time * 2 + index) * 1.5
-      })
-
-      keyLight.intensity = 16 + Math.sin(time * 0.8) * 3
-
-      beams.forEach((beam, index) => {
-        beam.rotation.y = time * 0.1 + index
-        beam.material.opacity = 0.03 + Math.sin(time * 0.5 + index) * 0.02
+        const angle = time * (0.8 + index * 0.16) + index
+        sparkle.position.set(Math.cos(angle) * 2.4, Math.sin(angle * 0.7) * 1.7, Math.sin(angle) * 2.4)
+        sparkle.intensity = 2.2 + Math.sin(time * 2 + index) * 1.4
       })
 
       const positionAttribute = particles.geometry.attributes.position
       for (let index = 0; index < particleCount; index += 1) {
         positionAttribute.array[index * 3 + 1] += 0.004
-        if (positionAttribute.array[index * 3 + 1] > 10) {
-          positionAttribute.array[index * 3 + 1] = -10
+        if (positionAttribute.array[index * 3 + 1] > 9) {
+          positionAttribute.array[index * 3 + 1] = -9
         }
       }
       positionAttribute.needsUpdate = true
-      particles.rotation.y += 0.0004
+      particles.rotation.y += 0.0005
 
       renderer.render(scene, camera)
     }
-
-    animate()
 
     const handleResize = () => {
       camera.aspect = window.innerWidth / window.innerHeight
@@ -328,6 +361,7 @@ export default function TestExperience() {
       renderer.setSize(window.innerWidth, window.innerHeight)
     }
 
+    animate()
     window.addEventListener('resize', handleResize)
 
     return () => {
@@ -335,720 +369,1043 @@ export default function TestExperience() {
       window.removeEventListener('resize', handleResize)
       diamondGeometry.dispose()
       diamondMaterial.dispose()
+      glowGeometry.dispose()
+      glowMaterial.dispose()
       particleGeometry.dispose()
       particleMaterial.dispose()
-      beams.forEach((beam) => {
-        beam.geometry.dispose()
-        beam.material.dispose()
-      })
-      envMap.dispose()
       renderer.dispose()
     }
   }, [])
 
   return (
-    <div style={{ background: scenePalette.background, color: scenePalette.pearl, overflow: 'hidden' }}>
+    <main className="experience-page">
       {!loaded && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            background: '#0A0612',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-            <span style={{
-              fontFamily: "'Italianno', cursive",
-              fontSize: '64px',
-              color: '#C9A961',
-              lineHeight: 0.85,
-              animation: 'breathe 1.5s ease-in-out infinite',
-            }}>just</span>
-            <span style={{
-              fontFamily: 'var(--font-inter)',
-              fontSize: '18px',
-              letterSpacing: '0.35em',
-              color: 'rgba(201,169,97,0.7)',
-              fontWeight: 400,
-              marginLeft: '4px',
-            }}>BECAUSE</span>
+        <div className="loader">
+          <div className="loader-logo">
+            <span>just</span>
+            <strong>BECAUSE</strong>
           </div>
-          <div style={{
-            width: '40px',
-            height: '1px',
-            background: 'linear-gradient(to right, transparent, #C9A961, transparent)',
-            animation: 'expandLine 1.5s ease-in-out infinite',
-            marginTop: '8px',
-          }} />
+          <div className="loader-line" />
         </div>
       )}
 
-      <section className="test-hero" style={{ position: 'relative', height: '100vh', width: '100vw', overflow: 'hidden' }}>
-        <canvas
-          ref={heroCanvasRef}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100vw',
-            height: '100vh',
-            zIndex: 1,
-          }}
-        />
+      <canvas ref={canvasRef} className="diamond-canvas" aria-hidden="true" />
 
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background: 'radial-gradient(ellipse at center, transparent 30%, rgba(10,6,18,0.6) 100%)',
-            pointerEvents: 'none',
-            zIndex: 2,
-          }}
-        />
+      <header className="topbar scene-reveal">
+        <Link href="/" className="logo-lockup" aria-label="Just Because home">
+          <span>just</span>
+          <strong>BECAUSE</strong>
+        </Link>
+        <nav className="desktop-nav" aria-label="Test experience navigation">
+          {['Collection', 'Diamonds', 'Build', 'Story'].map((item) => (
+            <a key={item} href="#collection">
+              {item}
+            </a>
+          ))}
+        </nav>
+        <div className="icon-row" aria-label="Shopping tools">
+          <Search size={18} strokeWidth={1.5} />
+          <Heart size={18} strokeWidth={1.5} />
+          <ShoppingBag size={18} strokeWidth={1.5} />
+        </div>
+      </header>
 
-        <header className="test-topbar">
-          <Link href="/" className="test-logo" style={{ opacity: loaded ? 1 : 0, transform: loaded ? 'translateY(0)' : 'translateY(-10px)' }}>
-            <div style={{ fontFamily: 'var(--font-italianno)', fontSize: '34px', color: scenePalette.pearl, lineHeight: 0.85 }}>just</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
-              <div style={{ width: '14px', height: '0.5px', background: 'rgba(201,169,97,0.5)' }} />
-              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.4em', color: scenePalette.gold }}>BECAUSE</span>
-              <div style={{ width: '14px', height: '0.5px', background: 'rgba(201,169,97,0.5)' }} />
-            </div>
-          </Link>
-
-          <nav className="test-nav" style={{ opacity: loaded ? 1 : 0 }}>
-            {['Collection', 'Diamonds', 'Build', 'Story'].map((label) => (
-              <a
-                key={label}
-                href="#collection"
-                style={{
-                  fontSize: '11px',
-                  letterSpacing: '0.18em',
-                  color: 'rgba(251,245,240,0.7)',
-                  textDecoration: 'none',
-                  fontFamily: 'var(--font-inter)',
-                  transition: 'color 0.3s',
-                }}
-                onMouseEnter={(event) => {
-                  event.currentTarget.style.color = scenePalette.gold
-                }}
-                onMouseLeave={(event) => {
-                  event.currentTarget.style.color = 'rgba(251,245,240,0.7)'
-                }}
-              >
-                {label.toUpperCase()}
-              </a>
-            ))}
-          </nav>
-
-          <div className="test-icons" style={{ opacity: loaded ? 1 : 0 }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l7.78-8.84a5.5 5.5 0 0 0 1.06-7.78z" />
-            </svg>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <path d="M16 10a4 4 0 0 1-8 0" />
-            </svg>
-          </div>
-        </header>
-
-        <div className="test-hero-copy">
-          <div className="hero-kicker" style={{ opacity: loaded ? 1 : 0 }}>LAB-GROWN DIAMONDS / 18K RECYCLED GOLD</div>
-          <h1 className="hero-title" style={{ opacity: loaded ? 1 : 0, transform: loaded ? 'translateY(0)' : 'translateY(30px)' }}>
+      <section className="hero">
+        <div className="hero-vignette" />
+        <div className="hero-copy">
+          <p className="eyebrow scene-reveal">LAB-GROWN DIAMONDS / 18K RECYCLED GOLD</p>
+          <h1 className="scene-reveal">
             A reason,
+            <span>in itself.</span>
           </h1>
-          <h1 className="hero-title hero-title-gold" style={{ opacity: loaded ? 1 : 0, transform: loaded ? 'translateY(0)' : 'translateY(30px)' }}>
-            in itself.
-          </h1>
-          <p className="hero-subcopy" style={{ opacity: loaded ? 1 : 0 }}>
-            Diamonds grown in solar foundries. Set in 18K recycled gold. Crafted for the moments that do not ask for an occasion.
+          <p className="hero-body scene-reveal">
+            Cinematic lab-grown diamond jewelry for the moment that arrives before the explanation.
           </p>
+          <div className="cta-row scene-reveal">
+            <Link href="/products" className="primary-cta">
+              SHOP THE COLLECTION
+            </Link>
+            <Link href="/build" className="secondary-cta">
+              BUILD A RING
+            </Link>
+          </div>
         </div>
-
-        <div className="scroll-cue" style={{ opacity: loaded ? 1 : 0 }}>
-          <div>SCROLL</div>
-          <span />
+        <aside className="floating-card scene-reveal" aria-label="Featured product">
+          <div>
+            <span>FEATURED CUT</span>
+            <strong>Solis Oval Ring</strong>
+          </div>
+          <p>IGI certified / 9 ct / recycled gold</p>
+        </aside>
+        <div className="igi-badge scene-reveal">
+          <Gem size={18} strokeWidth={1.5} />
+          <span>IGI CERTIFIED</span>
         </div>
       </section>
 
-      <section className="scene-section scene-process">
-        <div className="scene-grid">
-          <div className="scene-reveal">
-            <div className="section-kicker">THE PROCESS</div>
-            <h2 className="section-title">Born from</h2>
-            <h2 className="section-title section-title-gold">starlight.</h2>
-            <p className="section-copy">
-              Six weeks in a solar-powered foundry. Carbon atoms layer one at a time, forming the same crystal lattice that took the earth four billion years to make. Identical in every way except for the cost.
-            </p>
-            <div className="stat-row">
-              {[
-                ['100%', 'RENEWABLE'],
-                ['6 WK', 'TIMELINE'],
-                ['IGI', 'CERTIFIED'],
-              ].map(([value, label]) => (
-                <div key={label}>
-                  <div className="stat-value">{value}</div>
-                  <div className="stat-label">{label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
+      <section className="marquee-band" aria-label="Brand promises">
+        <div>
+          {Array.from({ length: 2 }).map((_, groupIndex) => (
+            <span key={groupIndex}>
+              LAB-GROWN LIGHT / RECYCLED GOLD / IGI CERTIFIED / NO MINING / A REASON IN ITSELF /
+            </span>
+          ))}
+        </div>
+      </section>
 
-          <div className="glass-panel scene-reveal">
-            {[
-              { num: '01', label: 'CARBON SEED', desc: 'A pristine carbon seed enters the chamber' },
-              { num: '02', label: 'PLASMA HEAT', desc: 'Microwave plasma reaches eight thousand degrees' },
-              { num: '03', label: 'CRYSTAL GROWTH', desc: 'Atoms layer one by one, six weeks of patience' },
-              { num: '04', label: 'CUT AND POLISH', desc: 'Master cutters reveal 57 facets of fire' },
-            ].map((step, index) => (
-              <div key={step.num} className="process-step" style={{ borderBottom: index < 3 ? '0.5px solid rgba(201,169,97,0.15)' : 'none' }}>
-                <div className="process-num">{step.num}</div>
-                <div>
-                  <div className="process-label">{step.label}</div>
-                  <div className="process-desc">{step.desc}</div>
-                </div>
-              </div>
+      <section className="stats-section">
+        {[
+          { value: `${counters.customers.toLocaleString()}+`, label: 'CUSTOMERS' },
+          { value: counters.reviews.toLocaleString(), label: 'REVIEWS' },
+          { value: counters.countries.toString(), label: 'COUNTRIES' },
+          { value: counters.mining.toString(), label: 'MINING' },
+        ].map((item) => (
+          <div className="stat-card scene-reveal" key={item.label}>
+            <strong>{item.value}</strong>
+            <span>{item.label}</span>
+          </div>
+        ))}
+      </section>
+
+      <section className="gallery-section" id="collection">
+        <div className="section-heading scene-reveal">
+          <p className="eyebrow">THE CINEMATIC EDIT</p>
+          <h2>
+            Jewelry with <span>motion</span> and memory.
+          </h2>
+        </div>
+        <div className="infinite-gallery">
+          <div className="gallery-row scroll-left">
+            {galleryRow.map((src, index) => (
+              <Image key={`${src}-a-${index}`} src={src} alt="" width={320} height={420} sizes="320px" />
+            ))}
+          </div>
+          <div className="gallery-row scroll-right">
+            {galleryRow.map((src, index) => (
+              <Image key={`${src}-b-${index}`} src={src} alt="" width={320} height={420} sizes="320px" />
             ))}
           </div>
         </div>
       </section>
 
-      <section id="collection" className="scene-section">
-        <div className="collection-heading scene-reveal">
-          <div className="section-kicker">THE COLLECTION</div>
-          <h2 className="collection-title">Each piece, <span>a story.</span></h2>
-        </div>
-        <div className="product-grid">
-          {[
-            { name: 'Solis Solitaire', cat: 'ENGAGEMENT', price: 'From $2,800' },
-            { name: 'Lumi Halo', cat: 'ENGAGEMENT', price: 'From $3,600' },
-            { name: 'Vela Pave', cat: 'ENGAGEMENT', price: 'From $3,200' },
-          ].map((product) => (
-            <article key={product.name} className="product-card scene-reveal">
-              <div className="product-orbit">
-                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,97,0.45)" strokeWidth="0.8">
-                  <path d="M6 3h12l4 6-10 13L2 9z" />
-                  <path d="M2 9h20" />
-                  <path d="M12 22V9" />
-                  <path d="M12 22L6 9" />
-                  <path d="M12 22L18 9" />
-                </svg>
+      {featurePanels.map((feature, index) => (
+        <section className="feature-section" key={feature.eyebrow}>
+          <div className={`feature-grid ${index % 2 === 1 ? 'is-reversed' : ''}`}>
+            <div className="feature-copy scene-reveal">
+              <p className="eyebrow">{feature.eyebrow}</p>
+              <h2>{feature.title}</h2>
+              <p>{feature.body}</p>
+              <div className="corner-stat">
+                <strong>{feature.stat}</strong>
+                <span>{feature.statLabel}</span>
               </div>
-              <div className="product-copy">
-                <div>{product.cat}</div>
-                <h3>{product.name}</h3>
-                <p>{product.price}</p>
+            </div>
+            <div className="feature-image scene-reveal">
+              <Image src={feature.img} alt={feature.title} fill sizes="(max-width: 900px) 100vw, 50vw" />
+            </div>
+          </div>
+        </section>
+      ))}
+
+      <section className="shape-section">
+        <div className="section-heading scene-reveal">
+          <p className="eyebrow">FIND YOUR DIAMOND</p>
+          <h2>
+            Find your diamond&apos;s <span>silhouette.</span>
+          </h2>
+        </div>
+        <div className="shape-strip scene-reveal">
+          {shapes.map((shape) => (
+            <button
+              className={activeShape === shape ? 'is-active' : ''}
+              key={shape}
+              type="button"
+              onClick={() => setActiveShape(shape)}
+            >
+              <Sparkles size={22} strokeWidth={1.4} />
+              <span>{shape.toUpperCase()}</span>
+            </button>
+          ))}
+        </div>
+        <div className="selected-shape scene-reveal">
+          <span>
+            Selected: <strong>{activeShape} Cut</strong>
+          </span>
+          <Link href={`/diamonds?shape=${activeShape.toLowerCase()}`}>SHOP {activeShape.toUpperCase()}</Link>
+        </div>
+      </section>
+
+      <section className="masonry-section">
+        <div className="section-heading scene-reveal">
+          <p className="eyebrow">REAL WEARERS</p>
+          <h2>
+            Words from real <span>wearers.</span>
+          </h2>
+          <p className="stars">★★★★★</p>
+          <small>4.9 / 5 - 2,847 verified reviews</small>
+        </div>
+        <div className="masonry-grid">
+          {reviews.map((item) => (
+            <article className="review-tile scene-reveal" key={`${item.name}-${item.place}`} style={{ height: item.height }}>
+              <Image src={item.img} alt={`${item.name} wearing Just Because jewelry`} fill sizes="(max-width: 900px) 50vw, 25vw" />
+              <div>
+                <span>★★★★★</span>
+                <p>&quot;{item.quote}&quot;</p>
+                <small>
+                  {item.name} / {item.place}
+                </small>
               </div>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="manifesto-section scene-reveal">
-        <div className="section-kicker">MANIFESTO</div>
-        <h2>
-          You do not need a milestone.
-          <br />
-          You do not need permission.
-          <br />
-          <span>You do not need a reason.</span>
+      <section className="manifesto-section">
+        <p className="eyebrow scene-reveal">JUST BECAUSE</p>
+        <h2 className="scene-reveal">
+          You do not need a reason.
+          <span>That is exactly the point.</span>
         </h2>
-        <div className="script-lockup">
-          <div />
-          <span>just because</span>
-          <div />
+        <div className="cta-row scene-reveal">
+          <Link href="/products" className="primary-cta">
+            START YOUR STORY
+          </Link>
+          <Link href="/diamonds" className="secondary-cta">
+            BROWSE DIAMONDS
+          </Link>
         </div>
       </section>
 
-      <footer className="test-footer">
+      <footer className="experience-footer">
         <div className="footer-grid">
           <div>
-            <div style={{ fontFamily: 'var(--font-italianno)', fontSize: '40px', color: scenePalette.gold, marginBottom: '4px' }}>just</div>
-            <div style={{ fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.4em', color: scenePalette.gold, marginBottom: '24px' }}>BECAUSE</div>
-            <p>Lab-grown diamonds and recycled gold, crafted for every moment that does not need a name.</p>
+            <Link href="/" className="logo-lockup">
+              <span>just</span>
+              <strong>BECAUSE</strong>
+            </Link>
+            <p>Lab-grown diamonds and recycled gold, for every moment that does not need a name.</p>
           </div>
           {[
-            { title: 'SHOP', links: ['Engagement', 'Rings', 'Necklaces', 'Earrings'] },
-            { title: 'LEARN', links: ['Our Process', 'The 4 Cs', 'Education', 'Journal'] },
-            { title: 'SUPPORT', links: ['Contact', 'Returns', 'Sizing', 'Care'] },
-          ].map((column) => (
-            <div key={column.title}>
-              <div className="footer-title">{column.title}</div>
-              {column.links.map((link) => (
-                <div key={link} className="footer-link">{link}</div>
+            ['SHOP', 'Engagement', 'Rings', 'Necklaces', 'Earrings'],
+            ['LEARN', 'Our Process', 'The 4 Cs', 'Lab vs Natural', 'IGI Certs'],
+            ['SUPPORT', 'Contact', 'Returns', 'Sizing', 'Shipping'],
+          ].map(([title, ...links]) => (
+            <div key={title}>
+              <h3>{title}</h3>
+              {links.map((label) => (
+                <Link key={label} href="/products">
+                  {label}
+                </Link>
               ))}
             </div>
           ))}
         </div>
         <div className="footer-bottom">
-          <div>2026 Just Because / All rights reserved</div>
-          <div>IGI CERTIFIED / GCAL VERIFIED / CARBON NEUTRAL</div>
+          <span>2026 Just Because - All rights reserved</span>
+          <span>IGI CERTIFIED / GCAL VERIFIED / CARBON NEUTRAL</span>
         </div>
       </footer>
 
       <style jsx global>{`
-        html {
-          scroll-behavior: auto;
+        body:has(.experience-page) > header,
+        body:has(.experience-page) > footer,
+        body:has(.experience-page) > div:has(button[aria-label='Chat with us']) {
+          display: none !important;
         }
 
-        body {
-          overflow-x: hidden;
+        body:has(.experience-page) > main {
+          background: ${palette.noir};
+          margin: 0;
+          padding: 0;
+        }
+      `}</style>
+
+      <style jsx>{`
+        .experience-page {
+          background: ${palette.noir};
+          color: ${palette.pearl};
+          font-family: var(--font-inter), sans-serif;
+          min-height: 100vh;
+          overflow: hidden;
+          position: relative;
         }
 
-        @keyframes breathe {
-          0%, 100% { opacity: 0.5; transform: scale(1); }
-          50% { opacity: 1; transform: scale(1.05); }
+        .loader {
+          align-items: center;
+          background: ${palette.noir};
+          display: flex;
+          flex-direction: column;
+          gap: 18px;
+          inset: 0;
+          justify-content: center;
+          position: fixed;
+          z-index: 100;
         }
 
-        @keyframes expandLine {
-          0%,100% { width: 20px; opacity: 0.3; }
-          50% { width: 60px; opacity: 1; }
+        .loader-logo,
+        .logo-lockup {
+          align-items: baseline;
+          color: ${palette.gold};
+          display: inline-flex;
+          gap: 8px;
+          text-decoration: none;
         }
 
-        @keyframes scrollLine {
-          0%, 100% { transform: scaleY(0.6); opacity: 0.5; }
-          50% { transform: scaleY(1); opacity: 1; }
+        .loader-logo span,
+        .logo-lockup span {
+          font-family: var(--font-italianno), cursive;
+          font-size: 42px;
+          line-height: 0.8;
         }
 
-        .test-topbar {
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          padding: 32px 48px;
+        .loader-logo strong,
+        .logo-lockup strong {
+          color: ${palette.pearl};
+          font-size: 11px;
+          font-weight: 500;
+          letter-spacing: 0.34em;
+        }
+
+        .loader-line {
+          animation: expandLine 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+          background: linear-gradient(90deg, rgba(201, 169, 97, 0), ${palette.gold}, rgba(201, 169, 97, 0));
+          height: 1px;
+          width: 48px;
+        }
+
+        .diamond-canvas {
+          height: 100vh;
+          inset: 0;
+          position: fixed;
+          width: 100vw;
+          z-index: 1;
+        }
+
+        .topbar {
+          align-items: center;
           display: flex;
           justify-content: space-between;
-          align-items: center;
-          z-index: 10;
+          left: 0;
+          padding: 28px clamp(24px, 5vw, 72px);
+          position: fixed;
+          right: 0;
+          top: 0;
+          z-index: 20;
         }
 
-        .test-logo {
-          text-decoration: none;
-          transition: all 1s ease 0.6s;
-        }
-
-        .test-nav {
+        .desktop-nav {
           display: flex;
-          gap: 32px;
-          transition: opacity 1s ease 0.8s;
+          gap: 30px;
         }
 
-        .test-icons {
-          display: flex;
-          gap: 20px;
-          align-items: center;
-          color: ${scenePalette.pearl};
-          transition: opacity 1s ease 1s;
-        }
-
-        .test-hero-copy {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          text-align: center;
-          z-index: 10;
-          pointer-events: none;
-          width: 90%;
-          max-width: 760px;
-        }
-
-        .hero-kicker {
-          font-size: 10px;
-          letter-spacing: 0.5em;
-          color: ${scenePalette.gold};
-          margin-bottom: 24px;
-          font-family: var(--font-inter);
-          transition: opacity 1.2s ease 1.2s;
-        }
-
-        .hero-title {
-          font-family: var(--font-playfair);
-          font-size: clamp(64px, 9vw, 130px);
-          font-weight: 400;
-          color: ${scenePalette.pearl};
-          line-height: 0.92;
-          margin: 0 0 8px;
-          transition: all 1.4s ease 1.4s;
-        }
-
-        .hero-title-gold {
-          color: ${scenePalette.gold};
-          font-style: italic;
-          margin-bottom: 40px;
-          transition-delay: 1.6s;
-        }
-
-        .hero-subcopy {
-          font-size: 15px;
-          color: rgba(251,245,240,0.55);
-          max-width: 430px;
-          margin: 0 auto;
-          line-height: 1.85;
-          font-family: var(--font-inter);
-          transition: opacity 1.4s ease 1.8s;
-        }
-
-        .scroll-cue {
-          position: absolute;
-          bottom: 40px;
-          left: 50%;
-          transform: translateX(-50%);
-          z-index: 10;
-          text-align: center;
-          transition: opacity 1s ease 2.4s;
-          font-family: var(--font-inter);
-          color: rgba(201,169,97,0.65);
-          font-size: 9px;
-          letter-spacing: 0.4em;
-        }
-
-        .scroll-cue span {
-          display: block;
-          width: 1px;
-          height: 60px;
-          background: linear-gradient(to bottom, ${scenePalette.gold}, transparent);
-          margin: 12px auto 0;
-          animation: scrollLine 2s ease-in-out infinite;
-        }
-
-        .scene-section {
-          position: relative;
-          z-index: 5;
-          padding: 160px 60px;
-          background: ${scenePalette.background};
-        }
-
-        .scene-process {
-          min-height: 100vh;
-          background: linear-gradient(to bottom, transparent, rgba(10,6,18,0.95) 28%, ${scenePalette.background});
-        }
-
-        .scene-grid {
-          max-width: 1200px;
-          margin: 0 auto;
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 100px;
-          align-items: center;
-        }
-
-        .section-kicker {
-          font-size: 10px;
-          letter-spacing: 0.4em;
-          color: ${scenePalette.gold};
-          margin-bottom: 20px;
-          font-family: var(--font-inter);
-        }
-
-        .section-title {
-          font-family: var(--font-playfair);
-          font-size: clamp(40px, 5vw, 72px);
-          font-weight: 400;
-          color: ${scenePalette.pearl};
-          line-height: 1.05;
-          margin: 0 0 12px;
-        }
-
-        .section-title-gold {
-          color: ${scenePalette.gold};
-          font-style: italic;
-          margin-bottom: 32px;
-        }
-
-        .section-copy {
-          font-size: 15px;
-          color: rgba(184,160,144,0.8);
-          line-height: 1.9;
-          max-width: 460px;
-          font-family: var(--font-inter);
-          margin-bottom: 40px;
-        }
-
-        .stat-row {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 32px;
-          padding-top: 32px;
-          border-top: 0.5px solid rgba(201,169,97,0.2);
-        }
-
-        .stat-value {
-          font-family: var(--font-playfair);
-          font-size: 36px;
-          color: ${scenePalette.gold};
-          font-weight: 400;
-          margin-bottom: 4px;
-        }
-
-        .stat-label {
-          font-size: 9px;
-          letter-spacing: 0.25em;
-          color: rgba(184,160,144,0.6);
-          font-family: var(--font-inter);
-        }
-
-        .glass-panel {
-          background: rgba(251,245,240,0.03);
-          backdrop-filter: blur(20px);
-          border: 0.5px solid rgba(201,169,97,0.2);
-          padding: 48px 40px;
-          border-radius: 2px;
-        }
-
-        .process-step {
-          display: flex;
-          gap: 24px;
-          padding-bottom: 24px;
-          margin-bottom: 24px;
-        }
-
-        .process-num {
-          font-family: var(--font-playfair);
-          font-size: 24px;
-          color: ${scenePalette.gold};
-          min-width: 40px;
-        }
-
-        .process-label {
+        .desktop-nav a,
+        .footer-grid a {
+          color: rgba(251, 245, 240, 0.68);
           font-size: 11px;
-          letter-spacing: 0.25em;
-          color: ${scenePalette.pearl};
-          margin-bottom: 6px;
-          font-family: var(--font-inter);
           font-weight: 500;
+          letter-spacing: 0.14em;
+          text-decoration: none;
+          transition: color 400ms cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .process-desc {
-          font-size: 13px;
-          color: rgba(184,160,144,0.7);
-          line-height: 1.7;
-          font-family: var(--font-inter);
+        .desktop-nav a:hover,
+        .footer-grid a:hover {
+          color: ${palette.gold};
         }
 
-        .collection-heading {
-          text-align: center;
-          margin-bottom: 80px;
-        }
-
-        .collection-title {
-          font-family: var(--font-playfair);
-          font-size: clamp(40px, 5vw, 64px);
-          font-weight: 400;
-          color: ${scenePalette.pearl};
-          margin: 0;
-        }
-
-        .collection-title span {
-          color: ${scenePalette.gold};
-          font-style: italic;
-        }
-
-        .product-grid {
-          max-width: 1400px;
-          margin: 0 auto;
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 32px;
-        }
-
-        .product-card {
-          background: rgba(251,245,240,0.02);
-          border: 0.5px solid rgba(201,169,97,0.15);
-          overflow: hidden;
-          cursor: pointer;
-          transition: all 0.6s ease;
-        }
-
-        .product-card:hover {
-          border-color: rgba(201,169,97,0.5);
-          transform: translateY(-8px);
-          background: rgba(251,245,240,0.04);
-          box-shadow: 0 24px 60px rgba(201,169,97,0.15);
-        }
-
-        .product-orbit {
-          aspect-ratio: 1;
-          background: linear-gradient(135deg, rgba(201,169,97,0.08), rgba(232,196,208,0.08));
+        .icon-row {
+          color: ${palette.pearl};
           display: flex;
+          gap: 18px;
+        }
+
+        .hero {
           align-items: center;
-          justify-content: center;
-        }
-
-        .product-copy {
-          padding: 24px;
-        }
-
-        .product-copy div {
-          font-size: 9px;
-          letter-spacing: 0.3em;
-          color: ${scenePalette.gold};
-          margin-bottom: 10px;
-          font-family: var(--font-inter);
-        }
-
-        .product-copy h3 {
-          font-family: var(--font-playfair);
-          font-size: 20px;
-          color: ${scenePalette.pearl};
-          margin: 0 0 8px;
-          font-weight: 400;
-        }
-
-        .product-copy p {
-          font-size: 13px;
-          color: rgba(184,160,144,0.7);
-          font-family: var(--font-inter);
-          margin: 0;
-        }
-
-        .manifesto-section {
+          display: flex;
+          min-height: 100vh;
+          padding: 120px clamp(24px, 7vw, 96px) 80px;
           position: relative;
-          padding: 180px 60px;
-          background: linear-gradient(to bottom, ${scenePalette.background}, ${scenePalette.surface}, ${scenePalette.background});
-          text-align: center;
           z-index: 5;
         }
 
+        .hero-vignette {
+          background:
+            radial-gradient(circle at 72% 48%, rgba(201, 169, 97, 0.18), rgba(201, 169, 97, 0) 32%),
+            linear-gradient(90deg, ${palette.noir} 0%, rgba(26, 16, 20, 0.82) 42%, rgba(26, 16, 20, 0.16) 100%);
+          inset: 0;
+          pointer-events: none;
+          position: absolute;
+          z-index: -1;
+        }
+
+        .hero-copy {
+          max-width: 640px;
+        }
+
+        .eyebrow {
+          color: ${palette.gold};
+          font-size: 10px;
+          font-weight: 500;
+          letter-spacing: 0.3em;
+          margin: 0 0 18px;
+        }
+
+        .hero h1,
+        .section-heading h2,
+        .feature-copy h2,
         .manifesto-section h2 {
-          font-family: var(--font-playfair);
-          font-size: clamp(36px, 5vw, 56px);
+          font-family: var(--font-playfair), serif;
           font-weight: 400;
-          color: ${scenePalette.pearl};
-          line-height: 1.3;
+        }
+
+        .hero h1 {
+          font-size: clamp(62px, 11vw, 136px);
+          letter-spacing: 0;
+          line-height: 0.9;
           margin: 0;
         }
 
+        .hero h1 span,
+        .section-heading h2 span,
         .manifesto-section h2 span {
-          color: ${scenePalette.gold};
+          color: ${palette.gold};
+          display: block;
           font-style: italic;
         }
 
-        .script-lockup {
+        .hero-body {
+          color: rgba(184, 160, 144, 0.8);
+          font-size: clamp(14px, 1.3vw, 18px);
+          line-height: 1.9;
+          margin: 32px 0 0;
+          max-width: 520px;
+        }
+
+        .cta-row {
           display: flex;
+          flex-wrap: wrap;
+          gap: 14px;
+          margin-top: 42px;
+        }
+
+        .primary-cta,
+        .secondary-cta {
           align-items: center;
+          border: 0.5px solid ${palette.goldTint};
+          display: inline-flex;
+          font-size: 11px;
+          font-weight: 500;
           justify-content: center;
-          gap: 20px;
-          margin-top: 60px;
+          letter-spacing: 0.18em;
+          min-height: 52px;
+          padding: 0 30px;
+          text-decoration: none;
+          transition:
+            background-color 500ms cubic-bezier(0.4, 0, 0.2, 1),
+            color 500ms cubic-bezier(0.4, 0, 0.2, 1),
+            transform 500ms cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .script-lockup div {
-          width: 60px;
-          height: 0.5px;
-          background: ${scenePalette.gold};
+        .primary-cta {
+          background: ${palette.gold};
+          color: ${palette.noir};
         }
 
-        .script-lockup span {
-          font-family: var(--font-italianno);
-          font-size: 48px;
-          color: ${scenePalette.gold};
+        .secondary-cta {
+          background: rgba(251, 245, 240, 0.02);
+          color: ${palette.pearl};
+        }
+
+        .primary-cta:hover,
+        .secondary-cta:hover {
+          transform: translateY(-3px);
+        }
+
+        .floating-card,
+        .igi-badge {
+          backdrop-filter: blur(18px);
+          background: rgba(251, 245, 240, 0.045);
+          border: 0.5px solid rgba(237, 217, 175, 0.32);
+          position: absolute;
+          z-index: 8;
+        }
+
+        .floating-card {
+          bottom: 11%;
+          padding: 22px;
+          right: clamp(24px, 7vw, 110px);
+          width: min(280px, calc(100vw - 48px));
+        }
+
+        .floating-card span,
+        .floating-card p,
+        .igi-badge span {
+          color: rgba(184, 160, 144, 0.82);
+          font-size: 10px;
+          font-weight: 500;
+          letter-spacing: 0.18em;
+        }
+
+        .floating-card strong {
+          color: ${palette.pearl};
+          display: block;
+          font-family: var(--font-playfair), serif;
+          font-size: 22px;
+          font-weight: 400;
+          margin-top: 8px;
+        }
+
+        .floating-card p {
+          line-height: 1.7;
+          margin: 18px 0 0;
+        }
+
+        .igi-badge {
+          align-items: center;
+          color: ${palette.gold};
+          display: flex;
+          gap: 8px;
+          padding: 14px 18px;
+          right: clamp(24px, 12vw, 180px);
+          top: 24%;
+        }
+
+        .marquee-band {
+          background: ${palette.gold};
+          color: ${palette.noir};
+          overflow: hidden;
+          padding: 16px 0;
+          position: relative;
+          z-index: 6;
+        }
+
+        .marquee-band div {
+          animation: marquee 22s linear infinite;
+          display: flex;
+          white-space: nowrap;
+          width: max-content;
+        }
+
+        .marquee-band span {
+          font-size: 11px;
+          font-weight: 500;
+          letter-spacing: 0.24em;
+          padding-right: 48px;
+        }
+
+        .stats-section {
+          background: ${palette.noir};
+          border-bottom: 0.5px solid rgba(237, 217, 175, 0.18);
+          border-top: 0.5px solid rgba(237, 217, 175, 0.18);
+          display: grid;
+          gap: 1px;
+          grid-template-columns: repeat(4, 1fr);
+          padding: 0 clamp(20px, 5vw, 72px);
+          position: relative;
+          z-index: 6;
+        }
+
+        .stat-card {
+          padding: 52px 16px;
+          text-align: center;
+        }
+
+        .stat-card strong {
+          color: ${palette.gold};
+          display: block;
+          font-family: var(--font-playfair), serif;
+          font-size: clamp(34px, 4vw, 58px);
+          font-weight: 400;
           line-height: 1;
         }
 
-        .test-footer {
-          background: ${scenePalette.surface};
-          padding: 100px 60px 40px;
+        .stat-card span {
+          color: rgba(184, 160, 144, 0.72);
+          display: block;
+          font-size: 10px;
+          font-weight: 500;
+          letter-spacing: 0.24em;
+          margin-top: 12px;
+        }
+
+        .gallery-section,
+        .shape-section,
+        .masonry-section,
+        .manifesto-section {
+          background: ${palette.noir};
+          padding: clamp(72px, 10vw, 128px) clamp(20px, 5vw, 80px);
           position: relative;
-          z-index: 5;
+          z-index: 6;
+        }
+
+        .section-heading {
+          margin: 0 auto 56px;
+          max-width: 780px;
+          text-align: center;
+        }
+
+        .section-heading h2,
+        .manifesto-section h2 {
+          color: ${palette.pearl};
+          font-size: clamp(34px, 5vw, 68px);
+          line-height: 1.08;
+          margin: 0;
+        }
+
+        .infinite-gallery {
+          display: grid;
+          gap: 14px;
+          margin-inline: calc(clamp(20px, 5vw, 80px) * -1);
+          overflow: hidden;
+        }
+
+        .gallery-row {
+          display: flex;
+          gap: 14px;
+          width: max-content;
+        }
+
+        .gallery-row img {
+          aspect-ratio: 4 / 5;
+          border: 0.5px solid rgba(237, 217, 175, 0.18);
+          height: 280px;
+          object-fit: cover;
+          transition:
+            border-color 500ms cubic-bezier(0.4, 0, 0.2, 1),
+            transform 500ms cubic-bezier(0.4, 0, 0.2, 1);
+          width: 220px;
+        }
+
+        .gallery-row img:hover {
+          border-color: ${palette.gold};
+          transform: translateY(-6px);
+        }
+
+        .scroll-left {
+          animation: scrollLeft 36s linear infinite;
+        }
+
+        .scroll-right {
+          animation: scrollRight 40s linear infinite;
+        }
+
+        .feature-section {
+          background: ${palette.noir};
+          padding: clamp(64px, 10vw, 120px) clamp(20px, 6vw, 96px);
+          position: relative;
+          z-index: 6;
+        }
+
+        .feature-grid {
+          align-items: center;
+          display: grid;
+          gap: clamp(36px, 7vw, 96px);
+          grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr);
+          margin: 0 auto;
+          max-width: 1240px;
+        }
+
+        .feature-grid.is-reversed .feature-copy {
+          order: 2;
+        }
+
+        .feature-grid.is-reversed .feature-image {
+          order: 1;
+        }
+
+        .feature-copy h2 {
+          color: ${palette.pearl};
+          font-size: clamp(34px, 4vw, 58px);
+          line-height: 1.08;
+          margin: 0 0 24px;
+        }
+
+        .feature-copy > p:not(.eyebrow) {
+          color: rgba(184, 160, 144, 0.78);
+          font-size: 15px;
+          line-height: 1.9;
+          margin: 0 0 36px;
+          max-width: 520px;
+        }
+
+        .corner-stat {
+          border: 0.5px solid rgba(237, 217, 175, 0.35);
+          display: inline-block;
+          padding: 24px 32px;
+          position: relative;
+        }
+
+        .corner-stat strong {
+          color: ${palette.gold};
+          display: block;
+          font-family: var(--font-playfair), serif;
+          font-size: 56px;
+          font-weight: 400;
+          line-height: 1;
+        }
+
+        .corner-stat span {
+          color: rgba(184, 160, 144, 0.7);
+          font-size: 10px;
+          font-weight: 500;
+          letter-spacing: 0.18em;
+        }
+
+        .feature-image {
+          aspect-ratio: 4 / 5;
+          border: 0.5px solid rgba(237, 217, 175, 0.28);
+          overflow: hidden;
+          position: relative;
+        }
+
+        .feature-image::after,
+        .review-tile::after {
+          background: linear-gradient(180deg, rgba(26, 16, 20, 0.04), rgba(26, 16, 20, 0.78));
+          content: '';
+          inset: 0;
+          position: absolute;
+        }
+
+        .feature-image img,
+        .review-tile img {
+          object-fit: cover;
+        }
+
+        .shape-strip {
+          display: flex;
+          gap: 12px;
+          margin: 0 auto 32px;
+          max-width: 1120px;
+          overflow-x: auto;
+          padding: 4px 0 12px;
+          scrollbar-width: none;
+        }
+
+        .shape-strip::-webkit-scrollbar {
+          display: none;
+        }
+
+        .shape-strip button {
+          align-items: center;
+          background: rgba(251, 245, 240, 0.035);
+          border: 0.5px solid rgba(237, 217, 175, 0.2);
+          color: rgba(251, 245, 240, 0.65);
+          display: flex;
+          flex: 0 0 132px;
+          flex-direction: column;
+          gap: 14px;
+          height: 118px;
+          justify-content: center;
+          transition:
+            background-color 500ms cubic-bezier(0.4, 0, 0.2, 1),
+            border-color 500ms cubic-bezier(0.4, 0, 0.2, 1),
+            color 500ms cubic-bezier(0.4, 0, 0.2, 1),
+            transform 500ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .shape-strip button span {
+          font-size: 10px;
+          font-weight: 500;
+          letter-spacing: 0.18em;
+        }
+
+        .shape-strip button:hover,
+        .shape-strip button.is-active {
+          background: rgba(201, 169, 97, 0.12);
+          border-color: ${palette.gold};
+          color: ${palette.gold};
+          transform: translateY(-4px);
+        }
+
+        .selected-shape {
+          align-items: center;
+          border: 0.5px solid rgba(237, 217, 175, 0.24);
+          display: flex;
+          gap: 18px;
+          justify-content: center;
+          margin: 0 auto;
+          max-width: max-content;
+          padding: 18px 24px;
+        }
+
+        .selected-shape span {
+          color: rgba(184, 160, 144, 0.8);
+          font-size: 13px;
+        }
+
+        .selected-shape strong,
+        .selected-shape a {
+          color: ${palette.pearl};
+          font-weight: 500;
+        }
+
+        .selected-shape a {
+          color: ${palette.gold};
+          font-size: 11px;
+          letter-spacing: 0.16em;
+          text-decoration: none;
+        }
+
+        .stars {
+          color: ${palette.gold};
+          letter-spacing: 0.18em;
+          margin: 18px 0 6px;
+        }
+
+        .section-heading small {
+          color: rgba(184, 160, 144, 0.66);
+          font-size: 12px;
+        }
+
+        .masonry-grid {
+          column-count: 4;
+          column-gap: 14px;
+          margin: 0 auto;
+          max-width: 1360px;
+        }
+
+        .review-tile {
+          border: 0.5px solid rgba(237, 217, 175, 0.18);
+          break-inside: avoid;
+          margin-bottom: 14px;
+          overflow: hidden;
+          position: relative;
+          transition:
+            border-color 500ms cubic-bezier(0.4, 0, 0.2, 1),
+            transform 500ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .review-tile:hover {
+          border-color: ${palette.gold};
+          transform: translateY(-4px);
+        }
+
+        .review-tile div {
+          bottom: 0;
+          left: 0;
+          padding: 18px;
+          position: absolute;
+          right: 0;
+          z-index: 2;
+        }
+
+        .review-tile span {
+          color: ${palette.gold};
+          display: block;
+          font-size: 11px;
+          letter-spacing: 0.08em;
+          margin-bottom: 8px;
+        }
+
+        .review-tile p {
+          color: ${palette.pearl};
+          font-family: var(--font-playfair), serif;
+          font-size: 16px;
+          font-style: italic;
+          line-height: 1.35;
+          margin: 0 0 8px;
+        }
+
+        .review-tile small {
+          color: rgba(237, 217, 175, 0.78);
+          font-size: 10px;
+          letter-spacing: 0.12em;
+        }
+
+        .manifesto-section {
+          text-align: center;
+        }
+
+        .manifesto-section h2 {
+          margin: 0 auto;
+          max-width: 920px;
+        }
+
+        .manifesto-section .cta-row {
+          justify-content: center;
+        }
+
+        .experience-footer {
+          background: ${palette.noir};
+          border-top: 0.5px solid rgba(237, 217, 175, 0.18);
+          padding: 80px clamp(24px, 6vw, 80px) 32px;
+          position: relative;
+          z-index: 6;
         }
 
         .footer-grid {
-          max-width: 1200px;
-          margin: 0 auto 60px;
           display: grid;
-          grid-template-columns: 1.5fr 1fr 1fr 1fr;
-          gap: 60px;
+          gap: 48px;
+          grid-template-columns: 1.5fr repeat(3, 1fr);
+          margin: 0 auto 48px;
+          max-width: 1240px;
         }
 
         .footer-grid p {
+          color: rgba(184, 160, 144, 0.7);
           font-size: 12px;
-          color: rgba(184,160,144,0.6);
           line-height: 1.8;
-          max-width: 260px;
-          font-family: var(--font-inter);
+          max-width: 280px;
         }
 
-        .footer-title {
+        .footer-grid h3 {
+          color: rgba(237, 217, 175, 0.78);
           font-size: 9px;
+          font-weight: 500;
           letter-spacing: 0.3em;
-          color: rgba(251,245,240,0.5);
-          margin-bottom: 20px;
-          font-family: var(--font-inter);
+          margin: 0 0 18px;
         }
 
-        .footer-link {
-          font-size: 12px;
+        .footer-grid a {
+          display: block;
           line-height: 2.5;
-          color: rgba(184,160,144,0.7);
-          cursor: pointer;
-          font-family: var(--font-inter);
-          transition: color 0.2s;
-        }
-
-        .footer-link:hover {
-          color: ${scenePalette.gold};
         }
 
         .footer-bottom {
-          max-width: 1200px;
-          margin: 0 auto;
-          padding-top: 32px;
-          border-top: 0.5px solid rgba(201,169,97,0.15);
+          border-top: 0.5px solid rgba(237, 217, 175, 0.12);
+          color: rgba(184, 160, 144, 0.52);
           display: flex;
-          justify-content: space-between;
-          gap: 24px;
           font-size: 10px;
-          color: rgba(184,160,144,0.4);
-          font-family: var(--font-inter);
+          gap: 24px;
+          justify-content: space-between;
+          margin: 0 auto;
+          max-width: 1240px;
+          padding-top: 24px;
         }
 
-        @media (max-width: 900px) {
-          .test-topbar {
-            padding: 24px;
+        @keyframes expandLine {
+          0%,
+          100% {
+            opacity: 0.4;
+            width: 42px;
           }
+          50% {
+            opacity: 1;
+            width: 92px;
+          }
+        }
 
-          .test-nav {
+        @keyframes marquee {
+          to {
+            transform: translateX(-50%);
+          }
+        }
+
+        @keyframes scrollLeft {
+          to {
+            transform: translateX(-50%);
+          }
+        }
+
+        @keyframes scrollRight {
+          from {
+            transform: translateX(-50%);
+          }
+          to {
+            transform: translateX(0);
+          }
+        }
+
+        @media (max-width: 1024px) {
+          .desktop-nav {
             display: none;
           }
 
-          .hero-title {
-            font-size: clamp(54px, 17vw, 86px);
+          .floating-card {
+            bottom: 7%;
           }
 
-          .scene-section,
-          .manifesto-section,
-          .test-footer {
-            padding-left: 28px;
-            padding-right: 28px;
+          .stats-section {
+            grid-template-columns: repeat(2, 1fr);
           }
 
-          .scene-grid,
-          .product-grid,
+          .feature-grid,
+          .feature-grid.is-reversed {
+            grid-template-columns: 1fr;
+          }
+
+          .feature-grid.is-reversed .feature-copy,
+          .feature-grid.is-reversed .feature-image {
+            order: initial;
+          }
+
+          .masonry-grid {
+            column-count: 2;
+          }
+
+          .footer-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+        }
+
+        @media (max-width: 720px) {
+          .topbar {
+            padding: 20px;
+          }
+
+          .icon-row {
+            gap: 12px;
+          }
+
+          .logo-lockup span {
+            font-size: 34px;
+          }
+
+          .logo-lockup strong {
+            font-size: 9px;
+            letter-spacing: 0.26em;
+          }
+
+          .hero {
+            align-items: flex-start;
+            min-height: 100svh;
+            padding: 132px 20px 56px;
+          }
+
+          .hero-vignette {
+            background:
+              radial-gradient(circle at 50% 56%, rgba(201, 169, 97, 0.14), rgba(201, 169, 97, 0) 34%),
+              linear-gradient(180deg, ${palette.noir} 0%, rgba(26, 16, 20, 0.72) 58%, ${palette.noir} 100%);
+          }
+
+          .hero h1 {
+            font-size: clamp(54px, 18vw, 84px);
+          }
+
+          .floating-card {
+            bottom: 24px;
+            left: 20px;
+            right: 20px;
+            width: auto;
+          }
+
+          .igi-badge {
+            display: none;
+          }
+
+          .stats-section {
+            grid-template-columns: 1fr;
+          }
+
+          .stat-card {
+            padding: 34px 16px;
+          }
+
+          .selected-shape,
+          .footer-bottom {
+            align-items: flex-start;
+            flex-direction: column;
+          }
+
+          .masonry-grid {
+            column-count: 1;
+          }
+
           .footer-grid {
             grid-template-columns: 1fr;
-            gap: 36px;
-          }
-
-          .stat-row {
-            grid-template-columns: 1fr;
-          }
-
-          .footer-bottom {
-            flex-direction: column;
           }
         }
       `}</style>
-    </div>
+    </main>
   )
 }
