@@ -6,16 +6,16 @@ import Link from 'next/link'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 const shapes = [
-  { name: 'Round', src: '/images/shapes/round.png', href: '/products?shape=round' },
-  { name: 'Oval', src: '/images/shapes/oval.png', href: '/products?shape=oval' },
-  { name: 'Emerald', src: '/images/shapes/emerald.png', href: '/products?shape=emerald' },
-  { name: 'Pear', src: '/images/shapes/pear.png', href: '/products?shape=pear' },
-  { name: 'Princess', src: '/images/shapes/princess.png', href: '/products?shape=princess' },
-  { name: 'Cushion', src: '/images/shapes/cushion.png', href: '/products?shape=cushion' },
-  { name: 'Radiant', src: '/images/shapes/radiant.png', href: '/products?shape=radiant' },
-  { name: 'Marquise', src: '/images/shapes/marquise.png', href: '/products?shape=marquise' },
-  { name: 'Heart', src: '/images/shapes/heart.png', href: '/products?shape=heart' },
-  { name: 'Asscher', src: '/images/shapes/asscher.png', href: '/products?shape=asscher' },
+  { name: 'Round', src: '/images/shapes/round.png', href: '/diamonds?shape=round' },
+  { name: 'Oval', src: '/images/shapes/oval.png', href: '/diamonds?shape=oval' },
+  { name: 'Emerald', src: '/images/shapes/emerald.png', href: '/diamonds?shape=emerald' },
+  { name: 'Pear', src: '/images/shapes/pear.png', href: '/diamonds?shape=pear' },
+  { name: 'Princess', src: '/images/shapes/princess.png', href: '/diamonds?shape=princess' },
+  { name: 'Cushion', src: '/images/shapes/cushion.png', href: '/diamonds?shape=cushion' },
+  { name: 'Radiant', src: '/images/shapes/radiant.png', href: '/diamonds?shape=radiant' },
+  { name: 'Marquise', src: '/images/shapes/marquise.png', href: '/diamonds?shape=marquise' },
+  { name: 'Heart', src: '/images/shapes/heart.png', href: '/diamonds?shape=heart' },
+  { name: 'Asscher', src: '/images/shapes/asscher.png', href: '/diamonds?shape=asscher' },
 ]
 
 export function ShopByShape() {
@@ -55,14 +55,14 @@ export function ShopByShape() {
     (_, index) => shapes[(startIndex + index) % shapes.length],
   )
 
-  const selectedHref = `/products?shape=${selected.toLowerCase()}`
+  const selectedHref = `/diamonds?shape=${selected.toLowerCase()}`
 
   const arrowBaseStyle = (hovered: boolean) => ({
     width: `${arrowSize}px`,
     height: `${arrowSize}px`,
     borderRadius: '50%',
     border: `0.5px solid ${hovered ? '#1A1014' : '#EDD9AF'}`,
-    background: hovered ? '#1A1014' : '#FFFFFF',
+    background: hovered ? '#1A1014' : '#FBF5F0',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
@@ -75,7 +75,7 @@ export function ShopByShape() {
     <section
       className="shop-shape-section"
       style={{
-        background: '#FFFFFF',
+        background: '#FBF5F0',
         padding: '72px 60px',
         textAlign: 'center',
       }}
@@ -123,7 +123,7 @@ export function ShopByShape() {
           onMouseLeave={() => setLeftHover(false)}
           style={arrowBaseStyle(leftHover)}
         >
-          <ChevronLeft size={20} color={leftHover ? '#FFFFFF' : '#1A1014'} />
+          <ChevronLeft size={20} color={leftHover ? '#FBF5F0' : '#1A1014'} />
         </button>
 
         <div style={{ overflow: 'hidden' }}>
@@ -142,13 +142,14 @@ export function ShopByShape() {
               const isSelected = selected === shape.name
 
               return (
-                <div
+                <Link
                   key={shape.name}
+                  href={shape.href}
                   onClick={() => setSelected(shape.name)}
                   onMouseEnter={(event) => {
                     if (!isSelected) {
                       event.currentTarget.style.borderColor = '#EDD9AF'
-                      event.currentTarget.style.background = '#FAFAFA'
+                      event.currentTarget.style.background = '#FDF8F2'
                     }
                   }}
                   onMouseLeave={(event) => {
@@ -164,11 +165,12 @@ export function ShopByShape() {
                     gap: windowWidth < 768 ? '8px' : '14px',
                     padding: windowWidth < 768 ? '10px 6px' : windowWidth < 1024 ? '14px 8px' : '24px 20px',
                     cursor: 'pointer',
+                    textDecoration: 'none',
                     border: `1px solid ${
                       isSelected ? '#C9A961' : 'transparent'
                     }`,
                     borderRadius: '4px',
-                    background: isSelected ? '#FAFAFA' : 'transparent',
+                    background: isSelected ? '#FDF8F2' : 'transparent',
                     transition: 'all 0.35s ease',
                     minWidth: windowWidth < 768 ? '56px' : windowWidth < 1024 ? '72px' : '140px',
                   }}
@@ -190,7 +192,7 @@ export function ShopByShape() {
                   <span
                     style={{
                       fontSize: windowWidth < 768 ? '9px' : '13px',
-                      color: isSelected ? '#C9A961' : '#5C4F47',
+                      color: isSelected ? '#C9A961' : '#B8A090',
                       letterSpacing: '0.08em',
                       fontFamily: 'var(--font-inter)',
                       fontWeight: isSelected ? 500 : 400,
@@ -198,7 +200,7 @@ export function ShopByShape() {
                   >
                     {shape.name}
                   </span>
-                </div>
+                </Link>
               )
             })}
           </div>
@@ -213,7 +215,7 @@ export function ShopByShape() {
           onMouseLeave={() => setRightHover(false)}
           style={arrowBaseStyle(rightHover)}
         >
-          <ChevronRight size={20} color={rightHover ? '#FFFFFF' : '#1A1014'} />
+          <ChevronRight size={20} color={rightHover ? '#FBF5F0' : '#1A1014'} />
         </button>
       </div>
 
@@ -221,7 +223,7 @@ export function ShopByShape() {
         style={{
           marginTop: '24px',
           fontSize: '11px',
-          color: '#5C4F47',
+          color: '#B8A090',
           fontFamily: 'var(--font-inter)',
           letterSpacing: '0.1em',
         }}
@@ -237,7 +239,7 @@ export function ShopByShape() {
             marginLeft: '16px',
           }}
         >
-          Shop {selected} →
+          Shop {selected} Diamonds →
         </Link>
       </div>
 

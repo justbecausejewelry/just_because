@@ -1,170 +1,370 @@
-import Image from 'next/image'
-import Link from 'next/link'
+'use client'
 
-const posts = [
+import Image from 'next/image'
+
+const ugcPhotos = [
   {
-    src: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=700&q=90',
-    handle: '@priya.m',
+    src: 'https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?w=600&q=90',
+    name: 'Priya M.',
+    location: 'Mumbai',
+    review: 'I bought this for myself on a Tuesday. No occasion. Just because.',
   },
   {
-    src: 'https://images.unsplash.com/photo-1488716820095-cbe80883c496?w=700&q=90',
-    handle: '@sarah.brooklyn',
+    src: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=600&q=90',
+    name: 'Sarah K.',
+    location: 'Brooklyn',
+    review: 'The packaging alone made me cry. The diamond outshines everything.',
   },
   {
-    src: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=700&q=90',
-    handle: '@aaron.wears',
+    src: 'https://images.unsplash.com/photo-1573408301185-9519f94816b5?w=600&q=90',
+    name: 'Aisha R.',
+    location: 'Dubai',
+    review: 'Wore it to dinner and got asked about it three times.',
   },
   {
-    src: 'https://images.unsplash.com/photo-1502767089025-6572583495b9?w=700&q=90',
-    handle: '@daaniela.j',
+    src: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=600&q=90',
+    name: 'Emma L.',
+    location: 'London',
+    review: 'It felt personal, considered, and quietly luxurious.',
   },
   {
-    src: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=700&q=90',
-    handle: '@hannah.photos',
+    src: 'https://images.unsplash.com/photo-1611955167811-4711904bb9f8?w=600&q=90',
+    name: 'Aaron L.',
+    location: 'Toronto',
+    review: 'Everything about it felt like a boutique appointment.',
+  },
+]
+
+const reviewCards = [
+  {
+    name: 'Priya M.',
+    loc: 'Mumbai',
+    rating: 5,
+    product: 'Solis Solitaire Ring',
+    review: 'I bought this for myself on a Tuesday. No occasion. Just because. Best decision of the year.',
+  },
+  {
+    name: 'Sarah K.',
+    loc: 'Brooklyn',
+    rating: 5,
+    product: 'Lumi Halo Ring',
+    review: 'The packaging alone made me cry. The diamond outshines my old one and it cost half.',
+  },
+  {
+    name: 'Aaron L.',
+    loc: 'Toronto',
+    rating: 5,
+    product: 'Tennis Bracelet',
+    review: 'Felt less like e-commerce, more like a friend helping me choose. Exceptional service.',
   },
 ]
 
 export function Reviews() {
   return (
     <section
-      className="reviews-section"
       style={{
-        backgroundColor: '#FBF5F0',
-        borderTop: '0.5px solid #EDD9AF',
-        padding: '72px 0 0',
+        padding: '96px 0',
+        background: '#FDF8F2',
+        textAlign: 'center',
       }}
     >
-      <div>
-        <p
+      <style>{`
+        @media (max-width: 767px) {
+          .ugc-header {
+            padding: 0 24px !important;
+          }
+
+          .ugc-strip {
+            overflow-x: auto !important;
+            scroll-snap-type: x mandatory;
+          }
+
+          .ugc-photo {
+            flex: 0 0 78vw !important;
+            height: 320px !important;
+            scroll-snap-align: start;
+          }
+
+          .ugc-review-grid {
+            grid-template-columns: 1fr !important;
+            padding: 0 24px !important;
+          }
+        }
+
+        @media (min-width: 768px) and (max-width: 1023px) {
+          .ugc-photo {
+            flex: 0 0 34vw !important;
+          }
+
+          .ugc-review-grid {
+            grid-template-columns: 1fr !important;
+            padding: 0 48px !important;
+          }
+        }
+      `}</style>
+
+      <div
+        className="ugc-header"
+        style={{
+          padding: '0 80px',
+          marginBottom: '48px',
+        }}
+      >
+        <div
           style={{
-            color: '#5C4F47',
+            fontSize: '10px',
+            letterSpacing: '0.32em',
+            color: '#C9A961',
+            marginBottom: '12px',
             fontFamily: 'var(--font-inter)',
-            fontSize: '11px',
-            letterSpacing: '0.3em',
-            marginBottom: '20px',
-            paddingLeft: 'clamp(24px, 5vw, 60px)',
           }}
         >
-          AS SEEN ON #JUSTBECAUSE
-        </p>
+          REAL CUSTOMERS
+        </div>
+        <h2
+          style={{
+            fontFamily: 'var(--font-playfair)',
+            fontSize: 'clamp(28px,4vw,48px)',
+            fontWeight: 400,
+            color: '#1A1014',
+            marginBottom: '12px',
+          }}
+        >
+          Words from real wearers
+        </h2>
+        <div
+          style={{
+            fontSize: '22px',
+            color: '#C9A961',
+            marginBottom: '6px',
+            letterSpacing: '4px',
+          }}
+        >
+          ★★★★★
+        </div>
+        <div
+          style={{
+            fontSize: '13px',
+            color: '#B8A090',
+            fontFamily: 'var(--font-inter)',
+          }}
+        >
+          4.9 / 5 · 2,847 verified reviews
+        </div>
       </div>
 
       <div
-        className="flex flex-nowrap overflow-x-auto lg:overflow-x-visible"
+        className="ugc-strip"
         style={{
-          gap: 0,
-          scrollSnapType: 'x mandatory',
-          WebkitOverflowScrolling: 'touch',
+          display: 'flex',
+          gap: '0',
+          marginBottom: '64px',
+          overflow: 'hidden',
+          maxWidth: '100%',
         }}
       >
-        {posts.map((post) => (
+        {ugcPhotos.map((photo) => (
           <div
-            key={post.handle}
-            className="group h-[300px] flex-[0_0_75vw] md:h-[320px] md:flex-[0_0_42%] lg:h-[440px] lg:flex-1"
+            key={photo.src}
+            className="ugc-photo"
             style={{
-              cursor: 'pointer',
-              overflow: 'hidden',
+              flex: 1,
+              height: '360px',
               position: 'relative',
-              scrollSnapAlign: 'start',
+              overflow: 'hidden',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={(event) => {
+              const img = event.currentTarget.querySelector('img')
+              if (img) img.style.transform = 'scale(1.06)'
+            }}
+            onMouseLeave={(event) => {
+              const img = event.currentTarget.querySelector('img')
+              if (img) img.style.transform = 'scale(1)'
             }}
           >
             <Image
-              src={post.src}
-              alt={`${post.handle} wearing Just Because jewelry`}
+              src={photo.src}
+              alt={photo.name}
               fill
-              sizes="(max-width: 767px) 82vw, (max-width: 1023px) 42vw, 20vw"
-              className="transition-transform duration-600 ease-[cubic-bezier(0.4,0,0.2,1)] group-hover:scale-[1.04]"
-              style={{ objectFit: 'cover', objectPosition: 'center top' }}
+              style={{
+                objectFit: 'cover',
+                transition: 'transform 0.6s ease',
+              }}
+              sizes="(max-width: 767px) 78vw, (max-width: 1023px) 34vw, 20vw"
             />
             <div
-              className="transition-opacity duration-600 group-hover:opacity-100"
               style={{
-                backgroundColor: 'rgba(26,16,20,0.14)',
-                inset: 0,
-                opacity: 0.72,
                 position: 'absolute',
+                inset: 0,
+                background: 'linear-gradient(to top, rgba(26,16,20,0.75) 0%, transparent 50%)',
               }}
             />
             <div
               style={{
-                alignItems: 'center',
-                bottom: '16px',
-                color: '#FBF5F0',
-                display: 'flex',
-                fontFamily: 'var(--font-inter)',
-                fontSize: '12px',
-                fontWeight: 500,
-                gap: '6px',
-                left: '16px',
                 position: 'absolute',
-                textShadow: '0 1px 4px rgba(26,16,20,0.4)',
+                bottom: '16px',
+                left: '14px',
+                right: '14px',
               }}
             >
-              <span
+              <div style={{ fontSize: '10px', color: '#C9A961', marginBottom: '3px' }}>★★★★★</div>
+              <div
                 style={{
-                  border: '1px solid #FBF5F0',
-                  borderRadius: '50%',
-                  display: 'inline-block',
-                  height: '12px',
-                  width: '12px',
+                  fontFamily: 'var(--font-playfair)',
+                  fontStyle: 'italic',
+                  fontSize: '11px',
+                  color: 'rgba(251,245,240,0.9)',
+                  lineHeight: 1.4,
+                  marginBottom: '4px',
                 }}
-              />
-              {post.handle}
+              >
+                &quot;{photo.review}&quot;
+              </div>
+              <div
+                style={{
+                  fontSize: '10px',
+                  color: 'rgba(201,169,97,0.8)',
+                  fontFamily: 'var(--font-inter)',
+                }}
+              >
+                {photo.name} · {photo.location}
+              </div>
             </div>
           </div>
         ))}
       </div>
 
       <div
+        className="ugc-review-grid"
         style={{
-          padding: '32px clamp(24px, 5vw, 60px)',
-          textAlign: 'center',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3,1fr)',
+          gap: '16px',
+          maxWidth: '1100px',
+          margin: '0 auto',
+          padding: '0 80px',
+          textAlign: 'left',
         }}
       >
-        <div
-          style={{
-            alignItems: 'center',
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '12px',
-            justifyContent: 'center',
-          }}
-        >
-          <span style={{ color: '#C9A961', fontSize: '22px' }}>★★★★★</span>
-          <span
+        {reviewCards.map((review) => (
+          <div
+            key={review.name}
             style={{
-              color: '#1A1014',
-              fontFamily: 'var(--font-playfair)',
-              fontSize: '18px',
+              background: '#FBF5F0',
+              border: '0.5px solid #EDD9AF',
+              padding: '28px 24px',
+              transition: 'all 0.3s',
+            }}
+            onMouseEnter={(event) => {
+              event.currentTarget.style.boxShadow = '0 8px 32px rgba(26,16,20,0.08)'
+              event.currentTarget.style.borderColor = '#C9A961'
+            }}
+            onMouseLeave={(event) => {
+              event.currentTarget.style.boxShadow = 'none'
+              event.currentTarget.style.borderColor = '#EDD9AF'
             }}
           >
-            4.9 / 5
-          </span>
-          <span
-            style={{
-              color: '#5C4F47',
-              fontFamily: 'var(--font-inter)',
-              fontSize: '12px',
-            }}
-          >
-            · 2,847 verified reviews
-          </span>
-        </div>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                gap: '16px',
+                marginBottom: '12px',
+              }}
+            >
+              <div>
+                <div style={{ fontSize: '14px', color: '#C9A961' }}>{'★'.repeat(review.rating)}</div>
+                <div
+                  style={{
+                    fontSize: '10px',
+                    letterSpacing: '0.1em',
+                    color: '#B8A090',
+                    marginTop: '3px',
+                    fontFamily: 'var(--font-inter)',
+                  }}
+                >
+                  Verified · {review.product}
+                </div>
+              </div>
+              <div
+                style={{
+                  fontSize: '9px',
+                  letterSpacing: '0.15em',
+                  color: '#C9A961',
+                  background: 'rgba(201,169,97,0.08)',
+                  border: '0.5px solid rgba(201,169,97,0.2)',
+                  padding: '3px 8px',
+                  fontFamily: 'var(--font-inter)',
+                }}
+              >
+                VERIFIED
+              </div>
+            </div>
 
-        <Link
-          href="/reviews"
-          style={{
-            color: '#C9A961',
-            display: 'inline-block',
-            fontFamily: 'var(--font-inter)',
-            fontSize: '11px',
-            letterSpacing: '0.15em',
-            marginTop: '8px',
-            textDecoration: 'none',
-          }}
-        >
-          Read all reviews →
-        </Link>
+            <p
+              style={{
+                fontFamily: 'var(--font-playfair)',
+                fontStyle: 'italic',
+                fontSize: '14px',
+                color: '#1A1014',
+                lineHeight: 1.75,
+                marginBottom: '16px',
+              }}
+            >
+              &quot;{review.review}&quot;
+            </p>
+
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                paddingTop: '14px',
+                borderTop: '0.5px solid #EDD9AF',
+              }}
+            >
+              <div
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #C9A961, #EDD9AF)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontFamily: 'var(--font-playfair)',
+                  fontSize: '14px',
+                  color: '#1A1014',
+                }}
+              >
+                {review.name.charAt(0)}
+              </div>
+              <div>
+                <div
+                  style={{
+                    fontSize: '13px',
+                    color: '#1A1014',
+                    fontWeight: 500,
+                    fontFamily: 'var(--font-inter)',
+                  }}
+                >
+                  {review.name}
+                </div>
+                <div
+                  style={{
+                    fontSize: '11px',
+                    color: '#B8A090',
+                    fontFamily: 'var(--font-inter)',
+                  }}
+                >
+                  {review.loc}
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </section>
   )

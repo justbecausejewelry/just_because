@@ -1,8 +1,9 @@
 'use client'
 
-import { CSSProperties, useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
+import type { CSSProperties, SetStateAction } from 'react'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import { useCart } from '@/context/CartContext'
 import { useToast } from '@/context/ToastContext'
@@ -136,6 +137,14 @@ function clarityDescription(clarity: string) {
   if (clarity === 'VS1') return 'Very Slightly Included'
   if (clarity === 'VS2') return 'Very Slight'
   return 'Slightly Included'
+}
+
+function formatShapeParam(shape: string) {
+  return shape
+    .split('-')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ')
 }
 
 function DiamondModal({
@@ -533,11 +542,13 @@ function DiamondModal({
   )
 }
 
-export default function DiamondsPage() {
+function DiamondsContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const shapeParam = searchParams.get('shape')
   const [diamonds, setDiamonds] = useState<Diamond[]>(ALL_DIAMONDS)
   const [loading, setLoading] = useState(true)
-  const [selectedShape, setSelectedShape] = useState('All')
+  const [selectedShape, setSelectedShape] = useState(() => (shapeParam ? formatShapeParam(shapeParam) : 'All'))
   const [selectedColor, setSelectedColor] = useState<string[]>([])
   const [selectedClarity, setSelectedClarity] = useState<string[]>([])
   const [caratRange, setCaratRange] = useState<[number, number]>([0.5, 5])
@@ -545,6 +556,21 @@ export default function DiamondsPage() {
   const [sortBy, setSortBy] = useState('price_low')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [selectedDiamond, setSelectedDiamond] = useState<Diamond | null>(null)
+
+  useEffect(() => {
+    if (!shapeParam) return undefined
+
+    const formatted = formatShapeParam(shapeParam)
+    setSelectedShape(formatted)
+    const scrollTimer = window.setTimeout(() => {
+      document.getElementById('diamonds-grid')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    }, 300)
+
+    return () => window.clearTimeout(scrollTimer)
+  }, [shapeParam])
 
   useEffect(() => {
     const fetchDiamonds = async () => {
@@ -668,7 +694,7 @@ export default function DiamondsPage() {
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                 {(options as string[]).map((option) => {
                   const selectedItems = selected as string[]
-                  const updateSelected = setSelected as (value: React.SetStateAction<string[]>) => void
+                  const updateSelected = setSelected as (value: SetStateAction<string[]>) => void
                   const active = selectedItems.includes(option)
                   return (
                     <button
@@ -711,7 +737,7 @@ export default function DiamondsPage() {
           </button>
         </aside>
 
-        <main style={{ padding: '32px' }}>
+        <main id="diamonds-grid" style={{ padding: '32px' }}>
           <div className="diamond-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '28px', paddingBottom: '20px', borderBottom: '0.5px solid #EDD9AF' }}>
             <div style={{ fontSize: '13px', color: '#B8A090', fontFamily: 'var(--font-inter)' }}>
               <span style={{ color: '#C9A961', fontWeight: 500 }}>{loading ? '...' : filtered.length}</span> diamonds found
@@ -735,6 +761,47 @@ export default function DiamondsPage() {
               ))}
             </div>
           </div>
+
+          {selectedShape !== 'All' && shapeParam ? (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '16px',
+                background: 'rgba(201,169,97,0.08)',
+                border: '0.5px solid rgba(201,169,97,0.3)',
+                padding: '12px 16px',
+                marginBottom: '20px',
+                borderRadius: '2px',
+              }}
+            >
+              <div
+                style={{
+                  fontSize: '12px',
+                  color: '#1A1014',
+                  fontFamily: 'var(--font-inter)',
+                }}
+              >
+                Showing <strong>{filtered.length}</strong> {selectedShape} cut diamonds
+              </div>
+              <button
+                onClick={() => setSelectedShape('All')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '11px',
+                  color: '#C9A961',
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-inter)',
+                  letterSpacing: '0.1em',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                CLEAR FILTER ×
+              </button>
+            </div>
+          ) : null}
 
           {loading ? (
             <div style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', padding: '40px 0' }}>Loading diamonds...</div>
@@ -792,5 +859,13 @@ export default function DiamondsPage() {
         />
       ) : null}
     </div>
+  )
+}
+
+export default function DiamondsPage() {
+  return (
+    <Suspense fallback={<div style={{ height: '100vh', background: '#FBF5F0' }} />}>
+      <DiamondsContent />
+    </Suspense>
   )
 }

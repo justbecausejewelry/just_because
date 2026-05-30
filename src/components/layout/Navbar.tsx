@@ -470,14 +470,54 @@ export function Navbar() {
           }}
         >
           <Link href="/" style={{ textDecoration: 'none', flexShrink: 0, zIndex: 2 }}>
-            <div>
-              <span className="nav-logo-script">just</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '1px' }}>
-                <div style={{ width: '11px', height: '0.5px', background: '#1A1014' }} />
-                <span style={{ fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.38em', color: '#1A1014', fontWeight: 400 }}>
+            <div style={{ lineHeight: 1 }}>
+              <div
+                style={{
+                  fontFamily: "'Italianno', cursive",
+                  fontSize: '28px',
+                  color: '#C9A961',
+                  lineHeight: 0.85,
+                  letterSpacing: '0.01em',
+                }}
+              >
+                just
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  marginTop: '2px',
+                }}
+              >
+                <div
+                  style={{
+                    width: '12px',
+                    height: '0.5px',
+                    background: '#1A1014',
+                    flexShrink: 0,
+                  }}
+                />
+                <span
+                  style={{
+                    fontFamily: 'var(--font-inter)',
+                    fontSize: '8.5px',
+                    letterSpacing: '0.38em',
+                    color: '#1A1014',
+                    fontWeight: 400,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
                   BECAUSE
                 </span>
-                <div style={{ width: '11px', height: '0.5px', background: '#1A1014' }} />
+                <div
+                  style={{
+                    width: '12px',
+                    height: '0.5px',
+                    background: '#1A1014',
+                    flexShrink: 0,
+                  }}
+                />
               </div>
             </div>
           </Link>

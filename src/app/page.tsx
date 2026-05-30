@@ -16,9 +16,9 @@ export default function Home() {
         <ShopByShape />
         <Categories />
         <VideoStory />
-        <EditorialSplit />
         <BestSellers />
         <Reviews />
+        <EditorialSplit />
       </div>
     </>
   )
