@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Gem, SlidersHorizontal, X } from 'lucide-react'
 import { useToast } from '@/context/ToastContext'
@@ -16,6 +16,27 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
+const TYPE_MAP: Record<string, string[]> = {
+  engagement_ring: ['engagement_ring'],
+  ring: ['ring', 'wedding_ring', 'engagement_ring'],
+  rings: ['ring', 'wedding_ring', 'engagement_ring'],
+  wedding_ring: ['wedding_ring'],
+  necklace: ['necklace', 'tennis_necklace', 'pendant'],
+  necklaces: ['necklace', 'tennis_necklace', 'pendant'],
+  earring: ['earring', 'stud'],
+  earrings: ['earring', 'stud'],
+  bracelet: ['bracelet', 'tennis_bracelet', 'bangle'],
+  bracelets: ['bracelet', 'tennis_bracelet', 'bangle'],
+  pendant: ['pendant', 'necklace'],
+  diamond: ['diamond'],
+  diamonds: ['diamond'],
+}
+
+type MetalPricingEntry = {
+  enabled?: boolean
+  modifier?: number
+}
+
 type Product = {
   id: string
   slug: string
@@ -24,6 +45,7 @@ type Product = {
   title: string
   description: string | null
   basePrice: number
+  metalPricing?: Record<string, MetalPricingEntry> | null
   images: string[]
   metalImages?: {
     white_gold?: string[]
@@ -35,16 +57,20 @@ type Product = {
   availableShapes: string[]
   isNewArrival: boolean
   isFeatured: boolean
+  isActive?: boolean
+  sortOrder?: number
   createdAt?: string
 }
 
 const productTypes = [
   { label: 'All', value: 'all' },
+  { label: 'Rings', value: 'ring' },
   { label: 'Engagement Rings', value: 'engagement_ring' },
   { label: 'Wedding Rings', value: 'wedding_ring' },
   { label: 'Necklaces', value: 'necklace' },
   { label: 'Bracelets', value: 'bracelet' },
   { label: 'Earrings', value: 'earring' },
+  { label: 'Pendants', value: 'pendant' },
 ]
 
 const metals = ['White Gold', 'Yellow Gold', 'Rose Gold', 'Platinum']
@@ -57,8 +83,8 @@ const metalSwatches: Record<string, string> = {
 
 const sortOptions = [
   { label: 'Featured', value: 'featured' },
-  { label: 'Price: Low to High', value: 'price-asc' },
-  { label: 'Price: High to Low', value: 'price-desc' },
+  { label: 'Price: Low to High', value: 'price_low' },
+  { label: 'Price: High to Low', value: 'price_high' },
   { label: 'Newest', value: 'newest' },
 ]
 
@@ -72,6 +98,20 @@ function formatPrice(price: number) {
 
 function prettify(value: string) {
   return value.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
+}
+
+function normalizeToken(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+}
+
+function normalizeSort(value: string) {
+  if (value === 'price-asc') return 'price_low'
+  if (value === 'price-desc') return 'price_high'
+  return value || 'featured'
+}
+
+function getFilterLabel(value: string) {
+  return productTypes.find((type) => type.value === value)?.label || prettify(value)
 }
 
 function ProductPlaceholder({ size = 52 }: { size?: number }) {
@@ -253,15 +293,18 @@ function ProductCard({ product }: { product: Product }) {
 
 function ProductsContent() {
   const searchParams = useSearchParams()
-  const initialType = searchParams.get('type') || searchParams.get('category') || 'all'
-  const initialShape = searchParams.get('shape') || ''
+  const router = useRouter()
+  const typeParam = searchParams.get('type') || ''
+  const categoryParam = searchParams.get('category') || ''
+  const activeType = typeParam || categoryParam || 'all'
+  const shape = searchParams.get('shape') || ''
+  const selectedMetal = searchParams.get('metal') || ''
+  const minPrice = searchParams.get('minPrice') || ''
+  const maxPrice = searchParams.get('maxPrice') || ''
+  const sort = normalizeSort(searchParams.get('sort') || 'featured')
+  const searchQuery = searchParams.get('q') || ''
   const [products, setProducts] = useState<Product[]>([])
-  const [selectedType, setSelectedType] = useState(initialType)
-  const [selectedMetals, setSelectedMetals] = useState<string[]>([])
-  const [shape, setShape] = useState(initialShape)
-  const [minPrice, setMinPrice] = useState('')
-  const [maxPrice, setMaxPrice] = useState('')
-  const [sort, setSort] = useState('featured')
+  const [availableTypes, setAvailableTypes] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
@@ -270,90 +313,86 @@ function ProductsContent() {
     setIsLoading(true)
     setError(null)
     try {
-      const params = new URLSearchParams({ limit: '80' })
-      if (selectedType !== 'all') {
-        params.set('type', selectedType)
-      }
+      const params = new URLSearchParams({ limit: '120', sort })
+      if (typeParam) params.set('type', typeParam)
+      if (categoryParam && !typeParam) params.set('category', categoryParam)
+      if (shape) params.set('shape', shape)
+      if (selectedMetal) params.set('metal', selectedMetal)
+      if (minPrice) params.set('minPrice', minPrice)
+      if (maxPrice) params.set('maxPrice', maxPrice)
+      if (searchQuery) params.set('q', searchQuery)
 
       const response = await fetch(`/api/products?${params.toString()}`)
       const payload = (await response.json()) as { products?: Product[]; error?: string }
+
       if (!response.ok) {
         throw new Error(payload.error || 'Unable to load products.')
       }
+
       setProducts(payload.products || [])
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Unable to load products.')
+      setProducts([])
     } finally {
       setIsLoading(false)
     }
-  }, [selectedType])
+  }, [categoryParam, maxPrice, minPrice, searchQuery, selectedMetal, shape, sort, typeParam])
 
   useEffect(() => {
     void loadProducts()
   }, [loadProducts])
 
   useEffect(() => {
-    setShape(searchParams.get('shape') || '')
-  }, [searchParams])
+    fetch('/api/products?limit=120')
+      .then((response) => response.json() as Promise<{ products?: Product[] }>)
+      .then(({ products: rows }) => {
+        const types = Array.from(
+          new Set(
+            (rows || [])
+              .map((row) => row.productType)
+              .filter((value): value is string => Boolean(value))
+          )
+        )
+        setAvailableTypes(types)
+      })
+  }, [])
 
-  const filtered = useMemo(() => {
-    let list = [...products]
+  const visibleProductTypes = useMemo(() => {
+    if (!availableTypes.length) return productTypes
 
-    if (selectedMetals.length) {
-      list = list.filter((product) =>
-        selectedMetals.some((metal) => product.availableMetals?.includes(metal))
-      )
-    }
+    return productTypes.filter((type) => {
+      if (type.value === 'all') return true
+      const mappedTypes = TYPE_MAP[type.value] || [type.value]
+      return availableTypes.some((availableType) => mappedTypes.includes(availableType))
+    })
+  }, [availableTypes])
 
-    if (shape) {
-      list = list.filter((product) =>
-        product.availableShapes?.some((item) => item.toLowerCase() === shape.toLowerCase())
-      )
-    }
-
-    if (minPrice) {
-      list = list.filter((product) => product.basePrice >= Number(minPrice))
-    }
-
-    if (maxPrice) {
-      list = list.filter((product) => product.basePrice <= Number(maxPrice))
-    }
-
-    if (sort === 'price-asc') {
-      list.sort((a, b) => a.basePrice - b.basePrice)
-    } else if (sort === 'price-desc') {
-      list.sort((a, b) => b.basePrice - a.basePrice)
-    } else if (sort === 'newest') {
-      list.sort((a, b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime())
+  const updateFilter = useCallback((key: string, value: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (value && value !== 'all') {
+      params.set(key, value)
     } else {
-      list.sort((a, b) => Number(b.isFeatured) - Number(a.isFeatured))
+      params.delete(key)
     }
 
-    return list
-  }, [products, selectedMetals, shape, minPrice, maxPrice, sort])
+    if (key === 'type') params.delete('category')
+    if (key === 'category') params.delete('type')
+
+    const query = params.toString()
+    router.push(query ? `/products?${query}` : '/products')
+  }, [router, searchParams])
+
+  const clearFilters = useCallback(() => {
+    router.push('/products')
+  }, [router])
 
   const activePills = [
-    selectedType !== 'all' ? { label: prettify(selectedType), onRemove: () => setSelectedType('all') } : null,
-    shape ? { label: `${prettify(shape)} Cut`, onRemove: () => setShape('') } : null,
-    ...selectedMetals.map((metal) => ({ label: metal, onRemove: () => setSelectedMetals((items) => items.filter((item) => item !== metal)) })),
-    minPrice ? { label: `Min ${formatPrice(Number(minPrice))}`, onRemove: () => setMinPrice('') } : null,
-    maxPrice ? { label: `Max ${formatPrice(Number(maxPrice))}`, onRemove: () => setMaxPrice('') } : null,
+    activeType !== 'all' ? { label: getFilterLabel(activeType), onRemove: () => updateFilter(typeParam ? 'type' : 'category', '') } : null,
+    shape ? { label: `${prettify(shape)} Cut`, onRemove: () => updateFilter('shape', '') } : null,
+    selectedMetal ? { label: prettify(selectedMetal), onRemove: () => updateFilter('metal', '') } : null,
+    minPrice ? { label: `Min ${formatPrice(Number(minPrice))}`, onRemove: () => updateFilter('minPrice', '') } : null,
+    maxPrice ? { label: `Max ${formatPrice(Number(maxPrice))}`, onRemove: () => updateFilter('maxPrice', '') } : null,
   ].filter((pill): pill is { label: string; onRemove: () => void } => Boolean(pill))
-
-  const toggleMetal = (metal: string) => {
-    setSelectedMetals((items) =>
-      items.includes(metal) ? items.filter((item) => item !== metal) : [...items, metal]
-    )
-  }
-
-  const clearFilters = () => {
-    setSelectedType('all')
-    setSelectedMetals([])
-    setShape('')
-    setMinPrice('')
-    setMaxPrice('')
-    setSort('featured')
-  }
 
   return (
     <motion.div
@@ -418,8 +457,8 @@ function ProductsContent() {
         </div>
 
         <div className="flex items-center gap-4">
-          <span style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>{filtered.length} pieces</span>
-          <Select value={sort} onValueChange={setSort}>
+          <span style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>{products.length} pieces</span>
+          <Select value={sort} onValueChange={(value) => updateFilter('sort', value)}>
             <SelectTrigger style={{ backgroundColor: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '2px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '12px', minWidth: '180px' }}>
               <SelectValue placeholder="Sort" />
             </SelectTrigger>
@@ -450,12 +489,12 @@ function ProductsContent() {
           <div style={{ marginBottom: '30px' }}>
             <p style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.16em', marginBottom: '12px' }}>PRODUCT TYPE</p>
             <div className="flex flex-wrap gap-2">
-              {productTypes.map((type) => (
+              {visibleProductTypes.map((type) => (
                 <button
                   key={type.value}
-                  onClick={() => setSelectedType(type.value)}
+                  onClick={() => updateFilter('type', type.value)}
                   className="product-filter-pill"
-                  style={{ backgroundColor: selectedType === type.value ? '#1A1014' : 'transparent', border: '0.5px solid #EDD9AF', borderRadius: '999px', color: selectedType === type.value ? '#FBF5F0' : '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '11px', padding: '8px 12px' }}
+                  style={{ backgroundColor: activeType === type.value || (type.value === 'all' && activeType === 'all') ? '#1A1014' : 'transparent', border: '0.5px solid #EDD9AF', borderRadius: '999px', color: activeType === type.value || (type.value === 'all' && activeType === 'all') ? '#FBF5F0' : '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '11px', padding: '8px 12px' }}
                 >
                   {type.label}
                 </button>
@@ -469,9 +508,9 @@ function ProductsContent() {
               {metals.map((metal) => (
                 <button
                   key={metal}
-                  onClick={() => toggleMetal(metal)}
+                  onClick={() => updateFilter('metal', normalizeToken(selectedMetal) === normalizeToken(metal) ? '' : metal)}
                   className="product-filter-pill flex items-center gap-2"
-                  style={{ backgroundColor: selectedMetals.includes(metal) ? '#1A1014' : 'transparent', border: '0.5px solid #EDD9AF', borderRadius: '999px', color: selectedMetals.includes(metal) ? '#FBF5F0' : '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '11px', padding: '8px 12px' }}
+                  style={{ backgroundColor: normalizeToken(selectedMetal) === normalizeToken(metal) ? '#1A1014' : 'transparent', border: '0.5px solid #EDD9AF', borderRadius: '999px', color: normalizeToken(selectedMetal) === normalizeToken(metal) ? '#FBF5F0' : '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '11px', padding: '8px 12px' }}
                 >
                   <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: metalSwatches[metal], border: '0.5px solid #EDD9AF' }} />
                   {metal}
@@ -483,8 +522,8 @@ function ProductsContent() {
           <div style={{ marginBottom: '30px' }}>
             <p style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.16em', marginBottom: '12px' }}>PRICE RANGE</p>
             <div className="flex gap-2">
-              <input value={minPrice} onChange={(event) => setMinPrice(event.target.value)} placeholder="Min $" type="number" style={{ width: '50%', backgroundColor: '#FDF8F2', border: '0.5px solid #EDD9AF', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '12px', outline: 'none', padding: '10px' }} />
-              <input value={maxPrice} onChange={(event) => setMaxPrice(event.target.value)} placeholder="Max $" type="number" style={{ width: '50%', backgroundColor: '#FDF8F2', border: '0.5px solid #EDD9AF', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '12px', outline: 'none', padding: '10px' }} />
+              <input value={minPrice} onChange={(event) => updateFilter('minPrice', event.target.value)} placeholder="Min $" type="number" style={{ width: '50%', backgroundColor: '#FDF8F2', border: '0.5px solid #EDD9AF', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '12px', outline: 'none', padding: '10px' }} />
+              <input value={maxPrice} onChange={(event) => updateFilter('maxPrice', event.target.value)} placeholder="Max $" type="number" style={{ width: '50%', backgroundColor: '#FDF8F2', border: '0.5px solid #EDD9AF', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '12px', outline: 'none', padding: '10px' }} />
             </div>
           </div>
 
@@ -494,7 +533,7 @@ function ProductsContent() {
               {sortOptions.map((option) => (
                 <button
                   key={option.value}
-                  onClick={() => setSort(option.value)}
+                  onClick={() => updateFilter('sort', option.value)}
                   className="product-filter-pill"
                   style={{ backgroundColor: sort === option.value ? '#1A1014' : 'transparent', border: '0.5px solid #EDD9AF', borderRadius: '999px', color: sort === option.value ? '#FBF5F0' : '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '11px', padding: '8px 12px' }}
                 >
@@ -528,9 +567,9 @@ function ProductsContent() {
             <div className="grid grid-cols-2 gap-5 lg:grid-cols-3">
               {Array.from({ length: 9 }, (_, index) => <SkeletonCard key={index} />)}
             </div>
-          ) : filtered.length ? (
+          ) : products.length ? (
             <div className="grid grid-cols-2 gap-5 lg:grid-cols-3">
-              {filtered.map((product) => <ProductCard key={product.id} product={product} />)}
+              {products.map((product) => <ProductCard key={product.id} product={product} />)}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
