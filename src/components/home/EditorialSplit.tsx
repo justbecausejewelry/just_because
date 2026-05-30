@@ -45,8 +45,8 @@ export function EditorialSplit() {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="https://images.unsplash.com/photo-1522338242992-e1a54906a8da?w=800&q=90"
-            alt="Just Because"
+            src="https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=900&q=90"
+            alt="Diamond engagement ring"
             style={{
               width: '100%',
               height: '100%',
@@ -283,8 +283,8 @@ export function EditorialSplit() {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="https://images.unsplash.com/photo-1583292650898-7d22cd27ca6f?w=800&q=90"
-            alt="Just Because"
+            src="https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?w=900&q=90"
+            alt="Everyday diamond ring"
             style={{
               width: '100%',
               height: '100%',

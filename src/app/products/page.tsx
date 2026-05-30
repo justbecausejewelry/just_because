@@ -555,7 +555,7 @@ export default function ProductsPage() {
             position: 'fixed',
             inset: 0,
             zIndex: 9999,
-            background: '#0A0612',
+            background: '#1A1014',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
