@@ -411,7 +411,7 @@ export default function ProductDetailPage() {
         </div>
       </div>
       <div className="product-detail-grid mx-auto grid max-w-[1400px] gap-10 px-4 py-8 md:grid-cols-[45fr_55fr] md:px-10 md:py-10 lg:grid-cols-[55fr_45fr] lg:gap-[60px] lg:px-20 lg:py-[60px]">
-        <section>
+        <section className="product-image-gallery">
           <div
             ref={imageRef}
             style={{
@@ -784,7 +784,7 @@ export default function ProductDetailPage() {
             )}
 
             <div
-              className="product-action-buttons"
+              className="product-action-buttons product-buy-buttons"
               style={{
                 display: 'flex',
                 gap: '12px',
@@ -986,6 +986,59 @@ export default function ProductDetailPage() {
             </div>
           </div>
         </section>
+      </div>
+
+      <div
+        className="mobile-buy-bar"
+        style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          background: 'rgba(251,245,240,0.97)',
+          backdropFilter: 'blur(10px)',
+          borderTop: '0.5px solid #EDD9AF',
+          padding: '12px 20px',
+          display: 'none',
+          gap: '10px',
+          zIndex: 100,
+        }}
+      >
+        <button
+          onClick={handleAddToCart}
+          disabled={addedToCart || !canAddToCart}
+          style={{
+            flex: 1,
+            padding: '14px',
+            background: 'transparent',
+            border: '1px solid #1A1014',
+            color: '#1A1014',
+            fontSize: '11px',
+            letterSpacing: '0.15em',
+            cursor: !canAddToCart ? 'not-allowed' : 'pointer',
+            fontFamily: 'var(--font-inter)',
+            opacity: !canAddToCart ? 0.55 : 1,
+          }}
+        >
+          {addedToCart ? 'ADDED' : 'ADD TO CART'}
+        </button>
+        <button
+          onClick={handleBuyNow}
+          disabled={!canAddToCart}
+          style={{
+            flex: 1,
+            padding: '14px',
+            background: !canAddToCart ? '#B8A090' : '#1A1014',
+            border: 'none',
+            color: '#FBF5F0',
+            fontSize: '11px',
+            letterSpacing: '0.15em',
+            cursor: !canAddToCart ? 'not-allowed' : 'pointer',
+            fontFamily: 'var(--font-inter)',
+          }}
+        >
+          BUY NOW
+        </button>
       </div>
 
       <section className="mx-auto max-w-[1400px] px-6 pb-20 md:px-10 lg:px-20">

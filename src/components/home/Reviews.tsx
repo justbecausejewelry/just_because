@@ -4,13 +4,13 @@ import Image from 'next/image'
 
 const ugcPhotos = [
   {
-    src: 'https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?w=600&q=90',
+    src: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=600&q=90',
     name: 'Priya M.',
     location: 'Mumbai',
     review: 'I bought this for myself on a Tuesday. No occasion. Just because.',
   },
   {
-    src: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=600&q=90',
+    src: 'https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?w=600&q=90',
     name: 'Sarah K.',
     location: 'Brooklyn',
     review: 'The packaging alone made me cry. The diamond outshines everything.',

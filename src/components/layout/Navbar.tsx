@@ -415,7 +415,7 @@ export function Navbar() {
           display: none !important;
         }
 
-        .mobile-menu-button {
+        .mobile-menu-btn {
           display: flex !important;
         }
 
@@ -428,7 +428,7 @@ export function Navbar() {
             display: flex !important;
           }
 
-          .mobile-menu-button {
+          .mobile-menu-btn {
             display: none !important;
           }
         }
@@ -522,7 +522,7 @@ export function Navbar() {
             </div>
           </Link>
 
-          <nav className="desktop-mega-nav" style={{ gap: '28px', alignItems: 'center', position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
+          <nav className="desktop-nav-center desktop-mega-nav" style={{ gap: '28px', alignItems: 'center', position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
             {menuLabels.map((label) => (
               <div
                 key={label}
@@ -587,7 +587,7 @@ export function Navbar() {
 
             <button
               onClick={() => setMobileOpen((open) => !open)}
-              className="mobile-menu-button"
+              className="mobile-menu-btn"
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px', alignItems: 'center' }}
               aria-label="Toggle menu"
               aria-expanded={mobileOpen}
@@ -662,29 +662,141 @@ export function Navbar() {
       </header>
 
       {mobileOpen && (
-        <aside style={{ background: '#FBF5F0', borderBottom: '0.5px solid #EDD9AF', boxShadow: '0 12px 32px rgba(26,16,20,0.12)', left: 0, padding: '14px 24px 20px', position: 'fixed', right: 0, top: '68px', zIndex: 190 }}>
-          <div style={{ display: 'grid', gap: '12px' }}>
-            {[...menuLabels, 'Gifts'].map((label) => (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: '#1A1014',
+            zIndex: 1000,
+            display: 'flex',
+            flexDirection: 'column',
+            padding: 0,
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '20px 24px',
+              borderBottom: '0.5px solid rgba(201,169,97,0.15)',
+            }}
+          >
+            <Link href="/" onClick={() => setMobileOpen(false)} style={{ textDecoration: 'none' }}>
+              <div style={{ fontFamily: "'Italianno', cursive", fontSize: '28px', color: '#C9A961', lineHeight: 0.85 }}>
+                just
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                <div style={{ width: '10px', height: '0.5px', background: 'rgba(251,245,240,0.4)' }} />
+                <span style={{ fontFamily: 'var(--font-inter)', fontSize: '8px', letterSpacing: '0.38em', color: 'rgba(251,245,240,0.55)' }}>
+                  BECAUSE
+                </span>
+                <div style={{ width: '10px', height: '0.5px', background: 'rgba(251,245,240,0.4)' }} />
+              </div>
+            </Link>
+
+            <button
+              onClick={() => setMobileOpen(false)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#FBF5F0', padding: '8px' }}
+              aria-label="Close menu"
+            >
+              <X size={24} color="#FBF5F0" />
+            </button>
+          </div>
+
+          <nav style={{ flex: 1, overflowY: 'auto', padding: '24px 0' }}>
+            {[
+              { label: 'Engagement rings', href: '/products?type=engagement_ring' },
+              { label: 'Rings', href: '/products?type=ring' },
+              { label: 'Earrings', href: '/products?type=earring' },
+              { label: 'Necklaces', href: '/products?type=necklace' },
+              { label: 'Bracelets', href: '/products?type=bracelet' },
+              { label: 'Diamonds', href: '/diamonds' },
+            ].map((item) => (
               <Link
-                key={label}
-                href={label === 'Gifts' ? '/products?category=gifts' : megaMenuData[label].sections[0].links[0].href}
+                key={item.label}
+                href={item.href}
                 onClick={() => setMobileOpen(false)}
-                style={{ borderBottom: '0.5px solid #EDD9AF', color: label === 'Gifts' ? '#C9A961' : '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', letterSpacing: '0.08em', padding: '10px 0', textDecoration: 'none' }}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '18px 24px',
+                  borderBottom: '0.5px solid rgba(251,245,240,0.08)',
+                  textDecoration: 'none',
+                  color: '#FBF5F0',
+                  fontSize: '16px',
+                  fontFamily: 'var(--font-inter)',
+                }}
               >
-                {label}
+                {item.label}
+                <span style={{ color: 'rgba(201,169,97,0.5)', fontSize: '18px' }}>&gt;</span>
               </Link>
             ))}
+
+            <Link
+              href="/products?category=gifts"
+              onClick={() => setMobileOpen(false)}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '18px 24px',
+                borderBottom: '0.5px solid rgba(251,245,240,0.08)',
+                textDecoration: 'none',
+                color: '#C9A961',
+                fontSize: '16px',
+                fontFamily: 'var(--font-inter)',
+                fontWeight: 500,
+              }}
+            >
+              Gifts
+              <span style={{ color: 'rgba(201,169,97,0.5)', fontSize: '18px' }}>&gt;</span>
+            </Link>
+
             {isAdmin && (
               <Link
                 href="/admin"
                 onClick={() => setMobileOpen(false)}
-                style={{ borderBottom: '0.5px solid #EDD9AF', color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '13px', fontWeight: 500, letterSpacing: '0.08em', padding: '10px 0', textDecoration: 'none' }}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '18px 24px',
+                  borderBottom: '0.5px solid rgba(251,245,240,0.08)',
+                  textDecoration: 'none',
+                  color: '#C9A961',
+                  fontSize: '16px',
+                  fontFamily: 'var(--font-inter)',
+                  fontWeight: 500,
+                }}
               >
                 Admin Panel
+                <span style={{ color: 'rgba(201,169,97,0.5)', fontSize: '18px' }}>&gt;</span>
               </Link>
             )}
+          </nav>
+
+          <div
+            style={{
+              padding: '24px',
+              borderTop: '0.5px solid rgba(201,169,97,0.15)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+            }}
+          >
+            <Link href="/account" onClick={() => setMobileOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'rgba(251,245,240,0.7)', fontSize: '14px', textDecoration: 'none', fontFamily: 'var(--font-inter)' }}>
+              <User size={18} />
+              Account
+            </Link>
+            <Link href="/wishlist" onClick={() => setMobileOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'rgba(251,245,240,0.7)', fontSize: '14px', textDecoration: 'none', fontFamily: 'var(--font-inter)' }}>
+              <Heart size={18} />
+              Wishlist
+            </Link>
           </div>
-        </aside>
+        </div>
       )}
 
       <MiniCartDrawer

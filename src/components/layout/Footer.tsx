@@ -34,8 +34,8 @@ function FacebookIcon() {
 
 export function Footer() {
   return (
-    <footer className="px-6 pb-7 pt-12 md:px-10 md:py-[60px] lg:px-20" style={{ backgroundColor: '#1A1014', color: '#A89890' }}>
-      <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">
+    <footer className="site-footer px-6 pb-7 pt-12 md:px-10 md:py-[60px] lg:px-20" style={{ backgroundColor: '#1A1014', color: '#B8A090' }}>
+      <div className="footer-grid grid gap-10 md:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">
         <div className="text-center md:text-left">
           <Link href="/" className="flex items-baseline justify-center gap-1 md:justify-start">
             <span className="text-[30px] leading-none" style={{ color: '#C9A961', fontFamily: 'var(--font-italianno)' }}>
@@ -45,7 +45,7 @@ export function Footer() {
               BECAUSE
             </span>
           </Link>
-          <p className="mx-auto mt-3 max-w-[230px] text-[11px] leading-[1.7] md:mx-0" style={{ color: '#A89890', fontFamily: 'var(--font-inter)' }}>
+          <p className="mx-auto mt-3 max-w-[230px] text-[11px] leading-[1.7] md:mx-0" style={{ color: '#B8A090', fontFamily: 'var(--font-inter)' }}>
             Lab-grown diamonds and recycled gold, crafted for every moment that
             does not need a name.
           </p>
@@ -78,8 +78,8 @@ export function Footer() {
         ))}
       </div>
 
-      <div className="mt-10 flex flex-col justify-between gap-3 border-t pt-5 text-center text-[10px] md:flex-row md:text-left" style={{ borderColor: 'rgba(201,169,97,0.2)', fontFamily: 'var(--font-inter)' }}>
-        <div style={{ color: '#A89890' }}>© 2026 Just Because. All rights reserved.</div>
+      <div className="footer-bottom mt-10 flex flex-col justify-between gap-3 border-t pt-5 text-center text-[10px] md:flex-row md:text-left" style={{ borderColor: 'rgba(201,169,97,0.2)', fontFamily: 'var(--font-inter)' }}>
+        <div style={{ color: '#B8A090' }}>© 2026 Just Because. All rights reserved.</div>
         <div
           style={{
             color: '#C9A961',

@@ -126,8 +126,9 @@ export function ShopByShape() {
           <ChevronLeft size={20} color={leftHover ? '#FBF5F0' : '#1A1014'} />
         </button>
 
-        <div style={{ overflow: 'hidden' }}>
+        <div className="shape-carousel-shell" style={{ overflow: 'hidden' }}>
           <div
+            className="shapes-container"
             style={{
               display: 'flex',
               flexWrap: windowWidth < 1024 ? 'wrap' : 'nowrap',
@@ -145,6 +146,7 @@ export function ShopByShape() {
                 <Link
                   key={shape.name}
                   href={shape.href}
+                  className="shape-item"
                   onClick={() => setSelected(shape.name)}
                   onMouseEnter={(event) => {
                     if (!isSelected) {
