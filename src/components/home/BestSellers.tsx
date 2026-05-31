@@ -98,6 +98,7 @@ function ProductCard({ product }: { product: Product }) {
   const { toggleItem, isWishlisted } = useWishlist()
   const { showToast } = useToast()
   const image = product.metalImages?.white_gold?.[0] || product.images?.[0]
+  const imagePosition = product.productType?.includes('necklace') ? 'center top' : 'center center'
   const badge = product.isNewArrival
     ? 'NEW'
     : product.basePrice < 2000
@@ -147,11 +148,12 @@ function ProductCard({ product }: { product: Product }) {
           }}
         >
           <div
+            className={`product-img-wrap ${imagePosition === 'center top' ? 'is-top' : ''}`}
             style={{
               aspectRatio: '1',
               position: 'relative',
               overflow: 'hidden',
-              backgroundColor: '#F5E8ED',
+              backgroundColor: '#FDF8F2',
             }}
           >
             {image ? (
@@ -161,7 +163,12 @@ function ProductCard({ product }: { product: Product }) {
                 fill
                 sizes="(max-width: 768px) 100vw, 33vw"
                 quality={90}
-                style={{ objectFit: 'cover', transition: 'transform 0.6s cubic-bezier(0.4,0,0.2,1)' }}
+                className={`img-cover ${imagePosition === 'center top' ? 'is-top' : ''}`}
+                style={{
+                  objectFit: 'cover',
+                  objectPosition: imagePosition,
+                  transition: 'transform 0.6s cubic-bezier(0.4,0,0.2,1)',
+                }}
               />
             ) : (
               <ProductPlaceholder />

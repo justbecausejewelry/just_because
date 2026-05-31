@@ -989,3 +989,41 @@ button[aria-pressed]:hover,
     padding-bottom: 78px;
   }
 }
+
+/* -- PRODUCT IMAGE GLOBAL FIXES -- */
+.product-img-wrap {
+  position: relative;
+  overflow: hidden;
+  background: #FDF8F2;
+}
+
+.product-img-wrap img,
+.product-img-wrap > span > img {
+  object-fit: cover !important;
+  object-position: center !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.product-img-wrap.is-top img,
+.product-img-wrap.is-top > span > img {
+  object-position: center top !important;
+}
+
+[data-nimg="fill"] {
+  object-fit: cover !important;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+.img-cover {
+  object-fit: cover !important;
+  object-position: center !important;
+}
+
+.img-cover.is-top {
+  object-position: center top !important;
+}

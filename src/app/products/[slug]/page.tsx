@@ -225,6 +225,9 @@ export default function ProductDetailPage() {
     : 4.9
 
   const currentPrice = formatPrice(calculatedPrice || product?.basePrice || 0)
+  const imagePosition = product?.productType?.includes('necklace') || product?.productType?.includes('pendant')
+    ? 'center top'
+    : 'center center'
   const cartItem = items.find((item) => item.productSlug === product?.slug)
   const isInCart = Boolean(cartItem)
   const needsRingSize = productNeedsRingSize(product?.productType, product?.category)
@@ -416,9 +419,10 @@ export default function ProductDetailPage() {
             ref={imageRef}
             style={{
               position: 'relative',
+              width: '100%',
               aspectRatio: '1',
               overflow: 'hidden',
-              background: '#F5E8ED',
+              background: '#FDF8F2',
               borderRadius: '2px',
               cursor: isZoomed ? 'zoom-out' : 'zoom-in',
             }}
@@ -470,8 +474,14 @@ export default function ProductDetailPage() {
                   alt={product.title}
                   fill
                   priority
-                  sizes="(max-width: 1024px) 100vw, 55vw"
-                  style={{ objectFit: 'cover' }}
+                  quality={90}
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  className={`img-cover ${imagePosition === 'center top' ? 'is-top' : ''}`}
+                  style={{
+                    objectFit: 'cover',
+                    objectPosition: imagePosition,
+                    transition: 'transform 0.4s ease',
+                  }}
                 />
               ) : (
                 <ProductPlaceholder size={92} />
@@ -665,14 +675,15 @@ export default function ProductDetailPage() {
                     setIsZoomed(false)
                   }}
                   style={{
+                    position: 'relative',
                     width: '72px',
                     height: '72px',
                     flexShrink: 0,
-                    border: selectedImage === index ? '2px solid #C9A961' : '1px solid #EDD9AF',
+                    border: selectedImage === index ? '1.5px solid #1A1014' : '0.5px solid #EDD9AF',
                     borderRadius: '2px',
                     overflow: 'hidden',
                     cursor: 'pointer',
-                    background: '#F5E8ED',
+                    background: '#FDF8F2',
                     padding: 0,
                     transition: 'border-color 0.2s ease',
                   }}
@@ -680,9 +691,13 @@ export default function ProductDetailPage() {
                   <Image
                     src={image}
                     alt={`${product.title} view ${index + 1}`}
-                    width={72}
-                    height={72}
-                    style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+                    fill
+                    sizes="72px"
+                    className={`img-cover ${imagePosition === 'center top' ? 'is-top' : ''}`}
+                    style={{
+                      objectFit: 'cover',
+                      objectPosition: imagePosition,
+                    }}
                   />
                 </button>
               ))

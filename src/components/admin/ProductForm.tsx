@@ -391,12 +391,12 @@ function MetalImageUpload({
     <div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '16px' }}>
         {images.map((url, index) => (
-          <div key={url} style={{ position: 'relative', aspectRatio: '1', border: '0.5px solid #EDD9AF', overflow: 'hidden', background: '#F5E8ED' }}>
+          <div key={url} className="product-img-wrap" style={{ position: 'relative', aspectRatio: '1', border: '0.5px solid #EDD9AF', overflow: 'hidden', background: '#FDF8F2' }}>
             <div style={{ position: 'absolute', top: '6px', left: '6px', background: metalColors[metal] || '#C9A961', color: '#1A1014', fontSize: '7px', padding: '2px 6px', letterSpacing: '0.12em', fontFamily: 'var(--font-inter)', fontWeight: 500, zIndex: 2 }}>
               {metalLabels[metal]}
             </div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt={`${metal} ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img src={url} alt={`${metal} ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', display: 'block' }} />
             <button
               type="button"
               onClick={() => onImagesChange(images.filter((_, imageIndex) => imageIndex !== index))}
@@ -1049,8 +1049,8 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
                   </label>
                   <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
                     {form.images.map((image, index) => (
-                      <div key={image} style={{ aspectRatio: '1', backgroundColor: '#F5E8ED', position: 'relative' }}>
-                        <Image src={image} alt={`Product ${index + 1}`} fill sizes="160px" style={{ objectFit: 'cover' }} />
+                      <div key={image} className="product-img-wrap" style={{ aspectRatio: '1', backgroundColor: '#FDF8F2', border: '0.5px solid #EDD9AF', overflow: 'hidden', position: 'relative' }}>
+                        <Image src={image} alt={`Product ${index + 1}`} fill sizes="160px" className="img-cover" style={{ objectFit: 'cover', objectPosition: 'center' }} />
                         {index === 0 && <span style={{ backgroundColor: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '9px', left: '8px', letterSpacing: '0.12em', padding: '4px 8px', position: 'absolute', top: '8px' }}>PRIMARY</span>}
                         <button type="button" onClick={() => setField('images', form.images.filter((item) => item !== image))} style={{ backgroundColor: '#FBF5F0', borderRadius: '50%', color: '#1A1014', padding: '5px', position: 'absolute', right: '8px', top: '8px' }}><X size={14} /></button>
                       </div>
