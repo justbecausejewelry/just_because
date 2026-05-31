@@ -15,7 +15,13 @@ type MenuCardProps = {
   icon: ComponentType<{ size?: number; color?: string; strokeWidth?: number }>
   title: string
   description: string
-  badge?: number
+  badge?: number | null
+}
+
+type AccountStats = {
+  orders: number | null
+  wishlist: number | null
+  unreadMessages: number | null
 }
 
 function displayName(user: User | null, profile: UserProfile | null) {
@@ -56,7 +62,7 @@ function MenuCard({ href, icon: Icon, title, description, badge }: MenuCardProps
         style={{
           width: '44px',
           height: '44px',
-          borderRadius: '50%',
+          borderRadius: '4px',
           background: 'rgba(201,169,97,0.1)',
           display: 'flex',
           alignItems: 'center',
@@ -70,7 +76,7 @@ function MenuCard({ href, icon: Icon, title, description, badge }: MenuCardProps
         <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '14px', fontWeight: 500 }}>
           {title}
           {badge ? (
-            <span style={{ background: '#E8C4D0', color: '#6B2D44', borderRadius: '999px', fontSize: '10px', padding: '1px 7px' }}>{badge}</span>
+            <span style={{ background: '#E8C4D0', color: '#1A1014', borderRadius: '4px', fontSize: '10px', padding: '1px 7px' }}>{badge}</span>
           ) : null}
         </span>
         <span style={{ display: 'block', color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', marginTop: '4px' }}>{description}</span>
@@ -83,9 +89,11 @@ export default function AccountPage() {
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [orderCount, setOrderCount] = useState(0)
-  const [wishlistCount, setWishlistCount] = useState(0)
-  const [unreadMessages, setUnreadMessages] = useState(0)
+  const [stats, setStats] = useState<AccountStats>({
+    orders: null,
+    wishlist: null,
+    unreadMessages: null,
+  })
   const [isAdmin, setIsAdmin] = useState(false)
   const [adminRole, setAdminRole] = useState<string | null>(null)
   const [adminChecking, setAdminChecking] = useState(true)
@@ -111,6 +119,7 @@ export default function AccountPage() {
 
       setUser(currentUser)
       setPageLoading(false)
+      setAdminChecking(true)
 
       void checkIsAdmin().then(({ isAdmin: hasAdminAccess, role }) => {
         if (cancelled) return
@@ -134,20 +143,24 @@ export default function AccountPage() {
         }
       })
 
-      void Promise.all([
-        supabaseAuth.from('Order').select('*', { count: 'exact', head: true }).eq('customerEmail', currentUser.email || ''),
-        supabaseAuth.from('Wishlist').select('*', { count: 'exact', head: true }).eq('userId', currentUser.id),
-        supabaseAuth.from('Conversation').select('*', { count: 'exact', head: true }).eq('customerId', currentUser.id).eq('isReadByCustomer', false),
-      ]).then(([{ count: orders }, { count: wishlist }, { count: unread }]) => {
+      void Promise.allSettled([
+        supabaseAuth.from('Order').select('id', { count: 'exact', head: true }).eq('customerEmail', currentUser.email || ''),
+        supabaseAuth.from('Wishlist').select('id', { count: 'exact', head: true }).eq('userId', currentUser.id),
+        supabaseAuth.from('Conversation').select('id', { count: 'exact', head: true }).eq('customerId', currentUser.id).eq('isReadByCustomer', false),
+      ]).then(([ordersResult, wishlistResult, unreadResult]) => {
         if (cancelled) return
-        setOrderCount(orders || 0)
-        setWishlistCount(wishlist || 0)
-        setUnreadMessages(unread || 0)
+        setStats({
+          orders: ordersResult.status === 'fulfilled' ? ordersResult.value.count || 0 : 0,
+          wishlist: wishlistResult.status === 'fulfilled' ? wishlistResult.value.count || 0 : 0,
+          unreadMessages: unreadResult.status === 'fulfilled' ? unreadResult.value.count || 0 : 0,
+        })
       }).catch(() => {
         if (cancelled) return
-        setOrderCount(0)
-        setWishlistCount(0)
-        setUnreadMessages(0)
+        setStats({
+          orders: 0,
+          wishlist: 0,
+          unreadMessages: 0,
+        })
       })
     }
 
@@ -167,7 +180,7 @@ export default function AccountPage() {
   if (pageLoading) {
     return (
       <div style={{ height: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FBF5F0' }}>
-        <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '32px', color: '#C9A961', animation: 'pulse 1.5s ease-in-out infinite' }}>✦</div>
+        <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '32px', color: '#C9A961', animation: 'pulse 1.5s ease-in-out infinite' }}>*</div>
         <style>{`
           @keyframes pulse {
             0%,100%{opacity:0.3;transform:scale(1)}
@@ -194,7 +207,7 @@ export default function AccountPage() {
           style={{
             width: '64px',
             height: '64px',
-            borderRadius: '50%',
+            borderRadius: '4px',
             background: 'linear-gradient(135deg, #C9A961, #EDD9AF)',
             display: 'flex',
             alignItems: 'center',
@@ -216,18 +229,18 @@ export default function AccountPage() {
         </div>
       </section>
 
-      <section className="grid gap-3 md:grid-cols-4" style={{ marginBottom: '28px' }}>
+      <section className="account-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '12px', marginBottom: '28px' }}>
         {[
-          ['Orders', String(orderCount)],
-          ['Wishlist', String(wishlistCount)],
-          ['Messages', String(unreadMessages)],
+          ['Orders', stats.orders === null ? '-' : String(stats.orders)],
+          ['Wishlist', stats.wishlist === null ? '-' : String(stats.wishlist)],
+          ['Messages', stats.unreadMessages === null ? '-' : String(stats.unreadMessages)],
           ['Ring Size', profile?.ringSize || 'Not set'],
         ].map(([label, value]) => (
           <div key={label} style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', padding: '16px' }}>
             <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.16em', margin: 0, textTransform: 'uppercase' }}>{label}</p>
             <p style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '22px', margin: '6px 0 0' }}>
               {value}
-              {label === 'Messages' && unreadMessages > 0 ? <span style={{ display: 'inline-block', width: '7px', height: '7px', borderRadius: '50%', background: '#C9A961', marginLeft: '8px' }} /> : null}
+              {label === 'Messages' && stats.unreadMessages && stats.unreadMessages > 0 ? <span style={{ display: 'inline-block', width: '7px', height: '7px', borderRadius: '4px', background: '#C9A961', marginLeft: '8px' }} /> : null}
             </p>
           </div>
         ))}
@@ -235,7 +248,7 @@ export default function AccountPage() {
 
       <section className="account-menu-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
         <MenuCard href="/account/orders" icon={ShoppingBag} title="My Orders" description="Track and view your orders" />
-        <MenuCard href="/account/messages" icon={MessageSquare} title="Messages" description="Chat with our team" badge={unreadMessages} />
+        <MenuCard href="/account/messages" icon={MessageSquare} title="Messages" description="Chat with our team" badge={stats.unreadMessages} />
         <MenuCard href="/wishlist" icon={Heart} title="Wishlist" description="Your saved pieces" />
         <MenuCard href="/account/settings" icon={Settings} title="Account Settings" description="Update your profile" />
         {adminChecking ? (
@@ -274,7 +287,7 @@ export default function AccountPage() {
             <div style={{
               width: '44px',
               height: '44px',
-              borderRadius: '50%',
+              borderRadius: '4px',
               background: 'rgba(201,169,97,0.15)',
               display: 'flex',
               alignItems: 'center',
@@ -304,15 +317,15 @@ export default function AccountPage() {
                 fontFamily: 'var(--font-inter)',
               }}>
                 {adminRole === 'super_admin'
-                  ? '✦ Super Admin · Full access'
-                  : '✦ Admin · Manage store'}
+                  ? '* Super Admin - Full access'
+                  : '* Admin - Manage store'}
               </div>
             </div>
             <span style={{
               color: '#C9A961',
               fontSize: '20px',
               fontFamily: 'var(--font-playfair)',
-            }}>→</span>
+            }}>&gt;</span>
           </Link>
         ) : null}
       </section>
@@ -329,13 +342,28 @@ export default function AccountPage() {
       <style>{`
         .account-menu-card:hover {
           border-color: #C9A961 !important;
-          background: #FAF5EE !important;
+          background: #FCF0F4 !important;
           transform: translateY(-2px);
         }
 
         @media (max-width: 768px) {
+          main {
+            padding: 40px 16px !important;
+          }
+          .account-stats-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
           .account-menu-grid {
             grid-template-columns: 1fr !important;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .account-stats-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .account-menu-card {
+            padding: 18px !important;
           }
         }
       `}</style>

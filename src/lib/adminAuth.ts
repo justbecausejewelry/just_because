@@ -1,20 +1,16 @@
 import { createClient } from '@supabase/supabase-js'
+import { supabaseAuth } from '@/lib/auth'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
-
-const CACHE_KEY = 'jb_admin_check'
-const CACHE_TTL = 5 * 60 * 1000
+const CACHE_KEY = 'jb_admin'
+const CACHE_TTL = 10 * 60 * 1000
 const CHECK_TIMEOUT = 3000
 
 export interface AdminRecord {
-  id: string
+  id?: string
   email: string
-  name: string
-  role: string
-  createdAt: string
+  name?: string | null
+  role: string | null
+  createdAt?: string | null
 }
 
 type AdminCheckResult = {
@@ -23,76 +19,128 @@ type AdminCheckResult = {
   adminData: AdminRecord | null
 }
 
+type AdminCache = AdminCheckResult & {
+  email: string
+  ts: number
+}
+
+type AdminRow = {
+  id?: string
+  email?: string | null
+  name?: string | null
+  role?: string | null
+  createdAt?: string | null
+}
+
+const emptyAdminResult: AdminCheckResult = {
+  isAdmin: false,
+  role: null,
+  adminData: null,
+}
+
 function cacheKeyFor(email: string) {
   return `${CACHE_KEY}_${email.toLowerCase()}`
 }
 
-export async function checkIsAdmin(): Promise<{
-  isAdmin: boolean
-  role: string | null
-  adminData: AdminRecord | null
-}> {
+function getCache(email: string): AdminCheckResult | null {
+  if (typeof window === 'undefined') return null
+
   try {
-    const { data: { user }, error: authError } =
-      await supabase.auth.getUser()
+    const raw = sessionStorage.getItem(cacheKeyFor(email))
+    if (!raw) return null
 
-    if (authError || !user?.email) {
-      return { isAdmin: false, role: null, adminData: null }
+    const cached = JSON.parse(raw) as Partial<AdminCache>
+    if (!cached.ts || Date.now() - cached.ts > CACHE_TTL) {
+      sessionStorage.removeItem(cacheKeyFor(email))
+      return null
     }
 
-    if (typeof window !== 'undefined') {
-      const cached = sessionStorage.getItem(cacheKeyFor(user.email))
-      if (cached) {
-        const parsed = JSON.parse(cached) as AdminCheckResult & { timestamp: number }
-        if (Date.now() - parsed.timestamp < CACHE_TTL) {
-          return {
-            isAdmin: parsed.isAdmin,
-            role: parsed.role,
-            adminData: parsed.adminData,
-          }
-        }
-      }
+    if (cached.email?.toLowerCase() !== email.toLowerCase()) {
+      return null
     }
 
-    const { data: { session } } = await supabase.auth.getSession()
+    return {
+      isAdmin: Boolean(cached.isAdmin),
+      role: cached.role ?? null,
+      adminData: cached.adminData ?? null,
+    }
+  } catch {
+    return null
+  }
+}
 
-    if (!session?.access_token) {
-      return { isAdmin: false, role: null, adminData: null }
+function setCache(email: string, result: AdminCheckResult) {
+  if (typeof window === 'undefined') return
+
+  try {
+    const cache: AdminCache = {
+      ...result,
+      email: email.toLowerCase(),
+      ts: Date.now(),
+    }
+    sessionStorage.setItem(cacheKeyFor(email), JSON.stringify(cache))
+  } catch {
+    // Session storage can be unavailable in private modes; the DB result is still valid.
+  }
+}
+
+function mapAdminRow(row: AdminRow, email: string): AdminCheckResult {
+  const role = row.role ?? null
+
+  return {
+    isAdmin: true,
+    role,
+    adminData: {
+      id: row.id,
+      email: row.email?.toLowerCase() || email,
+      name: row.name ?? null,
+      role,
+      createdAt: row.createdAt ?? null,
+    },
+  }
+}
+
+async function queryAdminUser(email: string): Promise<AdminCheckResult> {
+  const { data, error } = await supabaseAuth
+    .from('AdminUser')
+    .select('id,email,name,role,createdAt')
+    .eq('email', email)
+    .maybeSingle()
+
+  if (error || !data) {
+    return emptyAdminResult
+  }
+
+  return mapAdminRow(data as AdminRow, email)
+}
+
+function timeoutResult(): Promise<AdminCheckResult> {
+  return new Promise((resolve) => {
+    globalThis.setTimeout(() => resolve(emptyAdminResult), CHECK_TIMEOUT)
+  })
+}
+
+export async function checkIsAdmin(): Promise<AdminCheckResult> {
+  try {
+    const {
+      data: { session },
+    } = await supabaseAuth.auth.getSession()
+
+    if (!session?.user?.email) {
+      return emptyAdminResult
     }
 
-    const controller = new AbortController()
-    const timeout = globalThis.setTimeout(() => controller.abort(), CHECK_TIMEOUT)
-
-    const response = await fetch('/api/admin/check-access', {
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      signal: controller.signal,
-    }).finally(() => globalThis.clearTimeout(timeout))
-
-    if (!response.ok) {
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem(
-          cacheKeyFor(user.email),
-          JSON.stringify({ isAdmin: false, role: null, adminData: null, timestamp: Date.now() })
-        )
-      }
-      return { isAdmin: false, role: null, adminData: null }
+    const email = session.user.email.toLowerCase()
+    const cached = getCache(email)
+    if (cached) {
+      return cached
     }
 
-    const result = await response.json() as AdminCheckResult
-
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem(
-        cacheKeyFor(user.email),
-        JSON.stringify({ ...result, timestamp: Date.now() })
-      )
-    }
-
+    const result = await Promise.race([queryAdminUser(email), timeoutResult()])
+    setCache(email, result)
     return result
-  } catch (err) {
-    console.error('Admin check failed:', err)
-    return { isAdmin: false, role: null, adminData: null }
+  } catch {
+    return emptyAdminResult
   }
 }
 
@@ -109,13 +157,35 @@ export function clearAdminCache() {
   }
 }
 
+export async function checkIsAdminServer(email: string): Promise<boolean> {
+  try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+
+    const { data } = await supabase
+      .from('AdminUser')
+      .select('id')
+      .eq('email', email.toLowerCase())
+      .maybeSingle()
+
+    return Boolean(data)
+  } catch {
+    return false
+  }
+}
+
 export const isAdminEmail = async (
   email: string | null | undefined
 ): Promise<boolean> => {
   if (!email) return false
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (user?.email?.toLowerCase() !== email.toLowerCase()) {
+  const {
+    data: { session },
+  } = await supabaseAuth.auth.getSession()
+
+  if (session?.user?.email?.toLowerCase() !== email.toLowerCase()) {
     return false
   }
 
