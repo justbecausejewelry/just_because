@@ -648,7 +648,7 @@ export default function ProductsPage() {
         >
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
             <span style={{
-              fontFamily: "'Italianno', cursive",
+              fontFamily: 'var(--font-italianno)',
               fontSize: '64px',
               color: '#C9A961',
               lineHeight: 0.85,

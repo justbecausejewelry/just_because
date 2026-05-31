@@ -339,10 +339,8 @@ export function Navbar() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Italianno&display=swap');
-
         .nav-logo-script {
-          font-family: 'Italianno', cursive !important;
+          font-family: var(--font-italianno), cursive !important;
           font-size: 30px !important;
           color: #C9A961 !important;
           line-height: 0.85 !important;
@@ -473,7 +471,7 @@ export function Navbar() {
             <div style={{ lineHeight: 1 }}>
               <div
                 style={{
-                  fontFamily: "'Italianno', cursive",
+                  fontFamily: 'var(--font-italianno)',
                   fontSize: '28px',
                   color: '#C9A961',
                   lineHeight: 0.85,
@@ -684,7 +682,7 @@ export function Navbar() {
             }}
           >
             <Link href="/" onClick={() => setMobileOpen(false)} style={{ textDecoration: 'none' }}>
-              <div style={{ fontFamily: "'Italianno', cursive", fontSize: '28px', color: '#C9A961', lineHeight: 0.85 }}>
+              <div style={{ fontFamily: 'var(--font-italianno)', fontSize: '28px', color: '#C9A961', lineHeight: 0.85 }}>
                 just
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>

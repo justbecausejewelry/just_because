@@ -294,7 +294,7 @@ export default function SignupPage() {
         }}>
           <Link href="/" style={{ textDecoration: 'none' }}>
             <div style={{
-              fontFamily: "'Italianno', cursive",
+              fontFamily: 'var(--font-italianno)',
               fontSize: '40px',
               color: '#1A1014',
               lineHeight: 0.85,

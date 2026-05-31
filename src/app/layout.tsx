@@ -27,8 +27,8 @@ const italianno = Italianno({
 })
 
 export const metadata: Metadata = {
-  title: 'Just Because - A reason, in itself.',
-  description: 'Lab-grown diamonds for the moments that do not need an occasion.',
+  title: 'Just Because · Lab-Grown Diamonds',
+  description: "Lab-grown diamonds and 18k recycled gold, crafted for every moment that doesn't ask for an occasion.",
 }
 
 export const viewport: Viewport = {

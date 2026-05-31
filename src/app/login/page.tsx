@@ -33,29 +33,27 @@ export default function LoginPage() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Italianno&family=Playfair+Display:ital,wght@0,400;1,400&display=swap');
-
         .logo-script {
-          font-family: 'Italianno', cursive !important;
+          font-family: var(--font-italianno), cursive !important;
           font-size: 44px !important;
           color: #FBF5F0 !important;
           line-height: 0.85 !important;
         }
 
         .logo-script-dark {
-          font-family: 'Italianno', cursive !important;
+          font-family: var(--font-italianno), cursive !important;
           font-size: 36px !important;
           color: #1A1014 !important;
           line-height: 0.85 !important;
         }
 
         .playfair-heading {
-          font-family: 'Playfair Display', Georgia, serif !important;
+          font-family: var(--font-playfair), Georgia, serif !important;
           font-weight: 400 !important;
         }
 
         .playfair-italic {
-          font-family: 'Playfair Display', Georgia, serif !important;
+          font-family: var(--font-playfair), Georgia, serif !important;
           font-weight: 400 !important;
           font-style: italic !important;
         }
@@ -67,7 +65,7 @@ export default function LoginPage() {
           border: 1px solid #D4C4B0;
           color: #1A1014;
           font-size: 14px;
-          font-family: Inter, sans-serif;
+          font-family: var(--font-inter), sans-serif;
           outline: none;
           box-sizing: border-box;
           transition: border-color 0.2s;
@@ -286,7 +284,7 @@ export default function LoginPage() {
           }}>
             <Link href="/" style={{ textDecoration: 'none' }}>
               <div style={{
-                fontFamily: "'Italianno', cursive",
+                fontFamily: 'var(--font-italianno)',
                 fontSize: '40px',
                 color: '#1A1014',
                 lineHeight: 0.85,
