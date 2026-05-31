@@ -18,6 +18,7 @@ import {
   ChevronRight,
   Menu,
   X,
+  ExternalLink,
 } from 'lucide-react'
 
 const sidebarLinks = [
@@ -101,6 +102,8 @@ export default function AdminLayout({
     return pathname.startsWith(href)
   }
 
+  const currentPageLabel = sidebarLinks.find(({ href, exact }) => isActive(href, exact))?.label || 'Admin'
+
   const SidebarContent = () => (
     <aside
       style={{
@@ -159,6 +162,7 @@ export default function AdminLayout({
             <Link
               key={href}
               href={href}
+              onClick={() => setSidebarOpen(false)}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -201,11 +205,7 @@ export default function AdminLayout({
           onMouseEnter={(event) => event.currentTarget.style.color = '#C9A961'}
           onMouseLeave={(event) => event.currentTarget.style.color = 'rgba(201,169,97,0.6)'}
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
-            <polyline points="15 3 21 3 21 9" />
-            <line x1="10" y1="14" x2="21" y2="3" />
-          </svg>
+          <ExternalLink size={12} strokeWidth={1.5} />
           VIEW STORE
         </Link>
 
@@ -243,6 +243,9 @@ export default function AdminLayout({
             display: none !important;
           }
           .admin-mobile-topbar {
+            display: flex !important;
+          }
+          .admin-mobile-drawer {
             display: flex !important;
           }
           .admin-main-content {
@@ -305,11 +308,12 @@ export default function AdminLayout({
               alignItems: 'center',
               justifyContent: 'space-between',
               padding: '12px 16px',
-              background: '#1A1014',
-              borderBottom: '0.5px solid rgba(201,169,97,0.15)',
-              flexShrink: 0,
-            }}
-          >
+            background: '#1A1014',
+            borderBottom: '0.5px solid rgba(201,169,97,0.15)',
+            flexShrink: 0,
+            height: '52px',
+          }}
+        >
             <button
               onClick={() => setSidebarOpen(true)}
               aria-label="Open admin menu"
@@ -325,14 +329,20 @@ export default function AdminLayout({
               }}
             >
               <Menu size={22} color="#C9A961" />
-              <span style={{ fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.15em', color: 'rgba(201,169,97,0.8)' }}>MENU</span>
             </button>
 
-            <div style={{ fontFamily: 'var(--font-italianno)', fontSize: '22px', color: '#C9A961' }}>just</div>
-
-            <div style={{ fontSize: '10px', letterSpacing: '0.15em', color: 'rgba(184,160,144,0.6)', fontFamily: 'var(--font-inter)' }}>
-              ADMIN
+            <div style={{ fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.2em', color: 'rgba(201,169,97,0.8)', textTransform: 'uppercase' }}>
+              {currentPageLabel}
             </div>
+
+            <Link
+              href="/"
+              target="_blank"
+              aria-label="View store"
+              style={{ display: 'flex', alignItems: 'center', color: 'rgba(184,160,144,0.6)', padding: '4px', textDecoration: 'none' }}
+            >
+              <ExternalLink size={16} strokeWidth={1.5} />
+            </Link>
           </div>
 
           <main className="admin-main-content" style={{ flex: 1, overflowY: 'auto', background: '#FBF5F0' }}>
