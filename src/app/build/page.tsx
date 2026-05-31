@@ -2,6 +2,7 @@
 
 import { CSSProperties, Suspense, useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useCart } from '@/context/CartContext'
 import { useToast } from '@/context/ToastContext'
@@ -26,6 +27,10 @@ type RingProduct = {
   availableSizes?: string[]
 }
 
+type ProductListResponse = {
+  products?: RingProduct[]
+}
+
 const metalOptions = [
   ['14k_white_gold', '14K White Gold', 'white_gold'],
   ['14k_yellow_gold', '14K Yellow Gold', 'yellow_gold'],
@@ -42,6 +47,25 @@ function formatMoney(value: number) {
 function imageForRing(ring: RingProduct, metal: string) {
   const metalKey = metalOptions.find(([value]) => value === metal)?.[2] || 'white_gold'
   return ring.metalImages?.[metalKey]?.[0] || ring.images?.[0] || ''
+}
+
+function isRingProduct(product: RingProduct) {
+  const productType = product.productType?.toLowerCase() || ''
+  const category = product.category?.toLowerCase() || ''
+
+  return (
+    ['engagement_ring', 'wedding_ring', 'ring', 'solitaire'].includes(productType) ||
+    productType.includes('ring') ||
+    category.includes('ring') ||
+    category.includes('solitaire') ||
+    category.includes('halo') ||
+    category.includes('pave')
+  )
+}
+
+function ringProductsOrAll(products: RingProduct[]) {
+  const ringMatches = products.filter(isRingProduct)
+  return ringMatches.length > 0 ? ringMatches : products
 }
 
 function StepIndicator({ step }: { step: number }) {
@@ -156,13 +180,38 @@ function BuildContent() {
       const { data, error } = await supabase
         .from('Product')
         .select('*')
-        .eq('productType', 'engagement_ring')
         .eq('isActive', true)
+        .or('productType.eq.engagement_ring,productType.eq.wedding_ring,productType.eq.ring')
+        .order('isFeatured', { ascending: false })
         .order('basePrice', { ascending: true })
 
-      if (!error && data) {
-        setRings(data as RingProduct[])
+      let nextRings = !error && data ? (data as RingProduct[]) : []
+
+      if (nextRings.length === 0) {
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('Product')
+          .select('*')
+          .eq('isActive', true)
+          .order('basePrice', { ascending: true })
+
+        const activeProducts = !fallbackError && fallbackData ? (fallbackData as RingProduct[]) : []
+        nextRings = ringProductsOrAll(activeProducts)
       }
+
+      if (nextRings.length === 0) {
+        try {
+          const response = await fetch('/api/products?limit=100', { cache: 'no-store' })
+          if (response.ok) {
+            const payload = (await response.json()) as ProductListResponse
+            const apiProducts = Array.isArray(payload.products) ? payload.products : []
+            nextRings = ringProductsOrAll(apiProducts)
+          }
+        } catch {
+          nextRings = []
+        }
+      }
+
+      setRings(nextRings)
       setLoadingRings(false)
     }
 
@@ -238,8 +287,25 @@ function BuildContent() {
   return (
     <div style={{ background: '#FBF5F0', minHeight: '100vh' }}>
       <style jsx global>{`
+        @keyframes builderShimmer {
+          0% { background-position: -220px 0; }
+          100% { background-position: calc(220px + 100%) 0; }
+        }
+
+        .builder-loading-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 18px;
+        }
+
+        .builder-skeleton {
+          background: linear-gradient(90deg, #FDF8F2 0%, #F5E8ED 45%, #FDF8F2 90%);
+          background-size: 220px 100%;
+          animation: builderShimmer 1200ms ease-in-out infinite;
+        }
+
         @media (max-width: 900px) {
-          .builder-ring-grid, .builder-diamond-grid { grid-template-columns: 1fr !important; }
+          .builder-ring-grid, .builder-diamond-grid, .builder-loading-grid { grid-template-columns: 1fr !important; }
           .builder-summary-grid { grid-template-columns: 1fr !important; }
           .builder-composition { grid-template-columns: 1fr !important; }
         }
@@ -262,7 +328,29 @@ function BuildContent() {
           </div>
 
           {loadingRings ? (
-            <div style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', padding: '40px 0' }}>Loading settings...</div>
+            <div className="builder-loading-grid" aria-label="Loading ring settings">
+              {[0, 1, 2].map((item) => (
+                <article key={item} style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '2px', overflow: 'hidden' }}>
+                  <div className="builder-skeleton" style={{ aspectRatio: '1' }} />
+                  <div style={{ padding: '18px' }}>
+                    <div className="builder-skeleton" style={{ height: '10px', width: '34%', marginBottom: '12px' }} />
+                    <div className="builder-skeleton" style={{ height: '24px', width: '72%', marginBottom: '18px' }} />
+                    <div className="builder-skeleton" style={{ height: '12px', width: '46%', marginBottom: '18px' }} />
+                    <div className="builder-skeleton" style={{ height: '42px', width: '100%' }} />
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : rings.length === 0 ? (
+            <div style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', padding: '36px', textAlign: 'center' }}>
+              <h3 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '26px', fontWeight: 400, margin: '0 0 10px' }}>No ring settings found</h3>
+              <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '13px', lineHeight: 1.7, margin: '0 auto 22px', maxWidth: '480px' }}>
+                Add an active ring product so the builder has a setting to pair with a diamond.
+              </p>
+              <Link href="/admin/products/new" style={{ ...selectButtonStyle, display: 'inline-block', textDecoration: 'none', width: 'auto' }}>
+                ADD RING PRODUCT -
+              </Link>
+            </div>
           ) : (
             <div className="builder-ring-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '18px' }}>
               {rings.map((ring) => {

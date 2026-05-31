@@ -1,6 +1,13 @@
 import Image from 'next/image'
 import Link from 'next/link'
 
+const heroProduct = {
+  title: 'Solis Solitaire',
+  subtitle: '18K White Gold - 2ct Round',
+  price: '$2,800',
+  image: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=400&q=90',
+}
+
 export function Hero() {
   return (
     <section
@@ -9,12 +16,13 @@ export function Hero() {
     >
       <div className="hero-image relative order-1 h-[60vw] min-h-[280px] max-h-[400px] w-full overflow-hidden md:order-2 md:h-full md:max-h-none">
         <Image
-          src="https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=900&q=80"
+          src="https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=1400&q=90"
           alt="Just Because — lab grown diamond ring"
           fill
           priority
           sizes="(max-width: 768px) 100vw, 55vw"
           style={{ objectFit: 'cover', objectPosition: 'center' }}
+          quality={90}
         />
         <div
           className="absolute inset-0"
@@ -27,40 +35,54 @@ export function Hero() {
             left: '32px',
             background: 'rgba(253,248,242,0.96)',
             borderLeft: '3px solid #C9A961',
-            padding: '16px 20px',
+            padding: '14px 18px',
             backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
           }}
         >
-          <p
-            style={{
-              color: '#1A1014',
-              fontFamily: 'var(--font-playfair)',
-              fontSize: '15px',
-              fontWeight: 400,
-            }}
-          >
-            Etoile Solitaire
-          </p>
-          <p
-            style={{
-              color: '#5C4F47',
-              fontFamily: 'var(--font-inter)',
-              fontSize: '10px',
-              margin: '4px 0',
-            }}
-          >
-            18K White Gold · 9ct Round
-          </p>
-          <p
-            style={{
-              color: '#1A1014',
-              fontFamily: 'var(--font-inter)',
-              fontSize: '14px',
-              fontWeight: 500,
-            }}
-          >
-            From $4,200
-          </p>
+          <div style={{ position: 'relative', width: '48px', height: '48px', flexShrink: 0, overflow: 'hidden', background: '#FDF8F2' }}>
+            <Image
+              src={heroProduct.image}
+              alt={heroProduct.title}
+              fill
+              sizes="48px"
+              style={{ objectFit: 'cover', objectPosition: 'center' }}
+            />
+          </div>
+          <div>
+            <p
+              style={{
+                color: '#1A1014',
+                fontFamily: 'var(--font-playfair)',
+                fontSize: '15px',
+                fontWeight: 400,
+              }}
+            >
+              {heroProduct.title}
+            </p>
+            <p
+              style={{
+                color: '#5C4F47',
+                fontFamily: 'var(--font-inter)',
+                fontSize: '10px',
+                margin: '4px 0',
+              }}
+            >
+              {heroProduct.subtitle}
+            </p>
+            <p
+              style={{
+                color: '#1A1014',
+                fontFamily: 'var(--font-inter)',
+                fontSize: '14px',
+                fontWeight: 500,
+              }}
+            >
+              From {heroProduct.price}
+            </p>
+          </div>
         </div>
       </div>
 
