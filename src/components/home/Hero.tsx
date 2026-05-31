@@ -2,10 +2,11 @@ import Image from 'next/image'
 import Link from 'next/link'
 
 const heroProduct = {
-  title: 'Solis Solitaire',
-  price: '$2,800',
+  title: 'Etoile Solitaire',
+  subtitle: '18K White Gold · Round',
+  price: 'From $4,200',
   image: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=400&q=90',
-  slug: 'solis-solitaire',
+  slug: 'etoile-solitaire',
 }
 
 export function Hero() {
@@ -14,11 +15,11 @@ export function Hero() {
       className="hero-section grid min-h-screen grid-cols-1 md:grid-cols-[50%_50%] lg:grid-cols-[45%_55%]"
       style={{ backgroundColor: '#FBF5F0' }}
     >
-      <div className="hero-image order-1 flex w-full flex-col gap-3 md:order-2 md:h-full md:justify-center md:py-10 lg:py-14">
-        <div className="relative h-[60vw] min-h-[280px] max-h-[400px] w-full overflow-hidden md:h-[72vh] md:max-h-[760px]">
+      <div className="hero-image order-1 w-full md:order-2 md:h-full">
+        <div className="relative h-[60vw] min-h-[280px] max-h-[400px] w-full overflow-hidden md:h-full md:max-h-none">
           <Image
-            src="https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=1400&q=90"
-            alt="Just Because lab grown diamond ring"
+            src="/images/hero-necklace.jpg"
+            alt="Just Because luxury jewelry"
             fill
             priority
             sizes="(max-width: 768px) 100vw, 55vw"
@@ -29,18 +30,16 @@ export function Hero() {
             className="absolute inset-0"
             style={{ backgroundColor: 'rgba(251,245,240,0.08)' }}
           />
-        </div>
-
-        <Link
-          href={`/products/${heroProduct.slug}`}
-          className="mx-4 flex items-center justify-between gap-4 px-4 py-3 text-left no-underline transition-colors duration-400 md:mx-0 md:mr-6 lg:mr-10"
-          style={{
-            background: '#FDF8F2',
-            border: '0.5px solid #EDD9AF',
-            color: '#1A1014',
-          }}
-        >
-          <div className="flex min-w-0 items-center gap-3">
+          <Link
+            href={`/products/${heroProduct.slug}`}
+            className="absolute bottom-5 left-5 flex max-w-[calc(100%-40px)] items-center gap-3 px-4 py-3 text-left no-underline md:bottom-8 md:left-8"
+            style={{
+              background: 'rgba(253,248,242,0.96)',
+              borderLeft: '3px solid #C9A961',
+              boxShadow: '0 4px 20px rgba(26,16,20,0.06)',
+              color: '#1A1014',
+            }}
+          >
             <div
               style={{
                 position: 'relative',
@@ -86,21 +85,26 @@ export function Hero() {
                 style={{
                   color: '#B8A090',
                   fontFamily: 'var(--font-inter)',
-                  fontSize: '12px',
+                  fontSize: '10px',
                   marginTop: '2px',
                 }}
               >
-                From {heroProduct.price}
+                {heroProduct.subtitle}
+              </div>
+              <div
+                style={{
+                  color: '#1A1014',
+                  fontFamily: 'var(--font-inter)',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  marginTop: '3px',
+                }}
+              >
+                {heroProduct.price}
               </div>
             </div>
-          </div>
-          <span
-            className="shrink-0 text-[11px] tracking-[0.18em]"
-            style={{ color: '#C9A961', fontFamily: 'var(--font-inter)' }}
-          >
-            VIEW
-          </span>
-        </Link>
+          </Link>
+        </div>
       </div>
 
       <div className="hero-copy order-2 flex items-center px-6 py-10 text-center md:order-1 md:px-10 md:py-[60px] md:text-left lg:px-20 lg:py-20">
