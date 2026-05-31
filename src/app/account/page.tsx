@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Heart, LogOut, MessageSquare, Settings, ShoppingBag } from 'lucide-react'
 import type { User } from '@supabase/supabase-js'
-import { supabaseAuth } from '@/lib/auth'
+import { supabase, SUPABASE_AUTH_STORAGE_KEY } from '@/lib/supabase'
 import { checkIsAdmin, clearAdminCache } from '@/lib/adminAuth'
 import { getOrCreateProfile, type UserProfile } from '@/lib/userProfile'
 
@@ -64,7 +64,7 @@ function sessionFromUnknown(value: unknown): StoredAuthSession | null {
 }
 
 function isAuthStorageKey(key: string) {
-  return key === 'jb-auth'
+  return key === SUPABASE_AUTH_STORAGE_KEY
     || key.includes('supabase.auth.token')
     || (key.startsWith('sb-') && key.includes('-auth-token'))
 }
@@ -88,10 +88,6 @@ function getSessionFromStorage(): StoredAuthSession | null {
 
     const session = sessionFromUnknown(JSON.parse(raw))
     if (!session) return null
-
-    if (authKey !== 'jb-auth') {
-      window.localStorage.setItem('jb-auth', raw)
-    }
 
     return session
   } catch {
@@ -180,9 +176,9 @@ export default function AccountPage() {
 
     const loadStats = async (userId: string, email: string) => {
       const [ordersResult, wishlistResult, unreadResult] = await Promise.allSettled([
-        supabaseAuth.from('Order').select('id', { count: 'exact', head: true }).eq('customerEmail', email),
-        supabaseAuth.from('Wishlist').select('id', { count: 'exact', head: true }).eq('userId', userId),
-        supabaseAuth.from('Conversation').select('id', { count: 'exact', head: true }).eq('customerId', userId).eq('isReadByCustomer', false),
+        supabase.from('Order').select('id', { count: 'exact', head: true }).eq('customerEmail', email),
+        supabase.from('Wishlist').select('id', { count: 'exact', head: true }).eq('userId', userId),
+        supabase.from('Conversation').select('id', { count: 'exact', head: true }).eq('customerId', userId).eq('isReadByCustomer', false),
       ])
 
       if (cancelled) return
@@ -242,14 +238,14 @@ export default function AccountPage() {
     if (storedSession?.user) {
       hydrateAccount(storedSession.user)
       if (storedSession.refresh_token) {
-        void supabaseAuth.auth.setSession({
+        void supabase.auth.setSession({
           access_token: storedSession.access_token,
           refresh_token: storedSession.refresh_token,
         })
       }
     }
 
-    const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (cancelled) return
 
       if (event === 'SIGNED_OUT') {
@@ -285,7 +281,7 @@ export default function AccountPage() {
 
   const handleSignOut = async () => {
     clearAdminCache()
-    await supabaseAuth.auth.signOut()
+    await supabase.auth.signOut()
     Object.keys(window.localStorage)
       .filter(isAuthStorageKey)
       .forEach((key) => window.localStorage.removeItem(key))

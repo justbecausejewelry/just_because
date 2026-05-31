@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { supabaseAuth } from '@/lib/auth'
+import { supabase } from '@/lib/supabase'
 
 const CACHE_KEY = 'jb_admin'
 const CACHE_TTL = 10 * 60 * 1000
@@ -101,7 +101,7 @@ function mapAdminRow(row: AdminRow, email: string): AdminCheckResult {
 }
 
 async function queryAdminUser(email: string): Promise<AdminCheckResult> {
-  const { data, error } = await supabaseAuth
+  const { data, error } = await supabase
     .from('AdminUser')
     .select('id,email,name,role,createdAt')
     .eq('email', email)
@@ -125,7 +125,7 @@ export async function checkIsAdmin(): Promise<AdminCheckResult> {
     const {
       data: { user },
       error,
-    } = await supabaseAuth.auth.getUser()
+    } = await supabase.auth.getUser()
 
     if (error || !user?.email) {
       return emptyAdminResult
@@ -160,12 +160,12 @@ export function clearAdminCache() {
 
 export async function checkIsAdminServer(email: string): Promise<boolean> {
   try {
-    const supabase = createClient(
+    const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    const { data } = await supabase
+    const { data } = await supabaseAdmin
       .from('AdminUser')
       .select('id')
       .eq('email', email.toLowerCase())
@@ -184,7 +184,7 @@ export const isAdminEmail = async (
 
   const {
     data: { user },
-  } = await supabaseAuth.auth.getUser()
+  } = await supabase.auth.getUser()
 
   if (user?.email?.toLowerCase() !== email.toLowerCase()) {
     return false
