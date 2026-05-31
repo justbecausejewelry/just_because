@@ -1,9 +1,6 @@
-import { createClient } from '@supabase/supabase-js'
+import { getSupabase } from '@/lib/supabase'
 
-export const supabaseAuth = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+export const supabaseAuth = getSupabase()
 
 export async function signIn(email: string, password: string) {
   const { data, error } = await supabaseAuth.auth.signInWithPassword({

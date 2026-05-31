@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@supabase/supabase-js'
+import { supabaseAuth } from '@/lib/auth'
 import { checkIsAdmin, clearAdminCache } from '@/lib/adminAuth'
 import {
   LayoutDashboard,
@@ -19,11 +19,6 @@ import {
   Menu,
   X,
 } from 'lucide-react'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
 
 const sidebarLinks = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
@@ -63,7 +58,7 @@ export default function AdminLayout({
         setChecking(false)
       })
 
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabaseAuth.auth.getUser().then(({ data: { user } }) => {
       const name = typeof user?.user_metadata?.name === 'string' && user.user_metadata.name.trim()
         ? user.user_metadata.name
         : user?.email?.split('@')[0] || 'Admin'
@@ -84,7 +79,7 @@ export default function AdminLayout({
 
   const handleSignOut = async () => {
     clearAdminCache()
-    await supabase.auth.signOut()
+    await supabaseAuth.auth.signOut()
     router.push('/')
   }
 

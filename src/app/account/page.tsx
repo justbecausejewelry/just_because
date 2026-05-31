@@ -24,6 +24,81 @@ type AccountStats = {
   unreadMessages: number | null
 }
 
+type StoredAuthSession = {
+  access_token: string
+  refresh_token?: string
+  expires_at?: number
+  user: User
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function sessionFromUnknown(value: unknown): StoredAuthSession | null {
+  if (!isRecord(value)) return null
+
+  const candidate = value.currentSession || value.session || value
+  if (!isRecord(candidate)) return null
+
+  const accessToken = candidate.access_token
+  const refreshToken = candidate.refresh_token
+  const user = candidate.user
+  if (typeof accessToken !== 'string' || !isRecord(user)) return null
+
+  const email = user.email
+  if (typeof email !== 'string' || !email) return null
+  if (typeof user.id !== 'string' || !user.id) return null
+
+  const expiresAt = candidate.expires_at
+  if (typeof expiresAt === 'number' && expiresAt < Date.now() / 1000) {
+    return null
+  }
+
+  return {
+    access_token: accessToken,
+    refresh_token: typeof refreshToken === 'string' ? refreshToken : undefined,
+    expires_at: typeof expiresAt === 'number' ? expiresAt : undefined,
+    user: user as unknown as User,
+  }
+}
+
+function isAuthStorageKey(key: string) {
+  return key === 'jb-auth'
+    || key.includes('supabase.auth.token')
+    || (key.startsWith('sb-') && key.includes('-auth-token'))
+}
+
+function getSessionFromStorage(): StoredAuthSession | null {
+  if (typeof window === 'undefined') return null
+
+  try {
+    const keys = Object.keys(window.localStorage)
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('localStorage keys:', keys)
+      console.log('Looking for auth session...')
+    }
+
+    const authKey = keys.find(isAuthStorageKey)
+    if (!authKey) return null
+
+    const raw = window.localStorage.getItem(authKey)
+    if (!raw) return null
+
+    const session = sessionFromUnknown(JSON.parse(raw))
+    if (!session) return null
+
+    if (authKey !== 'jb-auth') {
+      window.localStorage.setItem('jb-auth', raw)
+    }
+
+    return session
+  } catch {
+    return null
+  }
+}
+
 function displayName(user: User | null, profile: UserProfile | null) {
   if (profile?.firstName || profile?.lastName) {
     return `${profile.firstName || ''} ${profile.lastName || ''}`.trim()
@@ -131,15 +206,9 @@ export default function AccountPage() {
       }
     }
 
-    const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange((event, session) => {
+    const hydrateAccount = (currentUser: User) => {
       if (cancelled) return
 
-      if (event === 'SIGNED_OUT' || !session?.user) {
-        router.push('/login?redirect=/account')
-        return
-      }
-
-      const currentUser = session.user
       const email = currentUser.email || ''
       const isSameUser = loadedUserIdRef.current === currentUser.id
 
@@ -167,6 +236,35 @@ export default function AccountPage() {
           setAdminChecking(false)
         }
       })
+    }
+
+    const storedSession = getSessionFromStorage()
+    if (storedSession?.user) {
+      hydrateAccount(storedSession.user)
+      if (storedSession.refresh_token) {
+        void supabaseAuth.auth.setSession({
+          access_token: storedSession.access_token,
+          refresh_token: storedSession.refresh_token,
+        })
+      }
+    }
+
+    const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange((event, session) => {
+      if (cancelled) return
+
+      if (event === 'SIGNED_OUT') {
+        router.push('/login?redirect=/account')
+        return
+      }
+
+      if (!session?.user) {
+        if (!storedSession?.user) {
+          router.push('/login?redirect=/account')
+        }
+        return
+      }
+
+      hydrateAccount(session.user)
     })
 
     return () => {
@@ -180,7 +278,7 @@ export default function AccountPage() {
 
     const fallbackTimer = globalThis.setTimeout(() => {
       router.push('/login?redirect=/account')
-    }, 5000)
+    }, 3000)
 
     return () => globalThis.clearTimeout(fallbackTimer)
   }, [pageLoading, router])
@@ -188,6 +286,9 @@ export default function AccountPage() {
   const handleSignOut = async () => {
     clearAdminCache()
     await supabaseAuth.auth.signOut()
+    Object.keys(window.localStorage)
+      .filter(isAuthStorageKey)
+      .forEach((key) => window.localStorage.removeItem(key))
     router.push('/')
   }
 

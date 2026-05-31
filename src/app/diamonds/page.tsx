@@ -4,15 +4,10 @@ import { Suspense, useEffect, useMemo, useState } from 'react'
 import type { CSSProperties, SetStateAction } from 'react'
 import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { createClient } from '@supabase/supabase-js'
 import { useCart } from '@/context/CartContext'
 import { useToast } from '@/context/ToastContext'
 import { ALL_DIAMONDS, Diamond, SHAPE_DATA } from '@/lib/diamondCatalog'
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+import { supabase as supabaseAdmin } from '@/lib/supabase'
 
 type DiamondRow = {
   id?: string | number | null

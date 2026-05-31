@@ -5,15 +5,10 @@ import { useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@supabase/supabase-js'
 import { Eye, EyeOff } from 'lucide-react'
+import { supabaseAuth } from '@/lib/auth'
 import { getOrCreateProfile } from '@/lib/userProfile'
 import { useToast } from '@/context/ToastContext'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
 
 function strengthFor(password: string) {
   let score = 0
@@ -63,7 +58,7 @@ export default function SignupPage() {
       ? `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`
       : `${window.location.origin}/auth/callback`
 
-    const { data, error: signUpError } = await supabase.auth.signUp({
+    const { data, error: signUpError } = await supabaseAuth.auth.signUp({
       email,
       password,
       options: {

@@ -4,12 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Eye, EyeOff } from 'lucide-react'
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+import { supabaseAuth } from '@/lib/auth'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -26,7 +21,7 @@ export default function LoginPage() {
     }
     setLoading(true)
     setError('')
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+    const { error: signInError } = await supabaseAuth.auth.signInWithPassword({ email, password })
     if (signInError) {
       setError('Invalid email or password')
       setLoading(false)

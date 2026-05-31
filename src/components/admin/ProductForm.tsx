@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Upload, X } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/context/ToastContext'
+import { supabase } from '@/lib/supabase'
 
 type PricingMap = Record<string, { enabled: boolean; modifier: number }>
 type MetalTab = 'default' | 'white_gold' | 'yellow_gold' | 'rose_gold' | 'platinum'
@@ -587,12 +588,6 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
     setVideoProgress(0)
 
     try {
-      const { createClient } = await import('@supabase/supabase-js')
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      )
-
       const productSlug = form.slug || slugify(form.title) || `product-${Date.now()}`
       const fileName = `${Date.now()}-${file.name.replace(/\s/g, '-')}`
       const filePath = `products/${productSlug}/${fileName}`
