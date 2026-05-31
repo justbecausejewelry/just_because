@@ -18,9 +18,12 @@ import {
 
 const TYPE_MAP: Record<string, string[]> = {
   engagement_ring: ['engagement_ring'],
+  engagement_rings: ['engagement_ring'],
+  engagement: ['engagement_ring'],
   ring: ['ring', 'wedding_ring', 'engagement_ring'],
   rings: ['ring', 'wedding_ring', 'engagement_ring'],
   wedding_ring: ['wedding_ring'],
+  wedding: ['wedding_ring'],
   necklace: ['necklace', 'tennis_necklace', 'pendant'],
   necklaces: ['necklace', 'tennis_necklace', 'pendant'],
   earring: ['earring', 'stud'],
@@ -28,6 +31,7 @@ const TYPE_MAP: Record<string, string[]> = {
   bracelet: ['bracelet', 'tennis_bracelet', 'bangle'],
   bracelets: ['bracelet', 'tennis_bracelet', 'bangle'],
   pendant: ['pendant', 'necklace'],
+  pendants: ['pendant'],
   diamond: ['diamond'],
   diamonds: ['diamond'],
 }
@@ -104,6 +108,16 @@ function normalizeToken(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
 }
 
+function normalizeType(value: string) {
+  return normalizeToken(value)
+}
+
+function getTypeDbValues(value: string) {
+  const normalized = normalizeType(value)
+  const singular = normalized.replace(/s$/, '')
+  return TYPE_MAP[normalized] || TYPE_MAP[singular] || [singular || normalized]
+}
+
 function normalizeSort(value: string) {
   if (value === 'price-asc') return 'price_low'
   if (value === 'price-desc') return 'price_high'
@@ -111,7 +125,36 @@ function normalizeSort(value: string) {
 }
 
 function getFilterLabel(value: string) {
-  return productTypes.find((type) => type.value === value)?.label || prettify(value)
+  const normalized = normalizeType(value)
+  const labels: Record<string, string> = {
+    engagement: 'Engagement Rings',
+    engagement_ring: 'Engagement Rings',
+    engagement_rings: 'Engagement Rings',
+    wedding: 'Wedding Bands',
+    wedding_ring: 'Wedding Bands',
+    ring: 'Rings',
+    rings: 'Rings',
+    necklace: 'Necklaces',
+    necklaces: 'Necklaces',
+    earring: 'Earrings',
+    earrings: 'Earrings',
+    bracelet: 'Bracelets',
+    bracelets: 'Bracelets',
+    pendant: 'Pendants',
+    pendants: 'Pendants',
+    diamond: 'Diamonds',
+    diamonds: 'Diamonds',
+  }
+  return labels[normalized] || prettify(normalized)
+}
+
+function isTypeActive(activeType: string, buttonValue: string) {
+  if (!activeType || activeType === 'all') return buttonValue === 'all'
+  if (normalizeType(activeType) === normalizeType(buttonValue)) return true
+
+  const activeDbTypes = getTypeDbValues(activeType)
+  const buttonDbTypes = getTypeDbValues(buttonValue)
+  return activeDbTypes.some((type) => buttonDbTypes.includes(type))
 }
 
 function ProductPlaceholder({ size = 52 }: { size?: number }) {
@@ -296,7 +339,8 @@ function ProductsContent() {
   const router = useRouter()
   const typeParam = searchParams.get('type') || ''
   const categoryParam = searchParams.get('category') || ''
-  const activeType = typeParam || categoryParam || 'all'
+  const rawType = typeParam || categoryParam || ''
+  const activeType = normalizeType(rawType) || 'all'
   const shape = searchParams.get('shape') || ''
   const selectedMetal = searchParams.get('metal') || ''
   const minPrice = searchParams.get('minPrice') || ''
@@ -362,7 +406,7 @@ function ProductsContent() {
 
     return productTypes.filter((type) => {
       if (type.value === 'all') return true
-      const mappedTypes = TYPE_MAP[type.value] || [type.value]
+      const mappedTypes = getTypeDbValues(type.value)
       return availableTypes.some((availableType) => mappedTypes.includes(availableType))
     })
   }, [availableTypes])
@@ -494,7 +538,7 @@ function ProductsContent() {
                   key={type.value}
                   onClick={() => updateFilter('type', type.value)}
                   className="product-filter-pill"
-                  style={{ backgroundColor: activeType === type.value || (type.value === 'all' && activeType === 'all') ? '#1A1014' : 'transparent', border: '0.5px solid #EDD9AF', borderRadius: '999px', color: activeType === type.value || (type.value === 'all' && activeType === 'all') ? '#FBF5F0' : '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '11px', padding: '8px 12px' }}
+                  style={{ backgroundColor: isTypeActive(activeType, type.value) ? '#1A1014' : 'transparent', border: '0.5px solid #EDD9AF', borderRadius: '999px', color: isTypeActive(activeType, type.value) ? '#FBF5F0' : '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '11px', padding: '8px 12px' }}
                 >
                   {type.label}
                 </button>

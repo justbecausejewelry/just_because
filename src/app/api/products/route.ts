@@ -8,9 +8,12 @@ const supabase = createClient(
 
 const TYPE_MAP: Record<string, string[]> = {
   engagement_ring: ['engagement_ring'],
+  engagement_rings: ['engagement_ring'],
+  engagement: ['engagement_ring'],
   ring: ['ring', 'wedding_ring', 'engagement_ring'],
   rings: ['ring', 'wedding_ring', 'engagement_ring'],
   wedding_ring: ['wedding_ring'],
+  wedding: ['wedding_ring'],
   necklace: ['necklace', 'tennis_necklace', 'pendant'],
   necklaces: ['necklace', 'tennis_necklace', 'pendant'],
   earring: ['earring', 'stud'],
@@ -18,6 +21,7 @@ const TYPE_MAP: Record<string, string[]> = {
   bracelet: ['bracelet', 'tennis_bracelet', 'bangle'],
   bracelets: ['bracelet', 'tennis_bracelet', 'bangle'],
   pendant: ['pendant', 'necklace'],
+  pendants: ['pendant'],
   diamond: ['diamond'],
   diamonds: ['diamond'],
 }
@@ -39,6 +43,12 @@ type ProductRow = {
 
 function normalizeToken(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+}
+
+function getTypeDbValues(value: string) {
+  const normalized = normalizeToken(value)
+  const singular = normalized.replace(/s$/, '')
+  return TYPE_MAP[normalized] || TYPE_MAP[singular] || [singular || normalized]
 }
 
 function productMatchesMetal(product: ProductRow, metal: string) {
@@ -76,15 +86,15 @@ export async function GET(request: NextRequest) {
   }
 
   if (type) {
-    const cleanType = normalizeToken(type)
-    const dbTypes = TYPE_MAP[cleanType] || [cleanType]
+    const dbTypes = getTypeDbValues(type)
     query = query.or(dbTypes.map((dbType) => `productType.eq.${dbType}`).join(','))
   }
 
   if (category && !type) {
     const cleanCategory = normalizeToken(category)
-    const dbTypes = TYPE_MAP[cleanCategory]
-    if (dbTypes?.length) {
+    const singularCategory = cleanCategory.replace(/s$/, '')
+    const dbTypes = TYPE_MAP[cleanCategory] || TYPE_MAP[singularCategory]
+    if (dbTypes) {
       query = query.or(dbTypes.map((dbType) => `productType.eq.${dbType}`).join(','))
     } else {
       query = query.eq('category', cleanCategory)

@@ -97,8 +97,8 @@ const megaMenuData: Record<string, MegaMenuEntry> = {
         links: [
           { label: 'Engagement Rings', href: '/products?type=engagement_ring' },
           { label: 'Wedding Bands', href: '/products?type=wedding_ring' },
-          { label: 'Eternity Bands', href: '/products?category=eternity' },
-          { label: 'Stackable Rings', href: '/products?category=stackable' },
+          { label: 'Eternity Bands', href: '/products?type=ring&category=eternity' },
+          { label: 'Stackable Rings', href: '/products?type=ring&category=stackable' },
         ],
       },
       {
