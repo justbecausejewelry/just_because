@@ -1,19 +1,78 @@
 export function PromoBar() {
+  const marqueeItems = [
+    '+91 91284 87999',
+    'Sign up · 30% off your first piece',
+    'Free shipping over $200',
+    'IGI Certified Lab Diamonds',
+    'Zero Mining · 100% Renewable',
+    'Lifetime Warranty',
+    '30-Day Returns',
+  ]
+
   return (
     <div
-      className="flex min-h-10 items-center justify-center px-5 py-[9px] text-center text-[11px] leading-tight sm:justify-between sm:px-10"
+      className="promo-marquee-strip"
       style={{
-        backgroundColor: '#1A1014',
-        color: '#5C4F47',
-        fontFamily: 'var(--font-inter)',
-        letterSpacing: '0.1em',
+        background: '#1A1014',
+        padding: '11px 0',
+        overflow: 'hidden',
+        position: 'relative',
+        borderBottom: '0.5px solid rgba(201,169,97,0.2)',
       }}
     >
-      <span className="hidden sm:inline">+91 91284 87999</span>
-      <span style={{ color: '#C9A961', fontWeight: 500 }}>
-        Sign up and receive 30% off your first piece
-      </span>
-      <span className="hidden sm:inline">Free shipping over $200</span>
+      <div
+        className="promo-marquee-track"
+        style={{
+          display: 'flex',
+          whiteSpace: 'nowrap',
+          animation: 'promoMarquee 30s linear infinite',
+          width: 'max-content',
+        }}
+      >
+        {Array.from({ length: 6 }, (_, groupIndex) => (
+          <span
+            key={groupIndex}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+            }}
+          >
+            {marqueeItems.map((text) => (
+              <span
+                key={`${groupIndex}-${text}`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '14px',
+                }}
+              >
+                <span
+                  style={{
+                    color: '#C9A961',
+                    fontSize: '10px',
+                    letterSpacing: '0.08em',
+                    paddingLeft: '24px',
+                  }}
+                >
+                  ✦
+                </span>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    letterSpacing: '0.2em',
+                    color: 'rgba(237,217,175,0.85)',
+                    fontFamily: 'var(--font-inter)',
+                    fontWeight: 400,
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {text}
+                </span>
+              </span>
+            ))}
+          </span>
+        ))}
+      </div>
     </div>
   )
 }

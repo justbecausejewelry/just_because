@@ -6,6 +6,7 @@ import { EditorialSplit } from '@/components/home/EditorialSplit'
 import { Hero } from '@/components/home/Hero'
 import { Reviews } from '@/components/home/Reviews'
 import { ShopByShape } from '@/components/home/ShopByShape'
+import StatsCounter from '@/components/home/StatsCounter'
 import { VideoStory } from '@/components/home/VideoStory'
 
 const galleryRowOne = [
@@ -118,6 +119,7 @@ export default function Home() {
       <PromoBar />
       <div style={{ backgroundColor: '#FBF5F0' }}>
         <Hero />
+        <StatsCounter />
         <ShopByShape />
         <Categories />
         <VideoStory />

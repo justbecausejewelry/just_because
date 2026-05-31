@@ -765,6 +765,15 @@ button[aria-pressed]:hover,
   }
 }
 
+@keyframes promoMarquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
 .infinite-jewelry-tile:hover {
   border-color: #C9A961 !important;
   box-shadow: 0 8px 24px rgba(201,169,97,0.15);
@@ -773,6 +782,15 @@ button[aria-pressed]:hover,
 
 /* Mobile responsive global fixes */
 @media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .stats-counter-section {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
   nav .desktop-nav-links,
   .desktop-nav-center {
     display: none !important;
