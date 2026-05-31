@@ -123,14 +123,15 @@ function timeoutResult(): Promise<AdminCheckResult> {
 export async function checkIsAdmin(): Promise<AdminCheckResult> {
   try {
     const {
-      data: { session },
-    } = await supabaseAuth.auth.getSession()
+      data: { user },
+      error,
+    } = await supabaseAuth.auth.getUser()
 
-    if (!session?.user?.email) {
+    if (error || !user?.email) {
       return emptyAdminResult
     }
 
-    const email = session.user.email.toLowerCase()
+    const email = user.email.toLowerCase()
     const cached = getCache(email)
     if (cached) {
       return cached
@@ -182,10 +183,10 @@ export const isAdminEmail = async (
   if (!email) return false
 
   const {
-    data: { session },
-  } = await supabaseAuth.auth.getSession()
+    data: { user },
+  } = await supabaseAuth.auth.getUser()
 
-  if (session?.user?.email?.toLowerCase() !== email.toLowerCase()) {
+  if (user?.email?.toLowerCase() !== email.toLowerCase()) {
     return false
   }
 

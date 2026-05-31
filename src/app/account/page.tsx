@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ComponentType } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -87,6 +87,7 @@ function MenuCard({ href, icon: Icon, title, description, badge }: MenuCardProps
 
 export default function AccountPage() {
   const router = useRouter()
+  const loadedUserIdRef = useRef<string | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [stats, setStats] = useState<AccountStats>({
@@ -102,74 +103,87 @@ export default function AccountPage() {
   useEffect(() => {
     let cancelled = false
 
-    const loadAccount = async () => {
-      const {
-        data: { session },
-      } = await supabaseAuth.auth.getSession()
-      const currentUser = session?.user
+    const loadStats = async (userId: string, email: string) => {
+      const [ordersResult, wishlistResult, unreadResult] = await Promise.allSettled([
+        supabaseAuth.from('Order').select('id', { count: 'exact', head: true }).eq('customerEmail', email),
+        supabaseAuth.from('Wishlist').select('id', { count: 'exact', head: true }).eq('userId', userId),
+        supabaseAuth.from('Conversation').select('id', { count: 'exact', head: true }).eq('customerId', userId).eq('isReadByCustomer', false),
+      ])
 
-      if (!currentUser) {
+      if (cancelled) return
+
+      setStats({
+        orders: ordersResult.status === 'fulfilled' ? ordersResult.value.count || 0 : 0,
+        wishlist: wishlistResult.status === 'fulfilled' ? wishlistResult.value.count || 0 : 0,
+        unreadMessages: unreadResult.status === 'fulfilled' ? unreadResult.value.count || 0 : 0,
+      })
+    }
+
+    const loadProfile = async (currentUser: User) => {
+      const currentProfile = await getOrCreateProfile(
+        currentUser.id,
+        currentUser.email || '',
+        typeof currentUser.user_metadata?.name === 'string' ? currentUser.user_metadata.name : undefined
+      )
+
+      if (!cancelled) {
+        setProfile(currentProfile)
+      }
+    }
+
+    const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange((event, session) => {
+      if (cancelled) return
+
+      if (event === 'SIGNED_OUT' || !session?.user) {
         router.push('/login?redirect=/account')
         return
       }
 
-      if (cancelled) {
-        return
-      }
+      const currentUser = session.user
+      const email = currentUser.email || ''
+      const isSameUser = loadedUserIdRef.current === currentUser.id
 
       setUser(currentUser)
       setPageLoading(false)
+
+      if (isSameUser) {
+        return
+      }
+
+      loadedUserIdRef.current = currentUser.id
       setAdminChecking(true)
 
-      void checkIsAdmin().then(({ isAdmin: hasAdminAccess, role }) => {
-        if (cancelled) return
-        setIsAdmin(hasAdminAccess)
-        setAdminRole(role)
-        setAdminChecking(false)
-      }).catch(() => {
-        if (cancelled) return
-        setIsAdmin(false)
-        setAdminRole(null)
-        setAdminChecking(false)
-      })
-
-      void getOrCreateProfile(
-        currentUser.id,
-        currentUser.email || '',
-        typeof currentUser.user_metadata?.name === 'string' ? currentUser.user_metadata.name : undefined
-      ).then((currentProfile) => {
+      void Promise.allSettled([
+        loadStats(currentUser.id, email),
+        loadProfile(currentUser),
+        checkIsAdmin().then(({ isAdmin: hasAdminAccess, role }) => {
+          if (cancelled) return
+          setIsAdmin(hasAdminAccess)
+          setAdminRole(role)
+          setAdminChecking(false)
+        }),
+      ]).then(() => {
         if (!cancelled) {
-          setProfile(currentProfile)
+          setAdminChecking(false)
         }
       })
-
-      void Promise.allSettled([
-        supabaseAuth.from('Order').select('id', { count: 'exact', head: true }).eq('customerEmail', currentUser.email || ''),
-        supabaseAuth.from('Wishlist').select('id', { count: 'exact', head: true }).eq('userId', currentUser.id),
-        supabaseAuth.from('Conversation').select('id', { count: 'exact', head: true }).eq('customerId', currentUser.id).eq('isReadByCustomer', false),
-      ]).then(([ordersResult, wishlistResult, unreadResult]) => {
-        if (cancelled) return
-        setStats({
-          orders: ordersResult.status === 'fulfilled' ? ordersResult.value.count || 0 : 0,
-          wishlist: wishlistResult.status === 'fulfilled' ? wishlistResult.value.count || 0 : 0,
-          unreadMessages: unreadResult.status === 'fulfilled' ? unreadResult.value.count || 0 : 0,
-        })
-      }).catch(() => {
-        if (cancelled) return
-        setStats({
-          orders: 0,
-          wishlist: 0,
-          unreadMessages: 0,
-        })
-      })
-    }
-
-    void loadAccount()
+    })
 
     return () => {
       cancelled = true
+      subscription.unsubscribe()
     }
   }, [router])
+
+  useEffect(() => {
+    if (!pageLoading) return
+
+    const fallbackTimer = globalThis.setTimeout(() => {
+      router.push('/login?redirect=/account')
+    }, 5000)
+
+    return () => globalThis.clearTimeout(fallbackTimer)
+  }, [pageLoading, router])
 
   const handleSignOut = async () => {
     clearAdminCache()
