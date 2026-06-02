@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useCart } from '@/context/CartContext'
 import { useToast } from '@/context/ToastContext'
 import { ALL_DIAMONDS, Diamond, SHAPE_DATA } from '@/lib/diamondCatalog'
-import { supabase as supabaseAdmin } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import DiamondVisualizer from '@/components/diamonds/DiamondVisualizer'
 
 type DiamondRow = {
@@ -95,18 +95,6 @@ function mapDiamond(row: DiamondRow, index: number): Diamond {
     certificateUrl: row.certificateUrl || fallback.certificateUrl,
     img: firstImage(row.images, row.imageUrl) || shapeImage,
   }
-}
-
-function isAvailableDiamond(row: DiamondRow) {
-  if (row.isAvailable === null || row.isAvailable === undefined) {
-    return true
-  }
-
-  if (typeof row.isAvailable === 'string') {
-    return !['false', 'f', '0', 'no'].includes(row.isAvailable.toLowerCase())
-  }
-
-  return row.isAvailable !== false
 }
 
 function calculateCustomPrice(carat: number, color: string, clarity: string) {
@@ -652,108 +640,30 @@ function DiamondsContent() {
     setLoading(true)
     setError(null)
 
-    const loadUnfilteredFallback = async () => {
-      const { data: allData, error: allError } = await supabaseAdmin
-        .from('Diamond')
-        .select('*')
-        .order('carat', { ascending: true })
-
-      if (!allError) {
-        const availableRows = (allData || []).filter((row) => isAvailableDiamond(row as DiamondRow))
-        setDiamonds(availableRows.map((row, index) => mapDiamond(row as DiamondRow, index)))
-        return true
-      }
-
-      try {
-        const response = await fetch('/api/admin/diamonds?all=true')
-        const payload = (await response.json()) as { diamonds?: DiamondRow[] }
-        if (response.ok && payload.diamonds) {
-          setDiamonds(payload.diamonds.filter(isAvailableDiamond).map(mapDiamond))
-          return true
-        }
-      } catch {
-        // The visible error state below handles the final failure.
-      }
-
-      return false
-    }
-
     try {
-      let query = supabaseAdmin
+      const { data, error: fetchError } = await supabase
         .from('Diamond')
         .select('*')
 
-      if (selectedShape && selectedShape !== 'All') {
-        query = query.ilike('shape', selectedShape)
-      }
-
-      if (selectedColor.length === 1) {
-        query = query.eq('color', selectedColor[0])
-      } else if (selectedColor.length > 1) {
-        query = query.in('color', selectedColor)
-      }
-
-      if (selectedClarity.length === 1) {
-        query = query.eq('clarity', selectedClarity[0])
-      } else if (selectedClarity.length > 1) {
-        query = query.in('clarity', selectedClarity)
-      }
-
-      query = query
-        .gte('carat', caratRange[0])
-        .lte('carat', caratRange[1])
-        .gte('price', priceRange[0])
-        .lte('price', priceRange[1])
-
-      switch (sortBy) {
-        case 'price_low':
-          query = query.order('price', { ascending: true })
-          break
-        case 'price_high':
-          query = query.order('price', { ascending: false })
-          break
-        case 'carat_low':
-          query = query.order('carat', { ascending: true })
-          break
-        case 'carat_high':
-          query = query.order('carat', { ascending: false })
-          break
-        default:
-          query = query.order('carat', { ascending: true })
-      }
-
-      const { data, error: fetchError } = await query
+      console.log('RAW DATA:', data)
+      console.log('RAW ERROR:', fetchError)
+      console.log('COUNT:', data?.length)
 
       if (fetchError) {
-        console.error('Diamonds fetch error:', fetchError)
-        const recovered = await loadUnfilteredFallback()
-        if (!recovered) {
-          setDiamonds([])
-          setError('Could not load diamonds')
-        }
-      } else {
-        const availableRows = (data || []).filter((row) => isAvailableDiamond(row as DiamondRow))
-
-        if (availableRows.length === 0) {
-          const recovered = await loadUnfilteredFallback()
-          if (!recovered) {
-            setDiamonds([])
-          }
-        } else {
-          setDiamonds(availableRows.map((row, index) => mapDiamond(row as DiamondRow, index)))
-        }
-      }
-    } catch (caught) {
-      console.error('Diamonds page error:', caught)
-      const recovered = await loadUnfilteredFallback()
-      if (!recovered) {
+        console.error('SUPABASE ERROR:', fetchError)
         setDiamonds([])
         setError('Could not load diamonds')
+      } else {
+        setDiamonds((data || []).map((row, index) => mapDiamond(row as DiamondRow, index)))
       }
+    } catch (caught) {
+      console.error('CATCH ERROR:', caught)
+      setDiamonds([])
+      setError('Could not load diamonds')
     } finally {
       setLoading(false)
     }
-  }, [caratRange, priceRange, selectedClarity, selectedColor, selectedShape, sortBy])
+  }, [])
 
   useEffect(() => {
     void fetchDiamonds()
