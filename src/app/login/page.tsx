@@ -5,6 +5,8 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Eye, EyeOff } from 'lucide-react'
 import { supabaseAuth } from '@/lib/auth'
+import { clearCart, getCart } from '@/lib/cart'
+import { mergeGuestCart } from '@/lib/mergeGuestCart'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -21,12 +23,19 @@ export default function LoginPage() {
     }
     setLoading(true)
     setError('')
-    const { error: signInError } = await supabaseAuth.auth.signInWithPassword({ email, password })
+    const { data, error: signInError } = await supabaseAuth.auth.signInWithPassword({ email, password })
     if (signInError) {
       setError('Invalid email or password')
       setLoading(false)
     } else {
-      router.push('/')
+      const guestCart = getCart()
+      if (data.user && guestCart.length > 0) {
+        await mergeGuestCart(data.user.id, guestCart)
+        clearCart()
+      }
+
+      const redirect = new URLSearchParams(window.location.search).get('redirect')
+      router.push(redirect || '/')
     }
   }
 

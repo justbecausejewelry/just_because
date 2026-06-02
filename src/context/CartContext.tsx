@@ -8,6 +8,14 @@ import {
   useState,
 } from 'react'
 import { supabase } from '@/lib/supabase'
+import {
+  addToCart as addGuestCartItem,
+  clearCart as clearGuestCart,
+  getCart as getGuestCart,
+  removeFromCart as removeGuestCartItem,
+  updateCartQuantity as updateGuestCartQuantity,
+  type CartItem as GuestCartItem,
+} from '@/lib/cart'
 
 export interface CartItem {
   id: string
@@ -99,6 +107,54 @@ function mapCartRow(row: CartRow): CartItem {
   }
 }
 
+function guestToCartItem(item: GuestCartItem): CartItem {
+  return {
+    id: item.id,
+    productId: item.productId || item.id,
+    productSlug: item.productSlug || item.id,
+    productTitle: item.productTitle || item.name,
+    productImage: item.productImage || item.imageUrl,
+    selectedMetal: item.selectedMetal || (item.type === 'diamond' ? 'Loose diamond' : 'White Gold'),
+    selectedCarat: item.selectedCarat ?? item.carat ?? 0,
+    selectedShape: item.selectedShape || item.shape || 'Round',
+    selectedColor: item.selectedColor,
+    selectedClarity: item.selectedClarity,
+    ringSize: item.ringSize,
+    engraving: item.engraving,
+    quantity: item.quantity,
+    unitPrice: item.unitPrice ?? item.price,
+    priceBreakdown: item.priceBreakdown || defaultBreakdown(),
+  }
+}
+
+function cartItemToGuestItem(item: Omit<CartItem, 'id'>, id: string): GuestCartItem {
+  const isDiamond = item.selectedMetal === 'Loose diamond'
+
+  return {
+    id,
+    type: isDiamond ? 'diamond' : 'product',
+    name: item.productTitle,
+    price: item.unitPrice,
+    imageUrl: item.productImage,
+    carat: item.selectedCarat,
+    shape: item.selectedShape,
+    quantity: item.quantity,
+    productId: item.productId,
+    productSlug: item.productSlug,
+    productTitle: item.productTitle,
+    productImage: item.productImage,
+    selectedMetal: item.selectedMetal,
+    selectedCarat: item.selectedCarat,
+    selectedShape: item.selectedShape,
+    selectedColor: item.selectedColor,
+    selectedClarity: item.selectedClarity,
+    ringSize: item.ringSize,
+    engraving: item.engraving,
+    unitPrice: item.unitPrice,
+    priceBreakdown: item.priceBreakdown,
+  }
+}
+
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
   const [userId, setUserId] = useState<string | null>(null)
@@ -126,9 +182,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!userId) {
-      setItems([])
-      return
+      const loadGuestCart = () => {
+        setItems(getGuestCart().map(guestToCartItem))
+      }
+
+      loadGuestCart()
+      window.addEventListener('cart-updated', loadGuestCart)
+      return () => window.removeEventListener('cart-updated', loadGuestCart)
     }
+
+    let cancelled = false
 
     const loadCart = async () => {
       setLoading(true)
@@ -139,19 +202,32 @@ export function CartProvider({ children }: { children: ReactNode }) {
           .eq('userId', userId)
           .order('createdAt', { ascending: false })
 
-        if (!error && data) {
+        if (!cancelled && !error && data) {
           setItems((data as CartRow[]).map(mapCartRow))
         }
       } finally {
-        setLoading(false)
+        if (!cancelled) {
+          setLoading(false)
+        }
       }
     }
 
     void loadCart()
+
+    return () => {
+      cancelled = true
+    }
   }, [userId])
 
   const addItem = async (item: Omit<CartItem, 'id'>) => {
-    if (!userId) return
+    if (!userId) {
+      const guestId = `${item.productId}-${item.selectedMetal}-${item.selectedCarat}-${item.selectedShape}-${item.selectedColor || ''}-${item.selectedClarity || ''}-${item.ringSize || ''}-${item.engraving || ''}`
+      addGuestCartItem(cartItemToGuestItem(item, guestId))
+      setItems(getGuestCart().map(guestToCartItem))
+      setIsMiniCartOpen(true)
+      window.setTimeout(() => setIsMiniCartOpen(false), 3000)
+      return
+    }
 
     const { data, error } = await supabase
       .from('UserCart')
@@ -183,7 +259,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }
 
   const removeItem = async (id: string) => {
-    if (!userId) return
+    if (!userId) {
+      removeGuestCartItem(id)
+      setItems(getGuestCart().map(guestToCartItem))
+      return
+    }
 
     const previous = items
     setItems((prev) => prev.filter((item) => item.id !== id))
@@ -200,7 +280,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }
 
   const updateQuantity = async (id: string, quantity: number) => {
-    if (!userId) return
+    if (!userId) {
+      updateGuestCartQuantity(id, quantity)
+      setItems(getGuestCart().map(guestToCartItem))
+      return
+    }
 
     if (quantity <= 0) {
       await removeItem(id)
@@ -225,12 +309,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const clearCart = async () => {
     setItems([])
-    if (userId) {
-      await supabase
-        .from('UserCart')
-        .delete()
-        .eq('userId', userId)
+    if (!userId) {
+      clearGuestCart()
+      return
     }
+
+    await supabase
+      .from('UserCart')
+      .delete()
+      .eq('userId', userId)
   }
 
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0)

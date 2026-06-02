@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { Diamond as DiamondIcon, Edit, Plus, Search, Trash2 } from 'lucide-react'
+import { Diamond as DiamondIcon, Edit, Eye, Plus, Search, Trash2 } from 'lucide-react'
 
 type DiamondRecord = {
   id: string
@@ -310,7 +310,7 @@ export default function AdminDiamondsPage() {
             grid-template-columns: 1fr !important;
           }
           .admin-diamond-row {
-            grid-template-columns: 140px 80px 80px 90px 110px 80px 80px 120px 100px !important;
+            grid-template-columns: 140px 80px 80px 90px 110px 80px 80px 120px 132px !important;
           }
         }
       `}</style>
@@ -492,13 +492,13 @@ export default function AdminDiamondsPage() {
 
       {!loading && filtered.length > 0 ? (
         <section style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', overflowX: 'auto' }}>
-          <div className="admin-diamond-row" style={{ display: 'grid', gridTemplateColumns: '140px 80px 80px 90px 110px 80px 80px 120px 100px', padding: '12px 20px', background: '#FBF5F0', borderBottom: '0.5px solid #EDD9AF', gap: '8px', minWidth: '880px' }}>
+          <div className="admin-diamond-row" style={{ display: 'grid', gridTemplateColumns: '140px 80px 80px 90px 110px 80px 80px 120px 132px', padding: '12px 20px', background: '#FBF5F0', borderBottom: '0.5px solid #EDD9AF', gap: '8px', minWidth: '912px' }}>
             {['SHAPE', 'CARAT', 'COLOR', 'CLARITY', 'CUT', 'DEPTH', 'TABLE', 'PRICE', 'ACTIONS'].map((heading) => (
               <div key={heading} style={{ fontSize: '9px', letterSpacing: '0.2em', color: '#C9A961' }}>{heading}</div>
             ))}
           </div>
           {filtered.map((diamond, index) => (
-            <div key={diamond.id} className="admin-diamond-row" style={{ display: 'grid', gridTemplateColumns: '140px 80px 80px 90px 110px 80px 80px 120px 100px', padding: '14px 20px', borderBottom: index < filtered.length - 1 ? '0.5px solid #EDD9AF' : 'none', alignItems: 'center', gap: '8px', minWidth: '880px' }}>
+            <div key={diamond.id} className="admin-diamond-row" style={{ display: 'grid', gridTemplateColumns: '140px 80px 80px 90px 110px 80px 80px 120px 132px', padding: '14px 20px', borderBottom: index < filtered.length - 1 ? '0.5px solid #EDD9AF' : 'none', alignItems: 'center', gap: '8px', minWidth: '912px' }}>
               <div style={{ fontSize: '13px', color: '#1A1014', fontWeight: 500 }}>{diamond.shape}</div>
               <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '14px', color: '#C9A961' }}>{diamond.carat}ct</div>
               <div style={{ fontSize: '13px', color: '#1A1014', fontWeight: 500 }}>{diamond.color}</div>
@@ -514,6 +514,9 @@ export default function AdminDiamondsPage() {
               </div>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <span title={diamond.isAvailable !== false ? 'Available' : 'Unavailable'} style={{ width: '8px', height: '8px', borderRadius: '50%', background: diamond.isAvailable !== false ? '#7A8F72' : '#A85C6A', flexShrink: 0 }} />
+                <a href={`/diamonds/${diamond.id}`} target="_blank" rel="noopener noreferrer" title="View on site" style={{ width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: '0.5px solid #EDD9AF', cursor: 'pointer', color: '#B8A090', textDecoration: 'none' }}>
+                  <Eye size={13} />
+                </a>
                 <button onClick={() => handleEdit(diamond)} title="Edit" style={{ width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: '0.5px solid #EDD9AF', cursor: 'pointer', color: '#B8A090' }}>
                   <Edit size={13} />
                 </button>

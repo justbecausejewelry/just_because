@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import type { CSSProperties, SetStateAction } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCart } from '@/context/CartContext'
 import { useToast } from '@/context/ToastContext'
@@ -207,12 +208,21 @@ function DiamondModal({
   const [customCarat, setCustomCarat] = useState(diamond.carat || 1)
   const [customColor, setCustomColor] = useState(diamond.color || 'G')
   const [customClarity, setCustomClarity] = useState(diamond.clarity || 'VS1')
+  const [cartNotice, setCartNotice] = useState<{ isGuest: boolean } | null>(null)
 
   useEffect(() => {
     setCustomCarat(diamond.carat || 1)
     setCustomColor(diamond.color || 'G')
     setCustomClarity(diamond.clarity || 'VS1')
+    setCartNotice(null)
   }, [diamond])
+
+  useEffect(() => {
+    if (!cartNotice) return undefined
+
+    const timer = window.setTimeout(() => setCartNotice(null), 6000)
+    return () => window.clearTimeout(timer)
+  }, [cartNotice])
 
   const customPrice = calculateCustomPrice(customCarat, customColor, customClarity)
   const originalCustomPrice = calculateCustomPrice(diamond.carat || 1, diamond.color || 'G', diamond.clarity || 'VS1')
@@ -246,8 +256,9 @@ function DiamondModal({
         clarity: 0,
       },
     })
-    onClose()
-    showToast('Diamond added to cart -', 'success')
+    const { data: { user } } = await supabase.auth.getUser()
+    setCartNotice({ isGuest: !user })
+    showToast('Diamond added to cart', 'success')
   }
 
   return (
@@ -596,6 +607,39 @@ function DiamondModal({
             </button>
           </div>
         </div>
+
+        {cartNotice ? (
+          <div
+            style={{
+              position: 'fixed',
+              right: '24px',
+              bottom: '24px',
+              zIndex: 1200,
+              width: 'min(360px, calc(100vw - 32px))',
+              background: '#FDF8F2',
+              border: '0.5px solid #EDD9AF',
+              boxShadow: '0 12px 36px rgba(26,16,20,0.16)',
+              padding: '18px',
+            }}
+          >
+            <div style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '18px', marginBottom: '12px' }}>
+              Added to your cart
+            </div>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: cartNotice.isGuest ? '12px' : 0 }}>
+              <Link href="/cart" style={{ background: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.14em', padding: '10px 14px', textDecoration: 'none' }}>
+                VIEW CART
+              </Link>
+              {cartNotice.isGuest ? (
+                <Link href="/login?redirect=/cart" style={{ border: '0.5px solid #EDD9AF', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.14em', padding: '10px 14px', textDecoration: 'none' }}>
+                  SIGN IN TO SAVE
+                </Link>
+              ) : null}
+            </div>
+            <button onClick={() => setCartNotice(null)} style={{ background: 'transparent', border: 'none', color: '#C9A961', cursor: 'pointer', fontFamily: 'var(--font-inter)', fontSize: '11px', padding: 0 }}>
+              Continue browsing -
+            </button>
+          </div>
+        ) : null}
       </div>
     </div>
   )
