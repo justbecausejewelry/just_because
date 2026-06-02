@@ -239,7 +239,7 @@ export default function DiamondVisualizer({
             left: '41.5%',
             pointerEvents: 'none',
             position: 'absolute',
-            top: '28.3%',
+            top: '32.5%',
             transform: 'translate(-50%, -50%)',
             transition: 'width 250ms ease, height 250ms ease',
             width: `${px}px`,
