@@ -15,6 +15,35 @@ type DiamondVisualizerProps = {
 
 const SHAPES = ['Round', 'Oval', 'Cushion', 'Princess', 'Emerald', 'Radiant', 'Pear', 'Marquise', 'Heart', 'Asscher']
 const CARAT_MARKERS = [0.25, 0.5, 1, 1.5, 2, 3, 4, 5]
+const CARAT_TO_MM: [number, number][] = [
+  [0.2, 3.8],
+  [0.25, 4.1],
+  [0.3, 4.3],
+  [0.33, 4.5],
+  [0.4, 4.8],
+  [0.5, 5.2],
+  [0.6, 5.5],
+  [0.7, 5.7],
+  [0.75, 5.9],
+  [0.8, 6],
+  [0.9, 6.3],
+  [1, 6.5],
+  [1.1, 6.7],
+  [1.2, 6.9],
+  [1.25, 7],
+  [1.3, 7.1],
+  [1.4, 7.3],
+  [1.5, 7.4],
+  [1.6, 7.6],
+  [1.75, 7.8],
+  [2, 8.2],
+  [2.5, 8.8],
+  [3, 9.4],
+  [3.5, 9.9],
+  [4, 10.4],
+  [4.5, 10.7],
+  [5, 11],
+]
 
 const SHAPE_COPY: Record<string, string> = {
   Round: 'Classic brilliance - the most popular choice',
@@ -33,82 +62,35 @@ function normalizeCarat(carat: number) {
   return Math.round(Math.max(0.25, Math.min(5, carat)) * 100) / 100
 }
 
-function getDiamondMM(carat: number) {
+function getMMfromCarat(carat: number) {
   const normalized = normalizeCarat(carat)
-  const lookup: [number, number][] = [
-    [0.25, 4.1],
-    [0.33, 4.5],
-    [0.5, 5.2],
-    [0.75, 5.9],
-    [1, 6.5],
-    [1.25, 7],
-    [1.5, 7.4],
-    [1.75, 7.8],
-    [2, 8.2],
-    [2.5, 8.8],
-    [3, 9.4],
-    [3.5, 9.9],
-    [4, 10.4],
-    [4.5, 10.7],
-    [5, 11],
-  ]
 
-  if (normalized <= lookup[0][0]) return lookup[0][1].toFixed(1)
-  if (normalized >= lookup[lookup.length - 1][0]) {
-    return lookup[lookup.length - 1][1].toFixed(1)
+  if (normalized <= CARAT_TO_MM[0][0]) return CARAT_TO_MM[0][1]
+  if (normalized >= CARAT_TO_MM[CARAT_TO_MM.length - 1][0]) {
+    return CARAT_TO_MM[CARAT_TO_MM.length - 1][1]
   }
 
-  for (let index = 0; index < lookup.length - 1; index += 1) {
-    if (lookup[index][0] <= normalized && lookup[index + 1][0] > normalized) {
-      const progress = (normalized - lookup[index][0]) / (lookup[index + 1][0] - lookup[index][0])
-      const mm = lookup[index][1] + progress * (lookup[index + 1][1] - lookup[index][1])
-      return mm.toFixed(1)
+  for (let index = 0; index < CARAT_TO_MM.length - 1; index += 1) {
+    const [caratStart, mmStart] = CARAT_TO_MM[index]
+    const [caratEnd, mmEnd] = CARAT_TO_MM[index + 1]
+
+    if (normalized >= caratStart && normalized <= caratEnd) {
+      const progress = (normalized - caratStart) / (caratEnd - caratStart)
+      return mmStart + progress * (mmEnd - mmStart)
     }
   }
 
-  return '6.5'
+  return 6.5
 }
 
 function caratToPx(carat: number, containerWidthPx: number) {
-  const normalized = normalizeCarat(carat)
-  const lookup: [number, number][] = [
-    [0.25, 4.1],
-    [0.33, 4.5],
-    [0.5, 5.2],
-    [0.75, 5.9],
-    [1, 6.5],
-    [1.25, 7],
-    [1.5, 7.4],
-    [1.75, 7.8],
-    [2, 8.2],
-    [2.5, 8.8],
-    [3, 9.4],
-    [3.5, 9.9],
-    [4, 10.4],
-    [4.5, 10.7],
-    [5, 11],
-  ]
-  let diamondMM = 6.5
+  const diamondMM = getMMfromCarat(carat)
+  const fingerPx = containerWidthPx * 0.19
+  const fingerMM = 16.9
+  const visibilityScale = 1.4
+  const truePx = (diamondMM / fingerMM) * fingerPx
 
-  if (normalized <= lookup[0][0]) {
-    diamondMM = lookup[0][1]
-  } else if (normalized >= lookup[lookup.length - 1][0]) {
-    diamondMM = lookup[lookup.length - 1][1]
-  } else {
-    for (let index = 0; index < lookup.length - 1; index += 1) {
-      if (lookup[index][0] <= normalized && lookup[index + 1][0] > normalized) {
-        const progress = (normalized - lookup[index][0]) / (lookup[index + 1][0] - lookup[index][0])
-        diamondMM = lookup[index][1] + progress * (lookup[index + 1][1] - lookup[index][1])
-        break
-      }
-    }
-  }
-
-  const referenceCaratPx = containerWidthPx * 0.13
-  const referenceMM = 6.5
-  const diamondPx = (diamondMM / referenceMM) * referenceCaratPx
-
-  return Math.round(Math.min(Math.max(diamondPx, 10), 160))
+  return Math.round(Math.min(Math.max(truePx * visibilityScale, 8), 120))
 }
 
 function getCaratContext(carat: number, shape: string) {
@@ -175,7 +157,7 @@ export default function DiamondVisualizer({
     onCaratChange?.(normalized)
   }
 
-  const mmSize = getDiamondMM(selectedCarat)
+  const mmSize = getMMfromCarat(selectedCarat).toFixed(1)
   const px = caratToPx(selectedCarat, containerWidth)
 
   return (
