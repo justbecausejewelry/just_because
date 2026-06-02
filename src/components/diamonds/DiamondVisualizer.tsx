@@ -33,7 +33,7 @@ function normalizeCarat(carat: number) {
   return Math.round(Math.max(0.25, Math.min(5, carat)) * 100) / 100
 }
 
-function caratToMM(carat: number) {
+function getDiamondMM(carat: number) {
   const normalized = normalizeCarat(carat)
   const lookup: [number, number][] = [
     [0.25, 4.1],
@@ -53,34 +53,62 @@ function caratToMM(carat: number) {
     [5, 11],
   ]
 
-  const exact = lookup.find(([lookupCarat]) => lookupCarat === normalized)
-  if (exact) return exact[1]
-
-  let lower = lookup[0]
-  let upper = lookup[lookup.length - 1]
+  if (normalized <= lookup[0][0]) return lookup[0][1].toFixed(1)
+  if (normalized >= lookup[lookup.length - 1][0]) {
+    return lookup[lookup.length - 1][1].toFixed(1)
+  }
 
   for (let index = 0; index < lookup.length - 1; index += 1) {
-    if (lookup[index][0] <= normalized && lookup[index + 1][0] >= normalized) {
-      lower = lookup[index]
-      upper = lookup[index + 1]
-      break
+    if (lookup[index][0] <= normalized && lookup[index + 1][0] > normalized) {
+      const progress = (normalized - lookup[index][0]) / (lookup[index + 1][0] - lookup[index][0])
+      const mm = lookup[index][1] + progress * (lookup[index + 1][1] - lookup[index][1])
+      return mm.toFixed(1)
     }
   }
 
-  const progress = (normalized - lower[0]) / (upper[0] - lower[0])
-  return lower[1] + progress * (upper[1] - lower[1])
+  return '6.5'
 }
 
-function caratToPx(carat: number, containerWidthPx: number, imageNaturalWidth = 1024) {
-  const diamondMM = caratToMM(carat)
-  const fingerMM = 16.5
-  const fingerWidthFraction = 0.155
-  const sourceFingerPx = imageNaturalWidth * fingerWidthFraction
-  const imageScale = containerWidthPx / imageNaturalWidth
-  const fingerPx = sourceFingerPx * imageScale
-  const diamondPx = (diamondMM / fingerMM) * fingerPx
+function caratToPx(carat: number, containerWidthPx: number) {
+  const normalized = normalizeCarat(carat)
+  const lookup: [number, number][] = [
+    [0.25, 4.1],
+    [0.33, 4.5],
+    [0.5, 5.2],
+    [0.75, 5.9],
+    [1, 6.5],
+    [1.25, 7],
+    [1.5, 7.4],
+    [1.75, 7.8],
+    [2, 8.2],
+    [2.5, 8.8],
+    [3, 9.4],
+    [3.5, 9.9],
+    [4, 10.4],
+    [4.5, 10.7],
+    [5, 11],
+  ]
+  let diamondMM = 6.5
 
-  return Math.round(Math.min(Math.max(diamondPx, 12), 160))
+  if (normalized <= lookup[0][0]) {
+    diamondMM = lookup[0][1]
+  } else if (normalized >= lookup[lookup.length - 1][0]) {
+    diamondMM = lookup[lookup.length - 1][1]
+  } else {
+    for (let index = 0; index < lookup.length - 1; index += 1) {
+      if (lookup[index][0] <= normalized && lookup[index + 1][0] > normalized) {
+        const progress = (normalized - lookup[index][0]) / (lookup[index + 1][0] - lookup[index][0])
+        diamondMM = lookup[index][1] + progress * (lookup[index + 1][1] - lookup[index][1])
+        break
+      }
+    }
+  }
+
+  const referenceCaratPx = containerWidthPx * 0.13
+  const referenceMM = 6.5
+  const diamondPx = (diamondMM / referenceMM) * referenceCaratPx
+
+  return Math.round(Math.min(Math.max(diamondPx, 10), 160))
 }
 
 function getCaratContext(carat: number, shape: string) {
@@ -147,7 +175,7 @@ export default function DiamondVisualizer({
     onCaratChange?.(normalized)
   }
 
-  const mmSize = caratToMM(selectedCarat).toFixed(1)
+  const mmSize = getDiamondMM(selectedCarat)
   const px = caratToPx(selectedCarat, containerWidth)
 
   return (
