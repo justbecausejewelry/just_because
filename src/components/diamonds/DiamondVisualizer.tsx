@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 type DiamondVisualizerProps = {
   shape?: string
@@ -33,8 +33,54 @@ function normalizeCarat(carat: number) {
   return Math.round(Math.max(0.25, Math.min(5, carat)) * 100) / 100
 }
 
-function getMmSize(carat: number) {
-  return (6.5 * Math.cbrt(normalizeCarat(carat))).toFixed(2)
+function caratToMM(carat: number) {
+  const normalized = normalizeCarat(carat)
+  const lookup: [number, number][] = [
+    [0.25, 4.1],
+    [0.33, 4.5],
+    [0.5, 5.2],
+    [0.75, 5.9],
+    [1, 6.5],
+    [1.25, 7],
+    [1.5, 7.4],
+    [1.75, 7.8],
+    [2, 8.2],
+    [2.5, 8.8],
+    [3, 9.4],
+    [3.5, 9.9],
+    [4, 10.4],
+    [4.5, 10.7],
+    [5, 11],
+  ]
+
+  const exact = lookup.find(([lookupCarat]) => lookupCarat === normalized)
+  if (exact) return exact[1]
+
+  let lower = lookup[0]
+  let upper = lookup[lookup.length - 1]
+
+  for (let index = 0; index < lookup.length - 1; index += 1) {
+    if (lookup[index][0] <= normalized && lookup[index + 1][0] >= normalized) {
+      lower = lookup[index]
+      upper = lookup[index + 1]
+      break
+    }
+  }
+
+  const progress = (normalized - lower[0]) / (upper[0] - lower[0])
+  return lower[1] + progress * (upper[1] - lower[1])
+}
+
+function caratToPx(carat: number, containerWidthPx: number, imageNaturalWidth = 1024) {
+  const diamondMM = caratToMM(carat)
+  const fingerMM = 16.5
+  const fingerWidthFraction = 0.155
+  const sourceFingerPx = imageNaturalWidth * fingerWidthFraction
+  const imageScale = containerWidthPx / imageNaturalWidth
+  const fingerPx = sourceFingerPx * imageScale
+  const diamondPx = (diamondMM / fingerMM) * fingerPx
+
+  return Math.round(Math.min(Math.max(diamondPx, 12), 160))
 }
 
 function getCaratContext(carat: number, shape: string) {
@@ -61,6 +107,8 @@ export default function DiamondVisualizer({
   const [selectedCarat, setSelectedCarat] = useState(normalizeCarat(resolvedCarat))
   const [diamondSrc, setDiamondSrc] = useState(`/images/diamonds/${resolvedShape.toLowerCase()}-diamond.png`)
   const [diamondVisible, setDiamondVisible] = useState(true)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [containerWidth, setContainerWidth] = useState(400)
 
   useEffect(() => {
     setSelectedShape(resolvedShape)
@@ -75,6 +123,19 @@ export default function DiamondVisualizer({
     setSelectedCarat(normalizeCarat(resolvedCarat))
   }, [resolvedCarat])
 
+  useEffect(() => {
+    const updateWidth = () => {
+      if (containerRef.current) {
+        setContainerWidth(containerRef.current.offsetWidth)
+      }
+    }
+
+    updateWidth()
+    window.addEventListener('resize', updateWidth)
+
+    return () => window.removeEventListener('resize', updateWidth)
+  }, [])
+
   const handleShapeChange = (nextShape: string) => {
     setSelectedShape(nextShape)
     onShapeChange?.(nextShape)
@@ -86,9 +147,8 @@ export default function DiamondVisualizer({
     onCaratChange?.(normalized)
   }
 
-  const mmSize = getMmSize(selectedCarat)
-  const normalizedScale = (selectedCarat - 0.25) / 4.75
-  const px = Math.round(30 + normalizedScale * 86)
+  const mmSize = caratToMM(selectedCarat).toFixed(1)
+  const px = caratToPx(selectedCarat, containerWidth)
 
   return (
     <div
@@ -135,6 +195,7 @@ export default function DiamondVisualizer({
       ) : null}
 
       <div
+        ref={containerRef}
         style={{
           aspectRatio: '4 / 3',
           background: '#F0EAE2',
