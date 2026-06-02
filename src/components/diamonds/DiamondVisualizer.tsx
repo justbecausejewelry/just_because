@@ -33,11 +33,6 @@ function normalizeCarat(carat: number) {
   return Math.round(Math.max(0.25, Math.min(5, carat)) * 100) / 100
 }
 
-function getImageZoom(carat: number) {
-  const normalized = (normalizeCarat(carat) - 0.25) / 4.75
-  return 1 + normalized * 0.7
-}
-
 function getMmSize(carat: number) {
   return (6.5 * Math.cbrt(normalizeCarat(carat))).toFixed(2)
 }
@@ -64,14 +59,17 @@ export default function DiamondVisualizer({
   const resolvedCarat = carat ?? initialCarat ?? 1
   const [selectedShape, setSelectedShape] = useState(resolvedShape)
   const [selectedCarat, setSelectedCarat] = useState(normalizeCarat(resolvedCarat))
-  const [imageLoaded, setImageLoaded] = useState(false)
-  const [imageError, setImageError] = useState(false)
+  const [diamondSrc, setDiamondSrc] = useState(`/images/diamonds/${resolvedShape.toLowerCase()}-diamond.png`)
+  const [diamondVisible, setDiamondVisible] = useState(true)
 
   useEffect(() => {
     setSelectedShape(resolvedShape)
-    setImageLoaded(false)
-    setImageError(false)
   }, [resolvedShape])
+
+  useEffect(() => {
+    setDiamondSrc(`/images/diamonds/${selectedShape.toLowerCase()}-diamond.png`)
+    setDiamondVisible(true)
+  }, [selectedShape])
 
   useEffect(() => {
     setSelectedCarat(normalizeCarat(resolvedCarat))
@@ -79,8 +77,6 @@ export default function DiamondVisualizer({
 
   const handleShapeChange = (nextShape: string) => {
     setSelectedShape(nextShape)
-    setImageLoaded(false)
-    setImageError(false)
     onShapeChange?.(nextShape)
   }
 
@@ -90,10 +86,9 @@ export default function DiamondVisualizer({
     onCaratChange?.(normalized)
   }
 
-  const shapeImagePath = `/images/diamonds/${selectedShape.toLowerCase()}-hand.jpg`
-  const handImageSrc = imageError ? '/images/diamonds/round-hand.jpg' : shapeImagePath
-  const imageZoom = getImageZoom(selectedCarat)
   const mmSize = getMmSize(selectedCarat)
+  const normalizedScale = (selectedCarat - 0.25) / 4.75
+  const px = Math.round(30 + normalizedScale * 86)
 
   return (
     <div
@@ -142,89 +137,74 @@ export default function DiamondVisualizer({
       <div
         style={{
           aspectRatio: '4 / 3',
-          background: '#F5E8ED',
-          marginBottom: '4px',
+          background: '#F0EAE2',
+          marginBottom: '16px',
           overflow: 'hidden',
           position: 'relative',
           width: '100%',
         }}
       >
-        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-          <Image
-            key={handImageSrc}
-            src={handImageSrc}
-            alt={`${selectedShape} diamond on hand`}
-            fill
-            sizes="(max-width: 768px) 100vw, 500px"
-            priority
-            quality={90}
-            style={{
-              objectFit: 'cover',
-              objectPosition: 'center',
-              opacity: imageLoaded ? 1 : 0,
-              transform: `scale(${imageZoom})`,
-              transformOrigin: 'center center',
-              transition: 'opacity 400ms cubic-bezier(0.4, 0, 0.2, 1), transform 400ms cubic-bezier(0.4, 0, 0.2, 1)',
-            }}
-            onLoad={() => setImageLoaded(true)}
-            onError={() => {
-              setImageError(true)
-              setImageLoaded(false)
-            }}
-          />
+        <Image
+          src="/images/diamonds/hand-bg.jpg"
+          alt="Hand"
+          fill
+          sizes="500px"
+          priority
+          quality={90}
+          style={{
+            objectFit: 'cover',
+            objectPosition: 'center',
+          }}
+        />
+
+        <div
+          style={{
+            height: `${px}px`,
+            left: '54%',
+            pointerEvents: 'none',
+            position: 'absolute',
+            top: '38%',
+            transform: 'translate(-50%, -50%)',
+            transition: 'width 250ms ease, height 250ms ease',
+            width: `${px}px`,
+          }}
+        >
+          {diamondVisible ? (
+            <Image
+              src={diamondSrc}
+              alt={`${selectedShape} diamond`}
+              fill
+              sizes={`${px}px`}
+              quality={90}
+              style={{
+                objectFit: 'contain',
+              }}
+              onError={() => {
+                if (diamondSrc === '/images/diamonds/round-diamond.png') {
+                  setDiamondVisible(false)
+                  return
+                }
+
+                setDiamondSrc('/images/diamonds/round-diamond.png')
+              }}
+            />
+          ) : null}
         </div>
-
-        {!imageLoaded ? (
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              background: '#FDF8F2',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#B8A090',
-              fontFamily: 'var(--font-inter)',
-              fontSize: '10px',
-              letterSpacing: '0.2em',
-            }}
-          >
-            LOADING
-          </div>
-        ) : null}
-
-        {imageError && selectedShape !== 'Round' ? (
-          <div
-            style={{
-              position: 'absolute',
-              top: '8px',
-              right: '8px',
-              background: 'rgba(26,16,20,0.7)',
-              padding: '4px 10px',
-              fontSize: '9px',
-              letterSpacing: '0.15em',
-              color: 'rgba(201,169,97,0.7)',
-              fontFamily: 'var(--font-inter)',
-            }}
-          >
-            SHOWING ROUND
-          </div>
-        ) : null}
 
         <div
           style={{
             position: 'absolute',
-            bottom: '12px',
+            bottom: '10px',
             left: '50%',
             transform: 'translateX(-50%)',
-            background: 'rgba(26,16,20,0.85)',
-            backdropFilter: 'blur(8px)',
+            background: 'rgba(26,16,20,0.82)',
             border: '0.5px solid rgba(201,169,97,0.4)',
             display: 'flex',
-            gap: '20px',
+            gap: '16px',
             alignItems: 'center',
-            padding: '6px 16px',
+            padding: '5px 14px',
             whiteSpace: 'nowrap',
+            borderRadius: '20px',
           }}
         >
           <span style={{ color: '#C9A961', fontSize: '12px', fontWeight: 500 }}>
