@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import { useEffect, useRef, useState } from 'react'
+import { getDiamondImage } from '@/lib/diamondImages'
 
 type DiamondVisualizerProps = {
   shape?: string
@@ -120,19 +121,12 @@ export default function DiamondVisualizer({
   const resolvedCarat = carat ?? initialCarat ?? 1
   const [selectedShape, setSelectedShape] = useState(resolvedShape)
   const [selectedCarat, setSelectedCarat] = useState(normalizeCarat(resolvedCarat))
-  const [diamondSrc, setDiamondSrc] = useState(`/images/diamonds/${resolvedShape.toLowerCase()}-diamond.png`)
-  const [diamondVisible, setDiamondVisible] = useState(true)
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerWidth, setContainerWidth] = useState(400)
 
   useEffect(() => {
     setSelectedShape(resolvedShape)
   }, [resolvedShape])
-
-  useEffect(() => {
-    setDiamondSrc(`/images/diamonds/${selectedShape.toLowerCase()}-diamond.png`)
-    setDiamondVisible(true)
-  }, [selectedShape])
 
   useEffect(() => {
     setSelectedCarat(normalizeCarat(resolvedCarat))
@@ -164,6 +158,7 @@ export default function DiamondVisualizer({
 
   const mmSize = getMMfromCarat(selectedCarat).toFixed(1)
   const px = caratToPx(selectedCarat, containerWidth)
+  const diamondImage = getDiamondImage(selectedShape)
 
   return (
     <div
@@ -245,26 +240,16 @@ export default function DiamondVisualizer({
             width: `${px}px`,
           }}
         >
-          {diamondVisible ? (
-            <Image
-              src={diamondSrc}
-              alt={`${selectedShape} diamond`}
-              fill
-              sizes={`${px}px`}
-              quality={90}
-              style={{
-                objectFit: 'contain',
-              }}
-              onError={() => {
-                if (diamondSrc === '/images/diamonds/round-diamond.png') {
-                  setDiamondVisible(false)
-                  return
-                }
-
-                setDiamondSrc('/images/diamonds/round-diamond.png')
-              }}
-            />
-          ) : null}
+          <Image
+            src={diamondImage}
+            alt={`${selectedShape} diamond`}
+            fill
+            sizes={`${px}px`}
+            quality={90}
+            style={{
+              objectFit: 'contain',
+            }}
+          />
         </div>
 
         <div

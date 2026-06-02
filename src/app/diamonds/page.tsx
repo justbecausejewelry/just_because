@@ -348,25 +348,17 @@ function DiamondModal({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  position: 'relative',
                 }}
               >
-                {item === 0 ? (
-                  <svg viewBox="0 0 100 100" width="80" height="80">
-                    <rect x="15" y="20" width="70" height="60" rx="2" fill="none" stroke="#C9A961" strokeWidth="1" />
-                    <line x1="15" y1="20" x2="50" y2="5" stroke="#C9A961" strokeWidth="0.8" />
-                    <line x1="85" y1="20" x2="50" y2="5" stroke="#C9A961" strokeWidth="0.8" />
-                    <line x1="15" y1="80" x2="50" y2="95" stroke="#C9A961" strokeWidth="0.8" />
-                    <line x1="85" y1="80" x2="50" y2="95" stroke="#C9A961" strokeWidth="0.8" />
-                    <line x1="15" y1="20" x2="15" y2="80" stroke="#C9A961" strokeWidth="0.8" />
-                    <line x1="85" y1="20" x2="85" y2="80" stroke="#C9A961" strokeWidth="0.8" />
-                  </svg>
-                ) : (
-                  <svg viewBox="0 0 100 80" width="80" height="60">
-                    <polygon points="50,5 90,35 50,75 10,35" fill="none" stroke="#C9A961" strokeWidth="1" />
-                    <line x1="10" y1="35" x2="90" y2="35" stroke="#C9A961" strokeWidth="0.5" strokeDasharray="3,2" />
-                    <line x1="50" y1="5" x2="50" y2="75" stroke="#C9A961" strokeWidth="0.5" strokeDasharray="3,2" />
-                  </svg>
-                )}
+                <Image
+                  src={getDiamondImage(diamond.shape)}
+                  alt={`${diamond.shape} diamond preview`}
+                  fill
+                  sizes="160px"
+                  quality={90}
+                  style={{ objectFit: 'contain', padding: '24px' }}
+                />
               </div>
             ))}
           </div>
