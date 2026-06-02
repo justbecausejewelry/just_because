@@ -29,6 +29,7 @@ type DiamondRow = {
   certificateNumber?: string | null
   certificateType?: string | null
   certificateUrl?: string | null
+  isAvailable?: boolean | string | null
   reportNumber?: string | null
 }
 
@@ -94,6 +95,18 @@ function mapDiamond(row: DiamondRow, index: number): Diamond {
     certificateUrl: row.certificateUrl || fallback.certificateUrl,
     img: firstImage(row.images, row.imageUrl) || shapeImage,
   }
+}
+
+function isAvailableDiamond(row: DiamondRow) {
+  if (row.isAvailable === null || row.isAvailable === undefined) {
+    return true
+  }
+
+  if (typeof row.isAvailable === 'string') {
+    return !['false', 'f', '0', 'no'].includes(row.isAvailable.toLowerCase())
+  }
+
+  return row.isAvailable !== false
 }
 
 function calculateCustomPrice(carat: number, color: string, clarity: string) {
@@ -610,8 +623,8 @@ function DiamondsContent() {
   const [selectedShape, setSelectedShape] = useState(() => (shapeParam ? formatShapeParam(shapeParam) : 'All'))
   const [selectedColor, setSelectedColor] = useState<string[]>([])
   const [selectedClarity, setSelectedClarity] = useState<string[]>([])
-  const [caratRange, setCaratRange] = useState<[number, number]>([0.5, 5])
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000])
+  const [caratRange, setCaratRange] = useState<[number, number]>([0.5, 15])
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 100000])
   const [sortBy, setSortBy] = useState('price_low')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [selectedDiamond, setSelectedDiamond] = useState<Diamond | null>(null)
@@ -646,15 +659,16 @@ function DiamondsContent() {
         .order('carat', { ascending: true })
 
       if (!allError) {
-        setDiamonds((allData || []).map((row, index) => mapDiamond(row as DiamondRow, index)))
+        const availableRows = (allData || []).filter((row) => isAvailableDiamond(row as DiamondRow))
+        setDiamonds(availableRows.map((row, index) => mapDiamond(row as DiamondRow, index)))
         return true
       }
 
       try {
-        const response = await fetch('/api/admin/diamonds')
+        const response = await fetch('/api/admin/diamonds?all=true')
         const payload = (await response.json()) as { diamonds?: DiamondRow[] }
         if (response.ok && payload.diamonds) {
-          setDiamonds(payload.diamonds.map(mapDiamond))
+          setDiamonds(payload.diamonds.filter(isAvailableDiamond).map(mapDiamond))
           return true
         }
       } catch {
@@ -668,7 +682,6 @@ function DiamondsContent() {
       let query = supabaseAdmin
         .from('Diamond')
         .select('*')
-        .eq('isAvailable', true)
 
       if (selectedShape && selectedShape !== 'All') {
         query = query.ilike('shape', selectedShape)
@@ -719,7 +732,16 @@ function DiamondsContent() {
           setError('Could not load diamonds')
         }
       } else {
-        setDiamonds((data || []).map((row, index) => mapDiamond(row as DiamondRow, index)))
+        const availableRows = (data || []).filter((row) => isAvailableDiamond(row as DiamondRow))
+
+        if (availableRows.length === 0) {
+          const recovered = await loadUnfilteredFallback()
+          if (!recovered) {
+            setDiamonds([])
+          }
+        } else {
+          setDiamonds(availableRows.map((row, index) => mapDiamond(row as DiamondRow, index)))
+        }
       }
     } catch (caught) {
       console.error('Diamonds page error:', caught)
@@ -806,9 +828,9 @@ function DiamondsContent() {
           <div style={{ marginBottom: '28px' }}>
             <div style={{ fontSize: '11px', color: '#1A1014', fontWeight: 500, marginBottom: '12px', fontFamily: 'var(--font-inter)', letterSpacing: '0.05em' }}>CARAT WEIGHT</div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <input type="number" value={caratRange[0]} min={0.5} max={5} step={0.1} onChange={(event) => setCaratRange([parseNumber(event.target.value, 0.5), caratRange[1]])} style={{ ...inputStyle, width: '80px' }} />
+              <input type="number" value={caratRange[0]} min={0.5} max={15} step={0.1} onChange={(event) => setCaratRange([parseNumber(event.target.value, 0.5), caratRange[1]])} style={{ ...inputStyle, width: '80px' }} />
               <span style={{ color: '#B8A090', fontSize: '12px' }}>-</span>
-              <input type="number" value={caratRange[1]} min={0.5} max={10} step={0.1} onChange={(event) => setCaratRange([caratRange[0], parseNumber(event.target.value, 5)])} style={{ ...inputStyle, width: '80px' }} />
+              <input type="number" value={caratRange[1]} min={0.5} max={15} step={0.1} onChange={(event) => setCaratRange([caratRange[0], parseNumber(event.target.value, 15)])} style={{ ...inputStyle, width: '80px' }} />
               <span style={{ fontSize: '11px', color: '#B8A090' }}>ct</span>
             </div>
           </div>
@@ -818,7 +840,7 @@ function DiamondsContent() {
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <input type="number" value={priceRange[0]} min={0} step={100} onChange={(event) => setPriceRange([parseNumber(event.target.value, 0), priceRange[1]])} style={{ ...inputStyle, width: '90px' }} placeholder="Min" />
               <span style={{ color: '#B8A090', fontSize: '12px' }}>-</span>
-              <input type="number" value={priceRange[1]} min={0} step={100} onChange={(event) => setPriceRange([priceRange[0], parseNumber(event.target.value, 10000)])} style={{ ...inputStyle, width: '90px' }} placeholder="Max" />
+              <input type="number" value={priceRange[1]} min={0} step={100} onChange={(event) => setPriceRange([priceRange[0], parseNumber(event.target.value, 100000)])} style={{ ...inputStyle, width: '90px' }} placeholder="Max" />
             </div>
           </div>
 
@@ -865,8 +887,8 @@ function DiamondsContent() {
               setSelectedShape('All')
               setSelectedColor([])
               setSelectedClarity([])
-              setCaratRange([0.5, 5])
-              setPriceRange([0, 10000])
+              setCaratRange([0.5, 15])
+              setPriceRange([0, 100000])
             }}
             style={{ width: '100%', padding: '10px', background: 'transparent', border: '0.5px solid #EDD9AF', color: '#B8A090', fontSize: '11px', letterSpacing: '0.15em', cursor: 'pointer', fontFamily: 'var(--font-inter)' }}
           >
@@ -984,8 +1006,8 @@ function DiamondsContent() {
                   setSelectedShape('All')
                   setSelectedColor([])
                   setSelectedClarity([])
-                  setCaratRange([0.5, 5])
-                  setPriceRange([0, 10000])
+                  setCaratRange([0.5, 15])
+                  setPriceRange([0, 100000])
                   setSortBy('price_low')
                 }}
                 style={{
