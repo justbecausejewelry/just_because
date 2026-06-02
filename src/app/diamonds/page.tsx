@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useMemo, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import type { CSSProperties, SetStateAction } from 'react'
 import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -141,6 +141,49 @@ function formatShapeParam(shape: string) {
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
     .join(' ')
+}
+
+function DiamondsLoadingFallback() {
+  return (
+    <div
+      style={{
+        minHeight: '80vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#FBF5F0',
+      }}
+    >
+      <div style={{ textAlign: 'center' }}>
+        <div
+          style={{
+            fontSize: '32px',
+            color: '#C9A961',
+            animation: 'pulse 1.2s ease infinite',
+          }}
+        >
+          *
+        </div>
+        <div
+          style={{
+            fontSize: '11px',
+            letterSpacing: '0.25em',
+            color: '#B8A090',
+            marginTop: '12px',
+            fontFamily: 'var(--font-inter)',
+          }}
+        >
+          LOADING DIAMONDS...
+        </div>
+        <style>{`
+          @keyframes pulse {
+            0%,100%{opacity:0.3;transform:scale(0.9)}
+            50%{opacity:1;transform:scale(1.1)}
+          }
+        `}</style>
+      </div>
+    </div>
+  )
 }
 
 function DiamondModal({
@@ -540,8 +583,9 @@ function DiamondsContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const shapeParam = searchParams.get('shape')
-  const [diamonds, setDiamonds] = useState<Diamond[]>(ALL_DIAMONDS)
+  const [diamonds, setDiamonds] = useState<Diamond[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [selectedShape, setSelectedShape] = useState(() => (shapeParam ? formatShapeParam(shapeParam) : 'All'))
   const [selectedColor, setSelectedColor] = useState<string[]>([])
   const [selectedClarity, setSelectedClarity] = useState<string[]>([])
@@ -552,10 +596,14 @@ function DiamondsContent() {
   const [selectedDiamond, setSelectedDiamond] = useState<Diamond | null>(null)
 
   useEffect(() => {
+    if (shapeParam) {
+      setSelectedShape(formatShapeParam(shapeParam))
+    }
+  }, [shapeParam])
+
+  useEffect(() => {
     if (!shapeParam) return undefined
 
-    const formatted = formatShapeParam(shapeParam)
-    setSelectedShape(formatted)
     const scrollTimer = window.setTimeout(() => {
       document.getElementById('diamonds-grid')?.scrollIntoView({
         behavior: 'smooth',
@@ -566,33 +614,107 @@ function DiamondsContent() {
     return () => window.clearTimeout(scrollTimer)
   }, [shapeParam])
 
-  useEffect(() => {
-    const fetchDiamonds = async () => {
-      const { data, error } = await supabaseAdmin
+  const fetchDiamonds = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+
+    const loadUnfilteredFallback = async () => {
+      const { data: allData, error: allError } = await supabaseAdmin
         .from('Diamond')
         .select('*')
-        .order('price', { ascending: true })
+        .order('carat', { ascending: true })
 
-      if (!error && data && data.length > 0) {
-        setDiamonds((data as DiamondRow[]).map(mapDiamond))
-      } else {
-        try {
-          const response = await fetch('/api/admin/diamonds')
-          const payload = (await response.json()) as { diamonds?: DiamondRow[] }
-          if (response.ok && payload.diamonds?.length) {
-            setDiamonds(payload.diamonds.map(mapDiamond))
-          } else {
-            setDiamonds(ALL_DIAMONDS)
-          }
-        } catch {
-          setDiamonds(ALL_DIAMONDS)
-        }
+      if (!allError) {
+        setDiamonds((allData || []).map((row, index) => mapDiamond(row as DiamondRow, index)))
+        return true
       }
-      setLoading(false)
+
+      try {
+        const response = await fetch('/api/admin/diamonds')
+        const payload = (await response.json()) as { diamonds?: DiamondRow[] }
+        if (response.ok && payload.diamonds) {
+          setDiamonds(payload.diamonds.map(mapDiamond))
+          return true
+        }
+      } catch {
+        // The visible error state below handles the final failure.
+      }
+
+      return false
     }
 
+    try {
+      let query = supabaseAdmin
+        .from('Diamond')
+        .select('*')
+        .neq('isAvailable', false)
+
+      if (selectedShape && selectedShape !== 'All') {
+        query = query.ilike('shape', selectedShape)
+      }
+
+      if (selectedColor.length === 1) {
+        query = query.eq('color', selectedColor[0])
+      } else if (selectedColor.length > 1) {
+        query = query.in('color', selectedColor)
+      }
+
+      if (selectedClarity.length === 1) {
+        query = query.eq('clarity', selectedClarity[0])
+      } else if (selectedClarity.length > 1) {
+        query = query.in('clarity', selectedClarity)
+      }
+
+      query = query
+        .gte('carat', caratRange[0])
+        .lte('carat', caratRange[1])
+        .gte('price', priceRange[0])
+        .lte('price', priceRange[1])
+
+      switch (sortBy) {
+        case 'price_low':
+          query = query.order('price', { ascending: true })
+          break
+        case 'price_high':
+          query = query.order('price', { ascending: false })
+          break
+        case 'carat_low':
+          query = query.order('carat', { ascending: true })
+          break
+        case 'carat_high':
+          query = query.order('carat', { ascending: false })
+          break
+        default:
+          query = query.order('carat', { ascending: true })
+      }
+
+      const { data, error: fetchError } = await query
+
+      if (fetchError) {
+        console.error('Diamonds fetch error:', fetchError)
+        const recovered = await loadUnfilteredFallback()
+        if (!recovered) {
+          setDiamonds([])
+          setError('Could not load diamonds')
+        }
+      } else {
+        setDiamonds((data || []).map((row, index) => mapDiamond(row as DiamondRow, index)))
+      }
+    } catch (caught) {
+      console.error('Diamonds page error:', caught)
+      const recovered = await loadUnfilteredFallback()
+      if (!recovered) {
+        setDiamonds([])
+        setError('Could not load diamonds')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }, [caratRange, priceRange, selectedClarity, selectedColor, selectedShape, sortBy])
+
+  useEffect(() => {
     void fetchDiamonds()
-  }, [])
+  }, [fetchDiamonds])
 
   const filtered = useMemo(() => {
     return diamonds.filter((diamond) => {
@@ -798,38 +920,98 @@ function DiamondsContent() {
           ) : null}
 
           {loading ? (
-            <div style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', padding: '40px 0' }}>Loading diamonds...</div>
-          ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: viewMode === 'grid' ? 'repeat(auto-fill, minmax(220px, 1fr))' : '1fr', gap: '16px' }}>
-            {filtered.map((diamond) => (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 40px', gap: '16px' }}>
+              <div style={{ fontSize: '32px', color: '#C9A961', animation: 'pulse 1.2s ease infinite' }}>*</div>
+              <div style={{ fontSize: '11px', letterSpacing: '0.25em', color: '#B8A090', fontFamily: 'var(--font-inter)' }}>
+                LOADING DIAMONDS...
+              </div>
+            </div>
+          ) : error ? (
+            <div style={{ textAlign: 'center', padding: '60px', color: '#A85C6A', fontFamily: 'var(--font-inter)' }}>
+              <div style={{ marginBottom: '12px' }}>
+                Could not load diamonds
+              </div>
               <button
-                key={diamond.id}
-                onClick={() => setSelectedDiamond(diamond)}
-                style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', overflow: 'hidden', cursor: 'pointer', transition: 'all 0.3s ease', borderRadius: '2px', textAlign: 'left', display: viewMode === 'grid' ? 'block' : 'grid', gridTemplateColumns: viewMode === 'grid' ? undefined : '180px 1fr' }}
+                onClick={() => void fetchDiamonds()}
+                style={{
+                  padding: '10px 24px',
+                  background: '#1A1014',
+                  color: '#FBF5F0',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '11px',
+                  letterSpacing: '0.15em',
+                  fontFamily: 'var(--font-inter)',
+                }}
               >
-                <div style={{ aspectRatio: '1', position: 'relative', overflow: 'hidden', background: '#F5E8ED' }}>
-                  <Image src={diamond.img} alt={`${diamond.carat}ct ${diamond.shape}`} fill style={{ objectFit: 'cover' }} sizes={viewMode === 'grid' ? '220px' : '180px'} quality={90} />
-                  <div style={{ position: 'absolute', top: '8px', left: '8px', background: 'rgba(26,16,20,0.85)', color: '#C9A961', fontSize: '8px', padding: '3px 7px', letterSpacing: '0.15em', fontFamily: 'var(--font-inter)', fontWeight: 500 }}>
-                    IGI
-                  </div>
-                </div>
-                <div style={{ padding: '14px 16px' }}>
-                  <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '15px', color: '#1A1014', marginBottom: '6px' }}>
-                    {diamond.carat}ct {diamond.shape}
-                  </div>
-                  <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '10px' }}>
-                    {[diamond.color, diamond.clarity, diamond.cut].map((spec) => (
-                      <span key={spec} style={{ padding: '2px 7px', background: '#FBF5F0', border: '0.5px solid #EDD9AF', fontSize: '10px', color: '#B8A090', fontFamily: 'var(--font-inter)', borderRadius: '2px' }}>{spec}</span>
-                    ))}
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
-                    <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '17px', color: '#1A1014' }}>${diamond.price.toLocaleString()}</div>
-                    <div style={{ fontSize: '10px', color: '#C9A961', fontFamily: 'var(--font-inter)', letterSpacing: '0.1em' }}>VIEW -</div>
-                  </div>
-                </div>
+                TRY AGAIN
               </button>
-            ))}
-          </div>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '80px 40px' }}>
+              <div style={{ fontSize: '48px', color: '#EDD9AF', marginBottom: '16px' }}>
+                &#9671;
+              </div>
+              <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '24px', color: '#1A1014', marginBottom: '8px' }}>
+                No diamonds found
+              </div>
+              <div style={{ fontSize: '13px', color: '#B8A090', marginBottom: '24px', fontFamily: 'var(--font-inter)' }}>
+                Try adjusting your filters
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedShape('All')
+                  setSelectedColor([])
+                  setSelectedClarity([])
+                  setCaratRange([0.5, 5])
+                  setPriceRange([0, 10000])
+                  setSortBy('price_low')
+                }}
+                style={{
+                  padding: '12px 28px',
+                  background: '#1A1014',
+                  color: '#FBF5F0',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '11px',
+                  letterSpacing: '0.2em',
+                  fontFamily: 'var(--font-inter)',
+                }}
+              >
+                CLEAR ALL FILTERS
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: viewMode === 'grid' ? 'repeat(auto-fill, minmax(220px, 1fr))' : '1fr', gap: '16px' }}>
+              {filtered.map((diamond) => (
+                <button
+                  key={diamond.id}
+                  onClick={() => setSelectedDiamond(diamond)}
+                  style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', overflow: 'hidden', cursor: 'pointer', transition: 'all 0.3s ease', borderRadius: '2px', textAlign: 'left', display: viewMode === 'grid' ? 'block' : 'grid', gridTemplateColumns: viewMode === 'grid' ? undefined : '180px 1fr' }}
+                >
+                  <div style={{ aspectRatio: '1', position: 'relative', overflow: 'hidden', background: '#F5E8ED' }}>
+                    <Image src={diamond.img} alt={`${diamond.carat}ct ${diamond.shape}`} fill style={{ objectFit: 'cover' }} sizes={viewMode === 'grid' ? '220px' : '180px'} quality={90} />
+                    <div style={{ position: 'absolute', top: '8px', left: '8px', background: 'rgba(26,16,20,0.85)', color: '#C9A961', fontSize: '8px', padding: '3px 7px', letterSpacing: '0.15em', fontFamily: 'var(--font-inter)', fontWeight: 500 }}>
+                      IGI
+                    </div>
+                  </div>
+                  <div style={{ padding: '14px 16px' }}>
+                    <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '15px', color: '#1A1014', marginBottom: '6px' }}>
+                      {diamond.carat}ct {diamond.shape}
+                    </div>
+                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                      {[diamond.color, diamond.clarity, diamond.cut].map((spec) => (
+                        <span key={spec} style={{ padding: '2px 7px', background: '#FBF5F0', border: '0.5px solid #EDD9AF', fontSize: '10px', color: '#B8A090', fontFamily: 'var(--font-inter)', borderRadius: '2px' }}>{spec}</span>
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
+                      <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '17px', color: '#1A1014' }}>${diamond.price.toLocaleString()}</div>
+                      <div style={{ fontSize: '10px', color: '#C9A961', fontFamily: 'var(--font-inter)', letterSpacing: '0.1em' }}>VIEW -</div>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
           )}
         </main>
       </div>
@@ -858,7 +1040,7 @@ function DiamondsContent() {
 
 export default function DiamondsPage() {
   return (
-    <Suspense fallback={<div style={{ height: '100vh', background: '#FBF5F0' }} />}>
+    <Suspense fallback={<DiamondsLoadingFallback />}>
       <DiamondsContent />
     </Suspense>
   )
