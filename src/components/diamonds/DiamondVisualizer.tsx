@@ -85,12 +85,17 @@ function getMMfromCarat(carat: number) {
 
 function caratToPx(carat: number, containerWidthPx: number) {
   const diamondMM = getMMfromCarat(carat)
-  const fingerPx = containerWidthPx * 0.19
-  const fingerMM = 16.9
-  const visibilityScale = 1.4
-  const truePx = (diamondMM / fingerMM) * fingerPx
 
-  return Math.round(Math.min(Math.max(truePx * visibilityScale, 8), 120))
+  // Calibrated from real hand photo measurements.
+  // Finger occupies ~8.2% of container width; 16.9mm reference finger.
+  // Visibility scale keeps carat-to-carat ratios true while keeping small stones visible.
+  const FINGER_WIDTH_FRACTION = 0.082
+  const FINGER_MM = 16.9
+  const VISIBILITY_SCALE = 1.5
+  const pxPerMM = (containerWidthPx * FINGER_WIDTH_FRACTION) / FINGER_MM
+  const diamondPx = diamondMM * pxPerMM * VISIBILITY_SCALE
+
+  return Math.round(Math.min(Math.max(diamondPx, 8), 120))
 }
 
 function getCaratContext(carat: number, shape: string) {
