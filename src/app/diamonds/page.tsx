@@ -1,13 +1,13 @@
 'use client'
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
-import type { CSSProperties, SetStateAction } from 'react'
+import type { CSSProperties } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCart } from '@/context/CartContext'
 import { useToast } from '@/context/ToastContext'
-import { ALL_DIAMONDS, Diamond, SHAPE_DATA } from '@/lib/diamondCatalog'
+import { ALL_DIAMONDS, Diamond } from '@/lib/diamondCatalog'
 import { supabase } from '@/lib/supabase'
 import DiamondVisualizer from '@/components/diamonds/DiamondVisualizer'
 import { getDiamondImage } from '@/lib/diamondImages'
@@ -45,6 +45,38 @@ const inputStyle: CSSProperties = {
   outline: 'none',
   fontFamily: 'var(--font-inter)',
   borderRadius: '2px',
+}
+
+const SHAPE_ORDER = ['Round', 'Princess', 'Cushion', 'Oval', 'Emerald', 'Pear', 'Radiant', 'Asscher', 'Heart', 'Marquise']
+const COLOR_ORDER = ['D', 'E', 'F', 'G', 'H', 'I', 'J', 'K']
+const CLARITY_ORDER = ['FL', 'IF', 'VVS1', 'VVS2', 'VS1', 'VS2', 'SI1', 'SI2', 'I1']
+const CUT_ORDER = ['Ideal', 'Excellent', 'Very Good', 'Good', 'Fair']
+
+function sortByOrder(values: string[], order: string[]) {
+  return values.sort((a, b) => {
+    const aIndex = order.indexOf(a)
+    const bIndex = order.indexOf(b)
+
+    if (aIndex === -1 && bIndex === -1) return a.localeCompare(b)
+    if (aIndex === -1) return 1
+    if (bIndex === -1) return -1
+    return aIndex - bIndex
+  })
+}
+
+function uniqueOptions(values: Array<string | null | undefined>, order: string[]) {
+  return sortByOrder(
+    [...new Set(values.filter((value): value is string => Boolean(value)))],
+    order
+  )
+}
+
+function countValues(diamonds: Diamond[], field: 'shape' | 'color' | 'clarity' | 'cut') {
+  return diamonds.reduce<Record<string, number>>((counts, diamond) => {
+    const value = diamond[field]
+    if (value) counts[value] = (counts[value] || 0) + 1
+    return counts
+  }, {})
 }
 
 function parseNumber(value: string, fallback: number) {
@@ -88,14 +120,19 @@ function calculateCustomPrice(carat: number, color: string, clarity: string) {
     G: 1.12,
     H: 1.0,
     I: 0.88,
+    J: 0.8,
+    K: 0.72,
   }
   const clarityMultiplier: Record<string, number> = {
+    FL: 1.8,
     IF: 1.65,
     VVS1: 1.45,
     VVS2: 1.3,
     VS1: 1.15,
     VS2: 1.0,
     SI1: 0.85,
+    SI2: 0.75,
+    I1: 0.62,
   }
 
   return Math.round(
@@ -112,15 +149,19 @@ function colorDescription(color: string) {
   if (color === 'F') return 'Rare white+'
   if (color === 'G') return 'Rare white'
   if (color === 'H') return 'White'
+  if (color === 'K') return 'Soft warm tint'
   return 'Slightly tinted'
 }
 
 function clarityDescription(clarity: string) {
+  if (clarity === 'FL') return 'Flawless'
   if (clarity === 'IF') return 'Internally Flawless'
   if (clarity === 'VVS1') return 'Very Very Slightly Included'
   if (clarity === 'VVS2') return 'Very Very Slight'
   if (clarity === 'VS1') return 'Very Slightly Included'
   if (clarity === 'VS2') return 'Very Slight'
+  if (clarity === 'SI2') return 'Slightly Included'
+  if (clarity === 'I1') return 'Included'
   return 'Slightly Included'
 }
 
@@ -626,8 +667,9 @@ function DiamondsContent() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedShape, setSelectedShape] = useState(() => (shapeParam ? formatShapeParam(shapeParam) : 'All'))
-  const [selectedColor, setSelectedColor] = useState<string[]>([])
-  const [selectedClarity, setSelectedClarity] = useState<string[]>([])
+  const [selectedColor, setSelectedColor] = useState('All')
+  const [selectedClarity, setSelectedClarity] = useState('All')
+  const [selectedCut, setSelectedCut] = useState('All')
   const [caratRange, setCaratRange] = useState<[number, number]>([0.5, 15])
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 100000])
   const [sortBy, setSortBy] = useState('price_low')
@@ -661,6 +703,7 @@ function DiamondsContent() {
       const { data, error: fetchError } = await supabase
         .from('Diamond')
         .select('*')
+        .eq('isAvailable', true)
 
       console.log('RAW DATA:', data)
       console.log('RAW ERROR:', fetchError)
@@ -686,22 +729,47 @@ function DiamondsContent() {
     void fetchDiamonds()
   }, [fetchDiamonds])
 
-  const filtered = useMemo(() => {
+  const filterDiamonds = useCallback((omit?: 'shape' | 'color' | 'clarity' | 'cut') => {
     return diamonds.filter((diamond) => {
-      if (selectedShape !== 'All' && diamond.shape !== selectedShape) return false
-      if (selectedColor.length && !selectedColor.includes(diamond.color)) return false
-      if (selectedClarity.length && !selectedClarity.includes(diamond.clarity)) return false
+      if (omit !== 'shape' && selectedShape !== 'All' && diamond.shape !== selectedShape) return false
+      if (omit !== 'color' && selectedColor !== 'All' && diamond.color !== selectedColor) return false
+      if (omit !== 'clarity' && selectedClarity !== 'All' && diamond.clarity !== selectedClarity) return false
+      if (omit !== 'cut' && selectedCut !== 'All' && diamond.cut !== selectedCut) return false
       if (diamond.carat < caratRange[0] || diamond.carat > caratRange[1]) return false
       if (diamond.price < priceRange[0] || diamond.price > priceRange[1]) return false
       return true
-    }).sort((a, b) => {
+    })
+  }, [caratRange, diamonds, priceRange, selectedClarity, selectedColor, selectedCut, selectedShape])
+
+  const filtered = useMemo(() => {
+    return filterDiamonds().sort((a, b) => {
       if (sortBy === 'price_low') return a.price - b.price
       if (sortBy === 'price_high') return b.price - a.price
       if (sortBy === 'carat_high') return b.carat - a.carat
       if (sortBy === 'carat_low') return a.carat - b.carat
       return 0
     })
-  }, [caratRange, diamonds, priceRange, selectedClarity, selectedColor, selectedShape, sortBy])
+  }, [filterDiamonds, sortBy])
+
+  const shapeBase = useMemo(() => filterDiamonds('shape'), [filterDiamonds])
+  const colorBase = useMemo(() => filterDiamonds('color'), [filterDiamonds])
+  const clarityBase = useMemo(() => filterDiamonds('clarity'), [filterDiamonds])
+  const cutBase = useMemo(() => filterDiamonds('cut'), [filterDiamonds])
+  const availableShapes = useMemo(() => uniqueOptions(shapeBase.map((diamond) => diamond.shape), SHAPE_ORDER), [shapeBase])
+  const availableColors = useMemo(() => uniqueOptions(colorBase.map((diamond) => diamond.color), COLOR_ORDER), [colorBase])
+  const availableClarities = useMemo(() => uniqueOptions(clarityBase.map((diamond) => diamond.clarity), CLARITY_ORDER), [clarityBase])
+  const availableCuts = useMemo(() => uniqueOptions(cutBase.map((diamond) => diamond.cut), CUT_ORDER), [cutBase])
+  const shapeCounts = useMemo(() => countValues(shapeBase, 'shape'), [shapeBase])
+  const colorCounts = useMemo(() => countValues(colorBase, 'color'), [colorBase])
+  const clarityCounts = useMemo(() => countValues(clarityBase, 'clarity'), [clarityBase])
+  const cutCounts = useMemo(() => countValues(cutBase, 'cut'), [cutBase])
+
+  useEffect(() => {
+    if (selectedShape !== 'All' && diamonds.length && !availableShapes.includes(selectedShape)) setSelectedShape('All')
+    if (selectedColor !== 'All' && diamonds.length && !availableColors.includes(selectedColor)) setSelectedColor('All')
+    if (selectedClarity !== 'All' && diamonds.length && !availableClarities.includes(selectedClarity)) setSelectedClarity('All')
+    if (selectedCut !== 'All' && diamonds.length && !availableCuts.includes(selectedCut)) setSelectedCut('All')
+  }, [availableClarities, availableColors, availableCuts, availableShapes, diamonds.length, selectedClarity, selectedColor, selectedCut, selectedShape])
 
   return (
     <div style={{ background: '#FBF5F0', minHeight: '100vh' }}>
@@ -725,7 +793,7 @@ function DiamondsContent() {
           Every diamond IGI certified. Same fire, same brilliance as mined, grown sustainably in our solar foundry.
         </p>
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap', maxWidth: '900px', margin: '0 auto' }}>
-          {['All', ...SHAPE_DATA.map((shape) => shape.name)].map((shape) => (
+          {['All', ...availableShapes].map((shape) => (
             <button
               key={shape}
               onClick={() => setSelectedShape(shape)}
@@ -742,7 +810,7 @@ function DiamondsContent() {
                 borderRadius: '2px',
               }}
             >
-              {shape.toUpperCase()}
+              {shape === 'All' ? `ALL (${shapeBase.length})` : `${shape.toUpperCase()} (${shapeCounts[shape] || 0})`}
             </button>
           ))}
         </div>
@@ -772,20 +840,24 @@ function DiamondsContent() {
           </div>
 
           {[
-            ['COLOR', ['D', 'E', 'F', 'G', 'H', 'I'], selectedColor, setSelectedColor],
-            ['CLARITY', ['IF', 'VVS1', 'VVS2', 'VS1', 'VS2', 'SI1'], selectedClarity, setSelectedClarity],
-          ].map(([label, options, selected, setSelected]) => (
+            ['COLOR', availableColors, selectedColor, setSelectedColor, colorCounts],
+            ['CLARITY', availableClarities, selectedClarity, setSelectedClarity, clarityCounts],
+            ['CUT', availableCuts, selectedCut, setSelectedCut, cutCounts],
+          ].map(([label, options, selected, setSelected, counts]) => (
             <div key={label as string} style={{ marginBottom: '28px' }}>
               <div style={{ fontSize: '11px', color: '#1A1014', fontWeight: 500, marginBottom: '12px', fontFamily: 'var(--font-inter)', letterSpacing: '0.05em' }}>{label as string}</div>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                {(options as string[]).map((option) => {
-                  const selectedItems = selected as string[]
-                  const updateSelected = setSelected as (value: SetStateAction<string[]>) => void
-                  const active = selectedItems.includes(option)
+                {['All', ...(options as string[])].map((option) => {
+                  const selectedValue = selected as string
+                  const updateSelected = setSelected as (value: string) => void
+                  const active = selectedValue === option
+                  const optionCount = option === 'All'
+                    ? (options as string[]).reduce((total, value) => total + ((counts as Record<string, number>)[value] || 0), 0)
+                    : (counts as Record<string, number>)[option] || 0
                   return (
                     <button
                       key={option}
-                      onClick={() => updateSelected((prev) => (prev.includes(option) ? prev.filter((item) => item !== option) : [...prev, option]))}
+                      onClick={() => updateSelected(option)}
                       style={{
                         minWidth: label === 'COLOR' ? '36px' : undefined,
                         height: label === 'COLOR' ? '36px' : undefined,
@@ -801,7 +873,7 @@ function DiamondsContent() {
                         borderRadius: '2px',
                       }}
                     >
-                      {option}
+                      {option} ({optionCount})
                     </button>
                   )
                 })}
@@ -812,8 +884,9 @@ function DiamondsContent() {
           <button
             onClick={() => {
               setSelectedShape('All')
-              setSelectedColor([])
-              setSelectedClarity([])
+              setSelectedColor('All')
+              setSelectedClarity('All')
+              setSelectedCut('All')
               setCaratRange([0.5, 15])
               setPriceRange([0, 100000])
             }}
@@ -826,7 +899,7 @@ function DiamondsContent() {
         <main id="diamonds-grid" style={{ padding: '32px' }}>
           <div className="diamond-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '28px', paddingBottom: '20px', borderBottom: '0.5px solid #EDD9AF' }}>
             <div style={{ fontSize: '13px', color: '#B8A090', fontFamily: 'var(--font-inter)' }}>
-              <span style={{ color: '#C9A961', fontWeight: 500 }}>{loading ? '...' : filtered.length}</span> diamonds found
+              Showing <span style={{ color: '#C9A961', fontWeight: 500 }}>{loading ? '...' : filtered.length}</span> of {diamonds.length} diamonds
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '11px', color: '#B8A090', fontFamily: 'var(--font-inter)' }}>SORT:</span>
@@ -931,8 +1004,9 @@ function DiamondsContent() {
               <button
                 onClick={() => {
                   setSelectedShape('All')
-                  setSelectedColor([])
-                  setSelectedClarity([])
+                  setSelectedColor('All')
+                  setSelectedClarity('All')
+                  setSelectedCut('All')
                   setCaratRange([0.5, 15])
                   setPriceRange([0, 100000])
                   setSortBy('price_low')

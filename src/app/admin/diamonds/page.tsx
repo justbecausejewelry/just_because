@@ -57,12 +57,12 @@ type DiamondMutationResponse = {
   error?: string
 }
 
-const SHAPES = ['Round', 'Oval', 'Emerald', 'Cushion', 'Princess', 'Pear', 'Marquise', 'Heart', 'Radiant', 'Asscher']
-const COLORS = ['D', 'E', 'F', 'G', 'H', 'I', 'J']
-const CLARITIES = ['IF', 'VVS1', 'VVS2', 'VS1', 'VS2', 'SI1', 'SI2']
-const CUTS = ['Ideal', 'Excellent', 'Very Good', 'Good']
-const POLISH_OPTIONS = ['Ideal', 'Excellent', 'Very Good', 'Good', 'Fair']
-const SYMMETRY_OPTIONS = ['Ideal', 'Excellent', 'Very Good', 'Good', 'Fair']
+const SHAPES = ['Round', 'Princess', 'Cushion', 'Oval', 'Emerald', 'Pear', 'Radiant', 'Asscher', 'Heart', 'Marquise']
+const COLORS = ['D', 'E', 'F', 'G', 'H', 'I', 'J', 'K']
+const CLARITIES = ['FL', 'IF', 'VVS1', 'VVS2', 'VS1', 'VS2', 'SI1', 'SI2', 'I1']
+const CUTS = ['Ideal', 'Excellent', 'Very Good', 'Good', 'Fair']
+const POLISH_OPTIONS = ['Excellent', 'Very Good', 'Good']
+const SYMMETRY_OPTIONS = ['Excellent', 'Very Good', 'Good']
 const FLUORESCENCE_OPTIONS = ['None', 'Faint', 'Medium', 'Strong', 'Very Strong']
 
 const emptyForm: DiamondForm = {
