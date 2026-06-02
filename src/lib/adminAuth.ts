@@ -2,8 +2,8 @@ import { createClient } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 
 const CACHE_KEY = 'jb_admin'
-const CACHE_TTL = 10 * 60 * 1000
-const CHECK_TIMEOUT = 3000
+const CACHE_TTL = 30 * 60 * 1000
+const CHECK_TIMEOUT = 4000
 
 export interface AdminRecord {
   id?: string
@@ -124,10 +124,9 @@ export async function checkIsAdmin(): Promise<AdminCheckResult> {
   try {
     const {
       data: { user },
-      error,
     } = await supabase.auth.getUser()
 
-    if (error || !user?.email) {
+    if (!user?.email) {
       return emptyAdminResult
     }
 
@@ -152,9 +151,16 @@ export async function isCurrentUserAdmin(): Promise<boolean> {
 
 export function clearAdminCache() {
   if (typeof window !== 'undefined') {
-    Object.keys(sessionStorage)
-      .filter((key) => key.startsWith(CACHE_KEY))
-      .forEach((key) => sessionStorage.removeItem(key))
+    try {
+      Object.keys(sessionStorage)
+        .filter((key) => key.startsWith(CACHE_KEY))
+        .forEach((key) => sessionStorage.removeItem(key))
+      Object.keys(localStorage)
+        .filter((key) => key.startsWith(CACHE_KEY))
+        .forEach((key) => localStorage.removeItem(key))
+    } catch {
+      // Storage can be unavailable in private modes.
+    }
   }
 }
 

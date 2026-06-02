@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ComponentType } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Heart, LogOut, MessageSquare, Settings, ShoppingBag } from 'lucide-react'
+import { Heart, MessageSquare, Settings, ShoppingBag } from 'lucide-react'
 import type { User } from '@supabase/supabase-js'
 import { supabase, SUPABASE_AUTH_STORAGE_KEY } from '@/lib/supabase'
 import { checkIsAdmin, clearAdminCache } from '@/lib/adminAuth'
@@ -170,6 +170,7 @@ export default function AccountPage() {
   const [adminRole, setAdminRole] = useState<string | null>(null)
   const [adminChecking, setAdminChecking] = useState(true)
   const [pageLoading, setPageLoading] = useState(true)
+  const [signingOut, setSigningOut] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -280,12 +281,36 @@ export default function AccountPage() {
   }, [pageLoading, router])
 
   const handleSignOut = async () => {
-    clearAdminCache()
-    await supabase.auth.signOut()
-    Object.keys(window.localStorage)
-      .filter(isAuthStorageKey)
-      .forEach((key) => window.localStorage.removeItem(key))
-    router.push('/')
+    setSigningOut(true)
+
+    try {
+      clearAdminCache()
+
+      if (typeof window !== 'undefined') {
+        const keysToRemove = Object.keys(window.localStorage)
+          .filter((key) =>
+            key.includes('supabase')
+            || key.includes('sb-')
+            || key.includes('jb-auth')
+            || key.includes('jb_admin')
+          )
+        keysToRemove.forEach((key) => window.localStorage.removeItem(key))
+
+        const sessionKeys = Object.keys(window.sessionStorage)
+          .filter((key) =>
+            key.includes('supabase')
+            || key.includes('jb_admin')
+            || key.includes('admin')
+          )
+        sessionKeys.forEach((key) => window.sessionStorage.removeItem(key))
+      }
+
+      await supabase.auth.signOut({ scope: 'global' })
+      window.location.href = '/'
+    } catch (err) {
+      console.error('Sign out error:', err)
+      window.location.href = '/'
+    }
   }
 
   if (pageLoading) {
@@ -364,13 +389,21 @@ export default function AccountPage() {
         <MenuCard href="/account/settings" icon={Settings} title="Account Settings" description="Update your profile" />
         {adminChecking ? (
           <div style={{
-            height: '80px',
-            background: 'rgba(201,169,97,0.05)',
-            border: '0.5px solid #EDD9AF',
-            borderRadius: '4px',
-            animation: 'pulse 1.5s ease-in-out infinite',
+            height: '72px',
+            background: 'rgba(201,169,97,0.04)',
+            border: '0.5px solid rgba(237,217,175,0.5)',
+            marginBottom: '12px',
+            position: 'relative',
+            overflow: 'hidden',
             gridColumn: '1 / -1',
-          }} />
+          }}>
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'linear-gradient(90deg, transparent 0%, rgba(201,169,97,0.08) 50%, transparent 100%)',
+              animation: 'shimmerSlide 1.5s ease-in-out infinite',
+            }} />
+          </div>
         ) : isAdmin ? (
           <Link
             href="/admin"
@@ -443,11 +476,41 @@ export default function AccountPage() {
 
       <button
         onClick={handleSignOut}
-        className="btn-outline"
-        style={{ marginTop: '32px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+        disabled={signingOut}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          background: signingOut ? 'rgba(168,92,106,0.1)' : 'transparent',
+          border: '0.5px solid #EDD9AF',
+          padding: '12px 24px',
+          cursor: signingOut ? 'not-allowed' : 'pointer',
+          fontSize: '12px',
+          letterSpacing: '0.15em',
+          color: signingOut ? '#A85C6A' : '#B8A090',
+          fontFamily: 'var(--font-inter)',
+          marginTop: '32px',
+          transition: 'all 0.2s',
+        }}
+        onMouseEnter={(event) => {
+          if (!signingOut) {
+            event.currentTarget.style.borderColor = '#A85C6A'
+            event.currentTarget.style.color = '#A85C6A'
+          }
+        }}
+        onMouseLeave={(event) => {
+          if (!signingOut) {
+            event.currentTarget.style.borderColor = '#EDD9AF'
+            event.currentTarget.style.color = '#B8A090'
+          }
+        }}
       >
-        <LogOut size={16} />
-        Sign out
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+          <polyline points="16 17 21 12 16 7" />
+          <line x1="21" y1="12" x2="9" y2="12" />
+        </svg>
+        {signingOut ? 'SIGNING OUT...' : 'SIGN OUT'}
       </button>
 
       <style>{`
@@ -455,6 +518,11 @@ export default function AccountPage() {
           border-color: #C9A961 !important;
           background: #FCF0F4 !important;
           transform: translateY(-2px);
+        }
+
+        @keyframes shimmerSlide {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
         }
 
         @media (max-width: 768px) {
