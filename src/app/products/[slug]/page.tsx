@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Gem, Heart, RotateCcw, Share2, ShieldCheck, Sparkles, Star } from 'lucide-react'
+import DiamondVisualizer from '@/components/diamonds/DiamondVisualizer'
 import ProductCustomizer, { productNeedsRingSize } from '@/components/products/ProductCustomizer'
 import { useCart } from '@/context/CartContext'
 import { useToast } from '@/context/ToastContext'
@@ -23,6 +24,8 @@ type Product = {
   description: string | null
   basePrice: number
   pricePerCarat?: number | null
+  diamondShape?: string | null
+  defaultCarat?: number | null
   metalPricing: PricingMap
   caratPricing: PricingMap
   shapePricing: PricingMap
@@ -59,6 +62,12 @@ function formatPrice(price: number) {
 
 function prettify(value: string) {
   return value.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
+}
+
+function isRingProduct(productType?: string | null, category?: string | null) {
+  const type = (productType || '').toLowerCase()
+  const cat = (category || '').toLowerCase()
+  return ['engagement_ring', 'wedding_ring', 'ring'].includes(type) || cat === 'engagement' || cat === 'wedding'
 }
 
 function ProductPlaceholder({ size = 72 }: { size?: number }) {
@@ -142,7 +151,7 @@ export default function ProductDetailPage() {
       setProduct(incoming)
       setReviews(payload.reviews || [])
       setSelectedMetal('14K White Gold')
-      setSelectedCarat(null)
+      setSelectedCarat(isRingProduct(incoming.productType, incoming.category) ? incoming.defaultCarat || 1 : null)
       setSelectedSize(null)
       setCalculatedPrice(incoming.basePrice)
       setSelectedImage(0)
@@ -224,7 +233,13 @@ export default function ProductDetailPage() {
     ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
     : 4.9
 
-  const currentPrice = formatPrice(calculatedPrice || product?.basePrice || 0)
+  const ringProduct = isRingProduct(product?.productType, product?.category)
+  const productDefaultCarat = product?.defaultCarat || 1
+  const visualizerCarat = selectedCarat ?? productDefaultCarat
+  const caratDelta = ringProduct ? Math.max(0, visualizerCarat - productDefaultCarat) : 0
+  const caratLivePrice = caratDelta * (product?.pricePerCarat || 300)
+  const livePrice = (calculatedPrice || product?.basePrice || 0) + caratLivePrice
+  const currentPrice = formatPrice(livePrice)
   const imagePosition = product?.productType?.includes('necklace') || product?.productType?.includes('pendant')
     ? 'center top'
     : 'center center'
@@ -235,7 +250,7 @@ export default function ProductDetailPage() {
   const priceBreakdown = {
     base: product?.basePrice || 0,
     metal: 0,
-    carat: selectedCarat ? selectedCarat * (product?.pricePerCarat || 300) : 0,
+    carat: caratLivePrice,
     shape: 0,
     color: 0,
     clarity: 0,
@@ -249,11 +264,11 @@ export default function ProductDetailPage() {
   }) => {
     setSelectedMetal(selections.metal)
     setSelectedSize(selections.size || null)
-    setSelectedCarat(selections.caratWeight || null)
+    setSelectedCarat((current) => ringProduct ? current : selections.caratWeight || null)
     setCalculatedPrice(selections.totalPrice)
     setSelectedImage(0)
     setIsZoomed(false)
-  }, [])
+  }, [ringProduct])
 
   if (isLoading) {
     return (
@@ -300,14 +315,14 @@ export default function ProductDetailPage() {
       productTitle: product.title,
       productImage: primaryImage,
       selectedMetal,
-      selectedCarat: selectedCarat || 0,
-      selectedShape: product.category,
+      selectedCarat: ringProduct ? visualizerCarat : selectedCarat || 0,
+      selectedShape: ringProduct ? product.diamondShape || 'Round' : product.category,
       selectedColor: undefined,
       selectedClarity: undefined,
       ringSize: selectedSize || undefined,
       engraving: undefined,
       quantity: 1,
-      unitPrice: calculatedPrice,
+      unitPrice: livePrice,
       priceBreakdown,
     })
     showToast('Added to cart successfully', 'success')
@@ -324,14 +339,14 @@ export default function ProductDetailPage() {
       productTitle: product.title,
       productImage: primaryImage,
       selectedMetal,
-      selectedCarat: selectedCarat || 0,
-      selectedShape: product.category,
+      selectedCarat: ringProduct ? visualizerCarat : selectedCarat || 0,
+      selectedShape: ringProduct ? product.diamondShape || 'Round' : product.category,
       selectedColor: undefined,
       selectedClarity: undefined,
       ringSize: selectedSize || undefined,
       engraving: undefined,
       quantity: 1,
-      unitPrice: calculatedPrice,
+      unitPrice: livePrice,
       priceBreakdown,
     })
 
@@ -763,6 +778,79 @@ export default function ProductDetailPage() {
               product={product}
               onSelectionChange={handleCustomizerChange}
             />
+
+            {ringProduct ? (
+              <div
+                style={{
+                  backgroundColor: '#FDF8F2',
+                  border: '0.5px solid #EDD9AF',
+                  borderRadius: '4px',
+                  padding: '20px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '16px', marginBottom: '14px' }}>
+                  <div>
+                    <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '6px' }}>
+                      DIAMOND SIZE
+                    </p>
+                    <h2 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '22px', fontWeight: 400, margin: 0 }}>
+                      Preview on hand
+                    </h2>
+                  </div>
+                  <div style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '24px', whiteSpace: 'nowrap' }}>
+                    {visualizerCarat.toFixed(1)} ct
+                  </div>
+                </div>
+
+                <DiamondVisualizer
+                  initialShape={product.diamondShape || 'Round'}
+                  initialCarat={visualizerCarat}
+                  onCaratChange={setSelectedCarat}
+                  showShapeSelector={false}
+                />
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px', marginTop: '14px' }}>
+                  {[1, 1.5, 2].map((caratOption) => {
+                    const selected = visualizerCarat === caratOption
+                    return (
+                      <button
+                        key={caratOption}
+                        type="button"
+                        onClick={() => setSelectedCarat(caratOption)}
+                        style={{
+                          background: selected ? '#1A1014' : '#FBF5F0',
+                          border: '0.5px solid #EDD9AF',
+                          borderRadius: '2px',
+                          color: selected ? '#FBF5F0' : '#1A1014',
+                          cursor: 'pointer',
+                          fontFamily: 'var(--font-inter)',
+                          fontSize: '11px',
+                          letterSpacing: '0.12em',
+                          padding: '11px 8px',
+                        }}
+                      >
+                        {caratOption.toFixed(1)} CT
+                      </button>
+                    )
+                  })}
+                </div>
+
+                <div style={{ borderTop: '0.5px solid #EDD9AF', display: 'grid', gap: '8px', marginTop: '16px', paddingTop: '14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>
+                    <span>Base setting</span>
+                    <span>{formatPrice(calculatedPrice || product.basePrice)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>
+                    <span>Carat upgrade</span>
+                    <span>{caratLivePrice > 0 ? `+ ${formatPrice(caratLivePrice)}` : 'Included'}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', fontWeight: 500 }}>
+                    <span>Live price</span>
+                    <span>{formatPrice(livePrice)}</span>
+                  </div>
+                </div>
+              </div>
+            ) : null}
 
             {isInCart && (
               <div style={{

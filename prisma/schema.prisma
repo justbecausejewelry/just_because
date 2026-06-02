@@ -25,6 +25,8 @@ model Product {
   description String?
   basePrice   Float
   pricePerCarat Float? @default(300)
+  diamondShape String? @default("Round")
+  defaultCarat Float? @default(1.0)
 
   // Pricing modifiers stored as JSON
   // Format: { "White Gold": { "enabled": true, "modifier": 0 }, ... }

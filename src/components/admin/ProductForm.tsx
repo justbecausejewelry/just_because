@@ -27,6 +27,8 @@ type ProductFormData = {
   description: string
   basePrice: number
   pricePerCarat: number
+  diamondShape: string
+  defaultCarat: number
   metalPricing: PricingMap
   caratPricing: PricingMap
   shapePricing: PricingMap
@@ -90,7 +92,7 @@ const categories: Record<string, string[]> = {
 const optionSets = {
   metals: ['White Gold', 'Yellow Gold', 'Rose Gold', 'Platinum'],
   carats: ['6', '9', '12'],
-  shapes: ['Round', 'Oval', 'Cushion', 'Princess', 'Emerald', 'Pear', 'Marquise', 'Heart', 'Asscher'],
+  shapes: ['Round', 'Oval', 'Cushion', 'Princess', 'Emerald', 'Radiant', 'Pear', 'Marquise', 'Heart', 'Asscher'],
   colors: ['D', 'E', 'F', 'G', 'H', 'I'],
   clarities: ['IF', 'VVS1', 'VVS2', 'VS1', 'VS2'],
 }
@@ -222,6 +224,10 @@ function validateForm(formData: ProductFormData): ValidationError[] {
     errors.push({ field: 'basePrice', message: 'Base price must be greater than 0', tab: 0 })
   }
 
+  if (isRingProduct(formData.productType) && (!formData.defaultCarat || formData.defaultCarat <= 0)) {
+    errors.push({ field: 'defaultCarat', message: 'Default carat must be greater than 0', tab: 0 })
+  }
+
   const hasEnabledMetal = Object.values(formData.metalPricing || {}).some((metal) => metal?.enabled === true)
   if (!hasEnabledMetal) {
     errors.push({ field: 'metalPricing', message: 'At least one metal option must be enabled', tab: 1 })
@@ -240,6 +246,8 @@ function blankProduct(): ProductFormData {
     description: '',
     basePrice: 0,
     pricePerCarat: 300,
+    diamondShape: 'Round',
+    defaultCarat: 1,
     metalPricing: mapFromOptions(optionSets.metals, { 'Yellow Gold': 200, 'Rose Gold': 150, Platinum: 800 }),
     caratPricing: mapFromOptions(optionSets.carats, { '9': 3000, '12': 7000 }),
     shapePricing: mapFromOptions(optionSets.shapes),
@@ -504,12 +512,15 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
   )
   const samplePriceRows = useMemo(() => {
     if (ringProduct) {
-      return [{
-        label: 'White Gold',
-        carat: null,
-        caratCost: 0,
-        total: form.basePrice + whiteGoldModifier,
-      }]
+      return [form.defaultCarat || 1, 1.5, 2].map((carat) => {
+        const caratCost = Math.max(0, carat - (form.defaultCarat || 1)) * form.pricePerCarat
+        return {
+          label: `White Gold, ${carat}ct ${form.diamondShape}`,
+          carat,
+          caratCost,
+          total: form.basePrice + whiteGoldModifier + caratCost,
+        }
+      })
     }
 
     return caratSamples.map((carat) => {
@@ -521,7 +532,7 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
         total: form.basePrice + whiteGoldModifier + caratCost,
       }
     })
-  }, [caratSamples, form.basePrice, form.pricePerCarat, ringProduct, whiteGoldModifier])
+  }, [caratSamples, form.basePrice, form.defaultCarat, form.diamondShape, form.pricePerCarat, ringProduct, whiteGoldModifier])
 
   const setField = <K extends keyof ProductFormData>(key: K, value: ProductFormData[K]) => {
     setForm((current) => ({ ...current, [key]: value }))
@@ -537,6 +548,9 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
       category: nextCategory,
       availableCarats: nextConfig.caratOptions || [],
       availableSizes: nextConfig.fields.sizes ? ringSizeOptions : nextConfig.lengthOptions || [],
+      diamondShape: isRingProduct(value) ? current.diamondShape || 'Round' : current.diamondShape,
+      defaultCarat: isRingProduct(value) ? current.defaultCarat || 1 : current.defaultCarat,
+      pricePerCarat: current.pricePerCarat || 300,
     }))
     setValidationErrors((current) => current.filter((error) => error.field !== 'productType' && error.field !== 'category'))
   }
@@ -641,6 +655,8 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
         slug: form.slug || slugify(form.title),
         isActive: publish,
         pricePerCarat: Number(form.pricePerCarat) || 300,
+        diamondShape: form.diamondShape || 'Round',
+        defaultCarat: Number(form.defaultCarat) || 1,
         certificateUrl: form.certificateUrl || null,
         hoverImage: null,
         modelUrl: null,
@@ -813,6 +829,30 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
               <TextInput label="BASE PRICE *" value={form.basePrice} type="number" hasError={Boolean(getFieldError('basePrice'))} onChange={(value) => setField('basePrice', Number(value))} />
               <FieldError message={getFieldError('basePrice')} />
             </div>
+            {ringProduct && (
+              <div style={{ backgroundColor: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '4px', padding: '18px 20px' }}>
+                <div style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '12px' }}>
+                  DIAMOND VISUALIZER
+                </div>
+                <div className="grid gap-5 md:grid-cols-3">
+                  <label>
+                    <span style={{ color: '#C9A961', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '8px' }}>DIAMOND SHAPE</span>
+                    <Select value={form.diamondShape || 'Round'} onValueChange={(value) => setField('diamondShape', value)}>
+                      <SelectTrigger style={{ backgroundColor: '#FBF5F0', border: '1px solid #EDD9AF', borderRadius: '2px', color: '#1A1014', width: '100%' }}><SelectValue /></SelectTrigger>
+                      <SelectContent style={{ backgroundColor: '#FDF8F2', border: '1px solid #EDD9AF' }}>{optionSets.shapes.map((shape) => <SelectItem key={shape} value={shape}>{shape}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </label>
+                  <div>
+                    <TextInput label="DEFAULT CARAT *" value={form.defaultCarat} type="number" hasError={Boolean(getFieldError('defaultCarat'))} onChange={(value) => setField('defaultCarat', Number(value))} />
+                    <FieldError message={getFieldError('defaultCarat')} />
+                  </div>
+                  <TextInput label="PRICE PER EXTRA CARAT" value={form.pricePerCarat} type="number" onChange={(value) => setField('pricePerCarat', Number(value))} />
+                </div>
+                <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', lineHeight: 1.6, marginTop: '10px' }}>
+                  Product page price = selected metal price plus carat above the default times this extra-carat rate.
+                </p>
+              </div>
+            )}
             <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '13px' }}>Starting from <span style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '22px' }}>{formatMoney(form.basePrice)}</span></p>
           </section>
         )}
