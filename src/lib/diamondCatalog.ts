@@ -1,3 +1,5 @@
+import { DIAMOND_IMAGE_MAP } from '@/lib/diamondImages'
+
 export type Diamond = {
   id: string
   shape: string
@@ -21,43 +23,43 @@ export type Diamond = {
 export const SHAPE_DATA = [
   {
     name: 'Round',
-    img: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=400&q=90',
+    img: DIAMOND_IMAGE_MAP.Round,
   },
   {
     name: 'Oval',
-    img: 'https://images.unsplash.com/photo-1599643477877-530eb83abc8e?w=400&q=90',
+    img: DIAMOND_IMAGE_MAP.Oval,
   },
   {
     name: 'Emerald',
-    img: 'https://images.unsplash.com/photo-1602173574767-37ac01994b2a?w=400&q=90',
+    img: DIAMOND_IMAGE_MAP.Emerald,
   },
   {
     name: 'Cushion',
-    img: 'https://images.unsplash.com/photo-1584302179602-e4c3d3fd629d?w=400&q=90',
+    img: DIAMOND_IMAGE_MAP.Cushion,
   },
   {
     name: 'Princess',
-    img: 'https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?w=400&q=90',
+    img: DIAMOND_IMAGE_MAP.Princess,
   },
   {
     name: 'Pear',
-    img: 'https://images.unsplash.com/photo-1589674781759-c21c37956a44?w=400&q=90',
+    img: DIAMOND_IMAGE_MAP.Pear,
   },
   {
     name: 'Marquise',
-    img: 'https://images.unsplash.com/photo-1596944924616-7b38e7cfac36?w=400&q=90',
+    img: DIAMOND_IMAGE_MAP.Marquise,
   },
   {
     name: 'Heart',
-    img: 'https://images.unsplash.com/photo-1611955167811-4711904bb9f8?w=400&q=90',
+    img: DIAMOND_IMAGE_MAP.Heart,
   },
   {
     name: 'Radiant',
-    img: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=400&q=90',
+    img: DIAMOND_IMAGE_MAP.Radiant,
   },
   {
     name: 'Asscher',
-    img: 'https://images.unsplash.com/photo-1573408301185-9519f94816b5?w=400&q=90',
+    img: DIAMOND_IMAGE_MAP.Asscher,
   },
 ] as const
 

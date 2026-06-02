@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { Gem } from 'lucide-react'
 import { useCart } from '@/context/CartContext'
+import { getDiamondImage } from '@/lib/diamondImages'
 import { supabase } from '@/lib/supabase'
 
 type DiamondRow = {
@@ -42,6 +43,7 @@ export default function DiamondDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [cartNotice, setCartNotice] = useState<{ isGuest: boolean } | null>(null)
+  const diamondImage = diamond ? getDiamondImage(diamond.shape) : ''
 
   useEffect(() => {
     const loadDiamond = async () => {
@@ -80,7 +82,7 @@ export default function DiamondDetailPage() {
       productId: diamond.id,
       productSlug: `loose-diamond-${diamond.id}`,
       productTitle: `${diamond.carat.toFixed(2)}ct ${diamond.shape} Diamond`,
-      productImage: diamond.imageUrl || '',
+      productImage: getDiamondImage(diamond.shape),
       selectedMetal: 'Loose diamond',
       selectedCarat: diamond.carat,
       selectedShape: diamond.shape,
@@ -129,14 +131,8 @@ export default function DiamondDetailPage() {
               }
             }
           `}</style>
-          <div style={{ aspectRatio: '1', background: '#F5E8ED', border: '0.5px solid #EDD9AF', position: 'relative' }}>
-            {diamond.imageUrl ? (
-              <Image src={diamond.imageUrl} alt={`${diamond.carat}ct ${diamond.shape} diamond`} fill sizes="(max-width: 900px) 100vw, 55vw" style={{ objectFit: 'cover' }} priority />
-            ) : (
-              <div className="flex h-full items-center justify-center">
-                <Gem color="#C9A961" size={72} strokeWidth={1.1} />
-              </div>
-            )}
+          <div style={{ aspectRatio: '1', background: '#FBF5F0', border: '0.5px solid #EDD9AF', position: 'relative' }}>
+            <Image src={diamondImage} alt={`${diamond.carat}ct ${diamond.shape} diamond`} fill sizes="(max-width: 900px) 100vw, 55vw" style={{ objectFit: 'contain', padding: '44px' }} priority />
           </div>
 
           <div>

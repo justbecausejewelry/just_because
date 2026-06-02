@@ -1,7 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import Image from 'next/image'
 import { Diamond as DiamondIcon, Edit, Eye, Plus, Search, Trash2 } from 'lucide-react'
+import { getDiamondImage } from '@/lib/diamondImages'
 
 type DiamondRecord = {
   id: string
@@ -148,6 +150,7 @@ function savePayload(form: DiamondForm, id?: string) {
     certificateNumber: form.certificateNumber.trim() || `IGI${Math.floor(Math.random() * 9000000 + 1000000)}`,
     certificateType: form.certificateType || 'IGI',
     certificateUrl: form.certificateUrl.trim() || null,
+    imageUrl: getDiamondImage(form.shape),
     isAvailable: form.isAvailable,
     isLabGrown: true,
   }
@@ -429,17 +432,20 @@ export default function AdminDiamondsPage() {
             </label>
           </div>
 
-          {form.carat && form.price ? (
-            <div style={{ marginTop: '20px', padding: '16px 20px', background: 'rgba(201,169,97,0.08)', border: '0.5px solid rgba(201,169,97,0.3)', display: 'inline-block' }}>
+          <div style={{ marginTop: '20px', padding: '16px 20px', background: 'rgba(201,169,97,0.08)', border: '0.5px solid rgba(201,169,97,0.3)', display: 'inline-flex', gap: '18px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ width: '96px', height: '96px', background: '#FBF5F0', border: '0.5px solid #EDD9AF', position: 'relative', flexShrink: 0 }}>
+              <Image src={getDiamondImage(form.shape)} alt={`${form.shape} diamond preview`} fill sizes="96px" style={{ objectFit: 'contain', padding: '14px' }} />
+            </div>
+            <div>
               <div style={{ fontSize: '10px', letterSpacing: '0.2em', color: '#C9A961', marginBottom: '4px' }}>DIAMOND PREVIEW</div>
               <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '18px', color: '#1A1014' }}>
-                {form.carat}ct {form.shape} - {form.color} - {form.clarity} - {form.cut}
+                {form.carat || '0.00'}ct {form.shape} - {form.color} - {form.clarity} - {form.cut}
               </div>
               <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '24px', color: '#C9A961' }}>
                 {formatMoney(Number(form.price) || 0)}
               </div>
             </div>
-          ) : null}
+          </div>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginTop: '24px' }}>
             <button onClick={() => void handleSave()} disabled={saving} style={{ padding: '12px 32px', background: saving ? '#B8A090' : '#1A1014', color: '#FBF5F0', border: 'none', fontSize: '11px', letterSpacing: '0.2em', cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-inter)' }}>

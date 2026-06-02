@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { getDiamondImage } from '@/lib/diamondImages'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -23,6 +24,7 @@ type DiamondPayload = {
   certificateNumber?: string | null
   certificateType?: string | null
   certificateUrl?: string | null
+  imageUrl?: string | null
   isAvailable?: boolean
   isLabGrown?: boolean
 }
@@ -62,6 +64,9 @@ function normalizePayload(body: Record<string, unknown>) {
     certificateUrl: typeof body.certificateUrl === 'string' && body.certificateUrl.trim()
       ? body.certificateUrl.trim()
       : null,
+    imageUrl: typeof body.imageUrl === 'string' && body.imageUrl.trim()
+      ? body.imageUrl.trim()
+      : getDiamondImage(typeof body.shape === 'string' ? body.shape : 'Round'),
     isAvailable: typeof body.isAvailable === 'boolean' ? body.isAvailable : true,
     isLabGrown: typeof body.isLabGrown === 'boolean' ? body.isLabGrown : true,
   }

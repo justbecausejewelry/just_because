@@ -10,6 +10,7 @@ import { useToast } from '@/context/ToastContext'
 import { ALL_DIAMONDS, Diamond, SHAPE_DATA } from '@/lib/diamondCatalog'
 import { supabase } from '@/lib/supabase'
 import DiamondVisualizer from '@/components/diamonds/DiamondVisualizer'
+import { getDiamondImage } from '@/lib/diamondImages'
 
 type DiamondRow = {
   id?: string | number | null
@@ -51,31 +52,11 @@ function parseNumber(value: string, fallback: number) {
   return Number.isFinite(nextValue) ? nextValue : fallback
 }
 
-function firstImage(images: DiamondRow['images'], imageUrl?: string | null) {
-  if (Array.isArray(images) && typeof images[0] === 'string') {
-    return images[0]
-  }
-
-  if (typeof images === 'string' && images.trim()) {
-    try {
-      const parsed = JSON.parse(images) as unknown
-      if (Array.isArray(parsed) && typeof parsed[0] === 'string') {
-        return parsed[0]
-      }
-    } catch {
-      return images
-    }
-  }
-
-  return imageUrl || ''
-}
-
 function mapDiamond(row: DiamondRow, index: number): Diamond {
   const shape = row.shape || 'Round'
   const carat = Number(row.carat ?? 1)
   const price = Number(row.price ?? 0)
   const fallback = ALL_DIAMONDS[index % ALL_DIAMONDS.length]
-  const shapeImage = SHAPE_DATA.find((item) => item.name === shape)?.img || fallback.img
 
   return {
     id: String(row.id || fallback.id),
@@ -94,7 +75,7 @@ function mapDiamond(row: DiamondRow, index: number): Diamond {
     certificateNumber: row.certificateNumber || row.reportNumber || fallback.certificateNumber,
     certificateType: row.certificateType || fallback.certificateType,
     certificateUrl: row.certificateUrl || fallback.certificateUrl,
-    img: firstImage(row.images, row.imageUrl) || shapeImage,
+    img: getDiamondImage(shape),
   }
 }
 
@@ -984,26 +965,38 @@ function DiamondsContent() {
                 <button
                   key={diamond.id}
                   onClick={() => setSelectedDiamond(diamond)}
-                  style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', overflow: 'hidden', cursor: 'pointer', transition: 'all 0.3s ease', borderRadius: '2px', textAlign: 'left', display: viewMode === 'grid' ? 'block' : 'grid', gridTemplateColumns: viewMode === 'grid' ? undefined : '180px 1fr' }}
+                  style={{
+                    background: '#FDF8F2',
+                    border: '0.5px solid rgba(237,217,175,0.75)',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 14px rgba(26,16,20,0.05)',
+                    cursor: 'pointer',
+                    display: viewMode === 'grid' ? 'block' : 'grid',
+                    gridTemplateColumns: viewMode === 'grid' ? undefined : '190px 1fr',
+                    overflow: 'hidden',
+                    textAlign: 'left',
+                    transition: 'box-shadow 0.2s ease, transform 0.2s ease',
+                  }}
                 >
-                  <div style={{ aspectRatio: '1', position: 'relative', overflow: 'hidden', background: '#F5E8ED' }}>
-                    <Image src={diamond.img} alt={`${diamond.carat}ct ${diamond.shape}`} fill style={{ objectFit: 'cover' }} sizes={viewMode === 'grid' ? '220px' : '180px'} quality={90} />
-                    <div style={{ position: 'absolute', top: '8px', left: '8px', background: 'rgba(26,16,20,0.85)', color: '#C9A961', fontSize: '8px', padding: '3px 7px', letterSpacing: '0.15em', fontFamily: 'var(--font-inter)', fontWeight: 500 }}>
+                  <div style={{ alignItems: 'center', background: '#FBF5F0', borderBottom: '0.5px solid rgba(237,217,175,0.7)', display: 'flex', height: '192px', justifyContent: 'center', overflow: 'hidden', padding: '24px', position: 'relative' }}>
+                    <Image src={diamond.img} alt={`${diamond.carat}ct ${diamond.shape}`} fill style={{ objectFit: 'contain', padding: '24px' }} sizes={viewMode === 'grid' ? '220px' : '190px'} quality={90} />
+                    <div style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(237,217,175,0.45)', color: '#C9A961', fontSize: '10px', padding: '3px 8px', letterSpacing: '0.12em', fontFamily: 'var(--font-inter)', fontWeight: 500, borderRadius: '4px' }}>
                       IGI
                     </div>
                   </div>
-                  <div style={{ padding: '14px 16px' }}>
-                    <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '15px', color: '#1A1014', marginBottom: '6px' }}>
-                      {diamond.carat}ct {diamond.shape}
+                  <div style={{ background: '#FDF8F2', padding: '16px' }}>
+                    <div style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '12px', fontWeight: 500, letterSpacing: '0.12em', marginBottom: '6px', textTransform: 'uppercase' }}>
+                      {diamond.shape}
                     </div>
-                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '10px' }}>
-                      {[diamond.color, diamond.clarity, diamond.cut].map((spec) => (
-                        <span key={spec} style={{ padding: '2px 7px', background: '#FBF5F0', border: '0.5px solid #EDD9AF', fontSize: '10px', color: '#B8A090', fontFamily: 'var(--font-inter)', borderRadius: '2px' }}>{spec}</span>
-                      ))}
+                    <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '20px', color: '#1A1014', marginBottom: '6px' }}>
+                      {diamond.carat}ct
+                    </div>
+                    <div style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', marginBottom: '14px' }}>
+                      {diamond.color} color - {diamond.clarity} clarity - {diamond.cut}
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
                       <div>
-                        <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '17px', color: '#1A1014' }}>${diamond.price.toLocaleString()}</div>
+                        <div style={{ fontFamily: 'var(--font-inter)', fontSize: '16px', color: '#C9A961', fontWeight: 500 }}>${diamond.price.toLocaleString()}</div>
                         <div style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px' }}>
                           ${Math.round((diamond.price || 0) / (diamond.carat || 1)).toLocaleString()}/ct
                         </div>
