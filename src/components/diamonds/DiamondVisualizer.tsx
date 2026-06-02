@@ -236,10 +236,10 @@ export default function DiamondVisualizer({
         <div
           style={{
             height: `${px}px`,
-            left: '49.1%',
+            left: '41.5%',
             pointerEvents: 'none',
             position: 'absolute',
-            top: '24.8%',
+            top: '28.3%',
             transform: 'translate(-50%, -50%)',
             transition: 'width 250ms ease, height 250ms ease',
             width: `${px}px`,
