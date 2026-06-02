@@ -8,6 +8,7 @@ import { useCart } from '@/context/CartContext'
 import { useToast } from '@/context/ToastContext'
 import { ALL_DIAMONDS, Diamond, SHAPE_DATA } from '@/lib/diamondCatalog'
 import { supabase as supabaseAdmin } from '@/lib/supabase'
+import DiamondVisualizer from '@/components/diamonds/DiamondVisualizer'
 
 type DiamondRow = {
   id?: string | number | null
@@ -279,9 +280,7 @@ function DiamondModal({
         </button>
 
         <div>
-          <div style={{ aspectRatio: '1', position: 'relative', overflow: 'hidden' }}>
-            <Image src={diamond.img} alt={diamond.shape} fill style={{ objectFit: 'cover' }} sizes="(max-width: 768px) 100vw, 450px" quality={90} />
-          </div>
+          <DiamondVisualizer shape={diamond.shape} carat={customCarat} />
           <div
             style={{
               padding: '24px',
