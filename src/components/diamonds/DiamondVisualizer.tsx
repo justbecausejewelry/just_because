@@ -91,7 +91,7 @@ function caratToPx(carat: number, containerWidthPx: number) {
   // Visibility scale keeps carat-to-carat ratios true while keeping small stones visible.
   const FINGER_WIDTH_FRACTION = 0.052
   const FINGER_MM = 16.9
-  const VISIBILITY_SCALE = 1.2
+  const VISIBILITY_SCALE = 3.07
   const pxPerMM = (containerWidthPx * FINGER_WIDTH_FRACTION) / FINGER_MM
   const diamondPx = diamondMM * pxPerMM * VISIBILITY_SCALE
 
