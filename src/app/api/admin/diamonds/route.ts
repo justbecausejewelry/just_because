@@ -13,12 +13,18 @@ type DiamondPayload = {
   color: string
   clarity: string
   cut?: string | null
+  polish?: string | null
+  symmetry?: string | null
+  fluorescence?: string | null
   price: number
   depthPercent?: number | null
   tablePercent?: number | null
   measurements?: string | null
   certificateNumber?: string | null
+  certificateType?: string | null
+  certificateUrl?: string | null
   isAvailable?: boolean
+  isLabGrown?: boolean
 }
 
 function generateSku() {
@@ -34,6 +40,9 @@ function normalizePayload(body: Record<string, unknown>) {
     color: typeof body.color === 'string' ? body.color : 'G',
     clarity: typeof body.clarity === 'string' ? body.clarity : 'VS1',
     cut: typeof body.cut === 'string' ? body.cut : null,
+    polish: typeof body.polish === 'string' ? body.polish : 'Excellent',
+    symmetry: typeof body.symmetry === 'string' ? body.symmetry : 'Excellent',
+    fluorescence: typeof body.fluorescence === 'string' ? body.fluorescence : 'None',
     price,
     depthPercent: body.depthPercent === null || body.depthPercent === '' || body.depthPercent === undefined
       ? null
@@ -47,7 +56,14 @@ function normalizePayload(body: Record<string, unknown>) {
     certificateNumber: typeof body.certificateNumber === 'string' && body.certificateNumber.trim()
       ? body.certificateNumber.trim()
       : `IGI-${Math.floor(Math.random() * 9000000 + 1000000)}`,
+    certificateType: typeof body.certificateType === 'string' && body.certificateType.trim()
+      ? body.certificateType.trim()
+      : 'IGI',
+    certificateUrl: typeof body.certificateUrl === 'string' && body.certificateUrl.trim()
+      ? body.certificateUrl.trim()
+      : null,
     isAvailable: typeof body.isAvailable === 'boolean' ? body.isAvailable : true,
+    isLabGrown: typeof body.isLabGrown === 'boolean' ? body.isLabGrown : true,
   }
 
   if (!Number.isFinite(payload.carat) || payload.carat <= 0) {
@@ -87,7 +103,6 @@ export async function POST(request: NextRequest) {
     const payload = {
       ...normalizePayload(body),
       sku: typeof body.sku === 'string' && body.sku.trim() ? body.sku.trim() : generateSku(),
-      certificateType: 'IGI',
       isLabGrown: true,
     }
 

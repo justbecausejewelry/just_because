@@ -11,12 +11,18 @@ type DiamondRecord = {
   color: string
   clarity: string
   cut?: string | null
+  polish?: string | null
+  symmetry?: string | null
+  fluorescence?: string | null
   price: number
   depthPercent?: number | null
   tablePercent?: number | null
   measurements?: string | null
   certificateNumber?: string | null
+  certificateType?: string | null
+  certificateUrl?: string | null
   isAvailable?: boolean | null
+  isLabGrown?: boolean | null
 }
 
 type DiamondForm = {
@@ -25,12 +31,18 @@ type DiamondForm = {
   color: string
   clarity: string
   cut: string
+  polish: string
+  symmetry: string
+  fluorescence: string
   price: string
   depthPercent: string
   tablePercent: string
   measurements: string
   certificateNumber: string
+  certificateType: string
+  certificateUrl: string
   isAvailable: boolean
+  isLabGrown: boolean
 }
 
 type DiamondListResponse = {
@@ -47,6 +59,9 @@ const SHAPES = ['Round', 'Oval', 'Emerald', 'Cushion', 'Princess', 'Pear', 'Marq
 const COLORS = ['D', 'E', 'F', 'G', 'H', 'I', 'J']
 const CLARITIES = ['IF', 'VVS1', 'VVS2', 'VS1', 'VS2', 'SI1', 'SI2']
 const CUTS = ['Ideal', 'Excellent', 'Very Good', 'Good']
+const POLISH_OPTIONS = ['Ideal', 'Excellent', 'Very Good', 'Good', 'Fair']
+const SYMMETRY_OPTIONS = ['Ideal', 'Excellent', 'Very Good', 'Good', 'Fair']
+const FLUORESCENCE_OPTIONS = ['None', 'Faint', 'Medium', 'Strong', 'Very Strong']
 
 const emptyForm: DiamondForm = {
   shape: 'Round',
@@ -54,12 +69,18 @@ const emptyForm: DiamondForm = {
   color: 'G',
   clarity: 'VS1',
   cut: 'Excellent',
+  polish: 'Excellent',
+  symmetry: 'Excellent',
+  fluorescence: 'None',
   price: '',
   depthPercent: '',
   tablePercent: '',
   measurements: '',
   certificateNumber: '',
+  certificateType: 'IGI',
+  certificateUrl: '',
   isAvailable: true,
+  isLabGrown: true,
 }
 
 const inputStyle: CSSProperties = {
@@ -94,12 +115,18 @@ function formFromDiamond(diamond: DiamondRecord): DiamondForm {
     color: diamond.color || 'G',
     clarity: diamond.clarity || 'VS1',
     cut: diamond.cut || 'Excellent',
+    polish: diamond.polish || 'Excellent',
+    symmetry: diamond.symmetry || 'Excellent',
+    fluorescence: diamond.fluorescence || 'None',
     price: diamond.price?.toString() || '',
     depthPercent: diamond.depthPercent?.toString() || '',
     tablePercent: diamond.tablePercent?.toString() || '',
     measurements: diamond.measurements || '',
     certificateNumber: diamond.certificateNumber || '',
+    certificateType: diamond.certificateType || 'IGI',
+    certificateUrl: diamond.certificateUrl || '',
     isAvailable: diamond.isAvailable !== false,
+    isLabGrown: diamond.isLabGrown !== false,
   }
 }
 
@@ -111,12 +138,18 @@ function savePayload(form: DiamondForm, id?: string) {
     color: form.color,
     clarity: form.clarity,
     cut: form.cut,
+    polish: form.polish || 'Excellent',
+    symmetry: form.symmetry || 'Excellent',
+    fluorescence: form.fluorescence || 'None',
     price: Number(form.price),
     depthPercent: form.depthPercent ? Number(form.depthPercent) : null,
     tablePercent: form.tablePercent ? Number(form.tablePercent) : null,
     measurements: form.measurements.trim() || null,
-    certificateNumber: form.certificateNumber.trim() || null,
+    certificateNumber: form.certificateNumber.trim() || `IGI${Math.floor(Math.random() * 9000000 + 1000000)}`,
+    certificateType: form.certificateType || 'IGI',
+    certificateUrl: form.certificateUrl.trim() || null,
     isAvailable: form.isAvailable,
+    isLabGrown: true,
   }
 }
 
@@ -349,6 +382,24 @@ export default function AdminDiamondsPage() {
               </select>
             </label>
             <label>
+              <span style={labelStyle}>POLISH</span>
+              <select value={form.polish} onChange={(event) => setForm({ ...form, polish: event.target.value })} style={{ ...inputStyle, cursor: 'pointer' }}>
+                {POLISH_OPTIONS.map((polish) => <option key={polish} value={polish}>{polish}</option>)}
+              </select>
+            </label>
+            <label>
+              <span style={labelStyle}>SYMMETRY</span>
+              <select value={form.symmetry} onChange={(event) => setForm({ ...form, symmetry: event.target.value })} style={{ ...inputStyle, cursor: 'pointer' }}>
+                {SYMMETRY_OPTIONS.map((symmetry) => <option key={symmetry} value={symmetry}>{symmetry}</option>)}
+              </select>
+            </label>
+            <label>
+              <span style={labelStyle}>FLUORESCENCE</span>
+              <select value={form.fluorescence} onChange={(event) => setForm({ ...form, fluorescence: event.target.value })} style={{ ...inputStyle, cursor: 'pointer' }}>
+                {FLUORESCENCE_OPTIONS.map((fluorescence) => <option key={fluorescence} value={fluorescence}>{fluorescence}</option>)}
+              </select>
+            </label>
+            <label>
               <span style={labelStyle}>DEPTH %</span>
               <input type="number" step="0.1" placeholder="e.g. 62.3" value={form.depthPercent} onChange={(event) => setForm({ ...form, depthPercent: event.target.value })} style={inputStyle} />
             </label>
@@ -361,8 +412,16 @@ export default function AdminDiamondsPage() {
               <input type="text" placeholder="e.g. 7.23 x 7.25 x 4.48" value={form.measurements} onChange={(event) => setForm({ ...form, measurements: event.target.value })} style={inputStyle} />
             </label>
             <label>
-              <span style={labelStyle}>IGI REPORT #</span>
+              <span style={labelStyle}>CERTIFICATE #</span>
               <input type="text" placeholder="e.g. IGI-2026-009999" value={form.certificateNumber} onChange={(event) => setForm({ ...form, certificateNumber: event.target.value })} style={inputStyle} />
+            </label>
+            <label>
+              <span style={labelStyle}>CERTIFICATE TYPE</span>
+              <input type="text" placeholder="IGI" value={form.certificateType} onChange={(event) => setForm({ ...form, certificateType: event.target.value })} style={inputStyle} />
+            </label>
+            <label>
+              <span style={labelStyle}>CERTIFICATE URL</span>
+              <input type="url" placeholder="https://igi.org/cert/..." value={form.certificateUrl} onChange={(event) => setForm({ ...form, certificateUrl: event.target.value })} style={inputStyle} />
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingTop: '22px' }}>
               <input type="checkbox" checked={form.isAvailable} onChange={(event) => setForm({ ...form, isAvailable: event.target.checked })} style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#1A1014' }} />
@@ -447,7 +506,12 @@ export default function AdminDiamondsPage() {
               <div style={{ fontSize: '12px', color: '#B8A090' }}>{diamond.cut || '-'}</div>
               <div style={{ fontSize: '12px', color: '#B8A090' }}>{diamond.depthPercent ? `${diamond.depthPercent}%` : '-'}</div>
               <div style={{ fontSize: '12px', color: '#B8A090' }}>{diamond.tablePercent ? `${diamond.tablePercent}%` : '-'}</div>
-              <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '15px', color: '#1A1014' }}>{formatMoney(diamond.price || 0)}</div>
+              <div>
+                <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '15px', color: '#1A1014' }}>{formatMoney(diamond.price || 0)}</div>
+                <div style={{ fontSize: '10px', color: '#B8A090' }}>
+                  ${Math.round((diamond.price || 0) / (diamond.carat || 1)).toLocaleString()}/ct
+                </div>
+              </div>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <span title={diamond.isAvailable !== false ? 'Available' : 'Unavailable'} style={{ width: '8px', height: '8px', borderRadius: '50%', background: diamond.isAvailable !== false ? '#7A8F72' : '#A85C6A', flexShrink: 0 }} />
                 <button onClick={() => handleEdit(diamond)} title="Edit" style={{ width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: '0.5px solid #EDD9AF', cursor: 'pointer', color: '#B8A090' }}>

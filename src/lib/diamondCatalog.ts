@@ -6,10 +6,15 @@ export type Diamond = {
   clarity: string
   cut: string
   price: number
-  depth: string
-  table: string
+  polish?: string | null
+  symmetry?: string | null
+  fluorescence?: string | null
+  depthPercent: string
+  tablePercent: string
   measurements: string
-  igi: string
+  certificateNumber: string
+  certificateType?: string | null
+  certificateUrl?: string | null
   img: string
 }
 
@@ -92,10 +97,15 @@ export function generateDiamonds() {
       clarity,
       cut,
       price,
-      depth: (58 + seededValue(i + 1, 61) * 8).toFixed(1),
-      table: (54 + seededValue(i + 1, 71) * 10).toFixed(0),
+      polish: 'Excellent',
+      symmetry: 'Excellent',
+      fluorescence: 'None',
+      depthPercent: (58 + seededValue(i + 1, 61) * 8).toFixed(1),
+      tablePercent: (54 + seededValue(i + 1, 71) * 10).toFixed(0),
       measurements: `${(carat * 4.5 + 2).toFixed(2)} x ${(carat * 4.35 + 2).toFixed(2)} x ${(carat * 2.8 + 1.5).toFixed(2)}`,
-      igi: `IGI${Math.floor(seededValue(i + 1, 81) * 9000000 + 1000000)}`,
+      certificateNumber: `IGI${Math.floor(seededValue(i + 1, 81) * 9000000 + 1000000)}`,
+      certificateType: 'IGI',
+      certificateUrl: null,
       img: shapeImage,
     })
   }

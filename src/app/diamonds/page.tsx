@@ -13,21 +13,22 @@ import DiamondVisualizer from '@/components/diamonds/DiamondVisualizer'
 type DiamondRow = {
   id?: string | number | null
   shape?: string | null
-  caratWeight?: number | string | null
   carat?: number | string | null
   color?: string | null
   clarity?: string | null
   cut?: string | null
+  polish?: string | null
+  symmetry?: string | null
+  fluorescence?: string | null
   price?: number | string | null
   images?: string[] | string | null
   imageUrl?: string | null
-  depth?: number | string | null
-  table?: number | string | null
   depthPercent?: number | string | null
   tablePercent?: number | string | null
   measurements?: string | null
-  igi?: string | null
   certificateNumber?: string | null
+  certificateType?: string | null
+  certificateUrl?: string | null
   reportNumber?: string | null
 }
 
@@ -69,7 +70,7 @@ function firstImage(images: DiamondRow['images'], imageUrl?: string | null) {
 
 function mapDiamond(row: DiamondRow, index: number): Diamond {
   const shape = row.shape || 'Round'
-  const carat = Number(row.caratWeight ?? row.carat ?? 1)
+  const carat = Number(row.carat ?? 1)
   const price = Number(row.price ?? 0)
   const fallback = ALL_DIAMONDS[index % ALL_DIAMONDS.length]
   const shapeImage = SHAPE_DATA.find((item) => item.name === shape)?.img || fallback.img
@@ -82,10 +83,15 @@ function mapDiamond(row: DiamondRow, index: number): Diamond {
     clarity: row.clarity || fallback.clarity,
     cut: row.cut || fallback.cut,
     price: Number.isFinite(price) && price > 0 ? price : fallback.price,
-    depth: String(row.depthPercent || row.depth || fallback.depth),
-    table: String(row.tablePercent || row.table || fallback.table),
+    polish: row.polish || fallback.polish,
+    symmetry: row.symmetry || fallback.symmetry,
+    fluorescence: row.fluorescence || fallback.fluorescence,
+    depthPercent: String(row.depthPercent || fallback.depthPercent),
+    tablePercent: String(row.tablePercent || fallback.tablePercent),
     measurements: row.measurements || fallback.measurements,
-    igi: row.igi || row.certificateNumber || row.reportNumber || fallback.igi,
+    certificateNumber: row.certificateNumber || row.reportNumber || fallback.certificateNumber,
+    certificateType: row.certificateType || fallback.certificateType,
+    certificateUrl: row.certificateUrl || fallback.certificateUrl,
     img: firstImage(row.images, row.imageUrl) || shapeImage,
   }
 }
@@ -323,7 +329,12 @@ function DiamondModal({
         </button>
 
         <div>
-          <DiamondVisualizer shape={diamond.shape} carat={customCarat} />
+          <DiamondVisualizer
+            initialShape={diamond.shape || 'Round'}
+            initialCarat={customCarat || 1}
+            onCaratChange={setCustomCarat}
+            showShapeSelector={false}
+          />
           <div
             style={{
               padding: '24px',
@@ -544,15 +555,25 @@ function DiamondModal({
           <div style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', padding: '16px 20px', marginBottom: '20px' }}>
             {[
               ['Measurements', `${diamond.measurements} mm`],
-              ['Table', `${diamond.table}%`],
-              ['Depth', `${diamond.depth}%`],
-              ['IGI Report', diamond.igi],
+              ['Table', `${diamond.tablePercent}%`],
+              ['Depth', `${diamond.depthPercent}%`],
+              ['IGI Report', diamond.certificateNumber],
             ].map(([label, value], index) => (
               <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', padding: '8px 0', borderBottom: index < 3 ? '0.5px solid #EDD9AF' : 'none', fontSize: '13px', fontFamily: 'var(--font-inter)' }}>
                 <span style={{ color: '#B8A090' }}>{label}</span>
                 <span style={{ color: '#1A1014', fontWeight: 500 }}>{value}</span>
               </div>
             ))}
+            {diamond.certificateUrl ? (
+              <a
+                href={diamond.certificateUrl}
+                target="_blank"
+                rel="noreferrer"
+                style={{ color: '#C9A961', display: 'inline-block', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.12em', marginTop: '12px', textDecoration: 'none' }}
+              >
+                VIEW CERTIFICATE -
+              </a>
+            ) : null}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', background: '#FDF8F2', border: '0.5px solid #EDD9AF', marginBottom: '24px' }}>
@@ -647,7 +668,7 @@ function DiamondsContent() {
       let query = supabaseAdmin
         .from('Diamond')
         .select('*')
-        .neq('isAvailable', false)
+        .eq('isAvailable', true)
 
       if (selectedShape && selectedShape !== 'All') {
         query = query.ilike('shape', selectedShape)
@@ -1005,7 +1026,12 @@ function DiamondsContent() {
                       ))}
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
-                      <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '17px', color: '#1A1014' }}>${diamond.price.toLocaleString()}</div>
+                      <div>
+                        <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '17px', color: '#1A1014' }}>${diamond.price.toLocaleString()}</div>
+                        <div style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px' }}>
+                          ${Math.round((diamond.price || 0) / (diamond.carat || 1)).toLocaleString()}/ct
+                        </div>
+                      </div>
                       <div style={{ fontSize: '10px', color: '#C9A961', fontFamily: 'var(--font-inter)', letterSpacing: '0.1em' }}>VIEW -</div>
                     </div>
                   </div>

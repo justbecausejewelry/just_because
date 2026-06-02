@@ -164,10 +164,15 @@ function BuildContent() {
       clarity: searchParams.get('clarity') || diamond?.clarity || 'VS1',
       cut: diamond?.cut || 'Excellent',
       price: Number.isFinite(customPrice) && customPrice > 0 ? customPrice : diamond?.price || 0,
-      depth: diamond?.depth || '62.0',
-      table: diamond?.table || '58',
+      polish: diamond?.polish || 'Excellent',
+      symmetry: diamond?.symmetry || 'Excellent',
+      fluorescence: diamond?.fluorescence || 'None',
+      depthPercent: diamond?.depthPercent || '62.0',
+      tablePercent: diamond?.tablePercent || '58',
       measurements: diamond?.measurements || '6.50 x 6.50 x 4.00',
-      igi: diamond?.igi || requestedDiamond,
+      certificateNumber: diamond?.certificateNumber || requestedDiamond,
+      certificateType: diamond?.certificateType || 'IGI',
+      certificateUrl: diamond?.certificateUrl || null,
       img: diamond?.img || shapeImage,
     }
     setSelectedDiamond(nextDiamond)
