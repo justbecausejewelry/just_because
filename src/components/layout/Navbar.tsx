@@ -450,63 +450,47 @@ export function Navbar() {
             position: 'relative',
           }}
         >
-          <Link href="/" style={{ textDecoration: 'none', flexShrink: 0, minWidth: 'fit-content', userSelect: 'none', zIndex: 2 }}>
-            <div style={{ alignItems: 'center', display: 'flex', flexDirection: 'column', gap: '1px', lineHeight: 1 }}>
-              <span
-                style={{
-                  fontFamily: 'var(--font-italianno)',
-                  filter: 'drop-shadow(0 1px 3px rgba(201,169,97,0.25))',
-                  fontSize: '2.2rem',
-                  fontStyle: 'italic',
-                  color: '#C9A961',
-                  display: 'block',
-                  lineHeight: 1,
-                  letterSpacing: '0.03em',
-                  whiteSpace: 'nowrap',
-                }}
-              >
+          <Link href="/" className="shrink-0 select-none">
+            <div style={{
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'baseline',
+              gap: '0px',
+              whiteSpace: 'nowrap',
+              textDecoration: 'none',
+            }}>
+              <span style={{
+                fontFamily: "'Italianno', cursive",
+                fontSize: '2.2rem',
+                fontStyle: 'italic',
+                color: '#C9A961',
+                lineHeight: '1',
+                letterSpacing: '0.02em',
+              }}>
                 just
               </span>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  marginTop: '-4px',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                <div
-                  style={{
-                    width: '18px',
-                    height: '0.5px',
-                    background: '#C9A961',
-                    flexShrink: 0,
-                  }}
-                />
-                <span
-                  style={{
-                    fontFamily: 'var(--font-inter)',
-                    fontSize: '7.5px',
-                    letterSpacing: '0.32em',
-                    color: '#1A1014',
-                    fontWeight: 500,
-                    lineHeight: 1,
-                    textTransform: 'uppercase',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  BECAUSE
-                </span>
-                <div
-                  style={{
-                    width: '18px',
-                    height: '0.5px',
-                    background: '#C9A961',
-                    flexShrink: 0,
-                  }}
-                />
-              </div>
+
+              <span style={{
+                color: '#C9A961',
+                fontSize: '0.65rem',
+                letterSpacing: '3px',
+                margin: '0 4px 0 2px',
+                opacity: 0.7,
+              }}>
+                ─
+              </span>
+
+              <span style={{
+                fontFamily: "'Cormorant Garamond', 'Didact Gothic', serif",
+                fontSize: '0.6rem',
+                letterSpacing: '0.38em',
+                color: '#1A1014',
+                fontWeight: '600',
+                textTransform: 'uppercase',
+                lineHeight: '1',
+              }}>
+                BECAUSE
+              </span>
             </div>
           </Link>
 
@@ -671,16 +655,47 @@ export function Navbar() {
               borderBottom: '0.5px solid rgba(201,169,97,0.15)',
             }}
           >
-            <Link href="/" onClick={() => setMobileOpen(false)} style={{ textDecoration: 'none', flexShrink: 0, minWidth: 'fit-content', userSelect: 'none' }}>
-              <span style={{ display: 'block', filter: 'drop-shadow(0 1px 3px rgba(201,169,97,0.25))', fontFamily: 'var(--font-italianno)', fontSize: '2.2rem', fontStyle: 'italic', color: '#C9A961', lineHeight: 1, letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>
+            <Link href="/" onClick={() => setMobileOpen(false)} className="shrink-0 select-none">
+              <div style={{
+                display: 'flex',
+                flexDirection: 'row',
+                alignItems: 'baseline',
+                gap: '0px',
+                whiteSpace: 'nowrap',
+                textDecoration: 'none',
+              }}>
+                <span style={{
+                  fontFamily: "'Italianno', cursive",
+                  fontSize: '2.2rem',
+                  fontStyle: 'italic',
+                  color: '#C9A961',
+                  lineHeight: '1',
+                  letterSpacing: '0.02em',
+                }}>
                 just
-              </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '-4px', whiteSpace: 'nowrap' }}>
-                <div style={{ width: '18px', height: '0.5px', background: 'rgba(201,169,97,0.8)' }} />
-                <span style={{ fontFamily: 'var(--font-inter)', fontSize: '7.5px', fontWeight: 500, letterSpacing: '0.32em', color: 'rgba(251,245,240,0.7)', lineHeight: 1, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                </span>
+
+                <span style={{
+                  color: '#C9A961',
+                  fontSize: '0.65rem',
+                  letterSpacing: '3px',
+                  margin: '0 4px 0 2px',
+                  opacity: 0.7,
+                }}>
+                  ─
+                </span>
+
+                <span style={{
+                  fontFamily: "'Cormorant Garamond', 'Didact Gothic', serif",
+                  fontSize: '0.6rem',
+                  letterSpacing: '0.38em',
+                  color: '#FBF5F0',
+                  fontWeight: '600',
+                  textTransform: 'uppercase',
+                  lineHeight: '1',
+                }}>
                   BECAUSE
                 </span>
-                <div style={{ width: '18px', height: '0.5px', background: 'rgba(201,169,97,0.8)' }} />
               </div>
             </Link>
 
