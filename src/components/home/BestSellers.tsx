@@ -182,7 +182,7 @@ function ProductCard({ product }: { product: Product }) {
                   left: '10px',
                   backgroundColor: badge === 'NEW' ? '#1A1014' : '#E8C4D0',
                   color: badge === 'NEW' ? '#FBF5F0' : '#6B2D44',
-                  fontFamily: 'var(--font-inter)',
+                  fontFamily: 'var(--font-jost)',
                   fontSize: '9px',
                   letterSpacing: '0.15em',
                   padding: '4px 10px',
@@ -198,8 +198,9 @@ function ProductCard({ product }: { product: Product }) {
             <p
               style={{
                 color: '#C9A961',
-                fontFamily: 'var(--font-inter)',
-                fontSize: '9px',
+                fontFamily: 'var(--font-jost)',
+                fontSize: '11px',
+                fontWeight: 500,
                 letterSpacing: '0.2em',
                 marginBottom: '6px',
                 textTransform: 'uppercase',
@@ -210,9 +211,9 @@ function ProductCard({ product }: { product: Product }) {
             <h3
               style={{
                 color: '#1A1014',
-                fontFamily: 'var(--font-playfair)',
-                fontSize: '15px',
-                fontWeight: 400,
+                fontFamily: 'var(--font-cormorant)',
+                fontSize: '18px',
+                fontWeight: 500,
                 lineHeight: 1.3,
                 marginBottom: '8px',
               }}
@@ -241,8 +242,8 @@ function ProductCard({ product }: { product: Product }) {
                 <span
                   style={{
                     color: '#B8A090',
-                    fontFamily: 'var(--font-inter)',
-                    fontSize: '10px',
+                    fontFamily: 'var(--font-jost)',
+                    fontSize: '12px',
                     marginRight: '6px',
                   }}
                 >
@@ -251,8 +252,8 @@ function ProductCard({ product }: { product: Product }) {
                 <span
                   style={{
                     color: '#1A1014',
-                    fontFamily: 'var(--font-inter)',
-                    fontSize: '15px',
+                    fontFamily: 'var(--font-jost)',
+                    fontSize: '17px',
                     fontWeight: 500,
                   }}
                 >
@@ -267,9 +268,10 @@ function ProductCard({ product }: { product: Product }) {
               style={{
                 backgroundColor: '#1A1014',
                 color: '#FBF5F0',
-                fontFamily: 'var(--font-inter)',
-                fontSize: '10px',
-                letterSpacing: '0.18em',
+                fontFamily: 'var(--font-jost)',
+                fontSize: '13px',
+                fontWeight: 500,
+                letterSpacing: '0.12em',
                 padding: '10px',
                 textAlign: 'center',
                 width: '100%',
@@ -396,9 +398,10 @@ export function BestSellers() {
           <p
             style={{
               color: '#C9A961',
-              fontFamily: 'var(--font-inter)',
-              fontSize: '10px',
-              letterSpacing: '0.3em',
+              fontFamily: 'var(--font-jost)',
+              fontSize: '11px',
+              fontWeight: 500,
+              letterSpacing: '0.2em',
               marginBottom: '10px',
             }}
           >
@@ -407,8 +410,8 @@ export function BestSellers() {
           <h2
             style={{
               color: '#1A1014',
-              fontFamily: 'var(--font-playfair)',
-              fontSize: '32px',
+              fontFamily: 'var(--font-cormorant)',
+              fontSize: 'clamp(2rem, 4vw, 3.5rem)',
               fontWeight: 400,
               lineHeight: 1.15,
               margin: 0,
@@ -422,8 +425,8 @@ export function BestSellers() {
           className="jb-gold-link"
           style={{
             color: '#C9A961',
-            fontFamily: 'var(--font-inter)',
-            fontSize: '11px',
+            fontFamily: 'var(--font-jost)',
+            fontSize: '13px',
             letterSpacing: '0.12em',
             textDecoration: 'none',
           }}

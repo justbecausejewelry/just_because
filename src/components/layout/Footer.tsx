@@ -63,14 +63,14 @@ export function Footer() {
       <div className="footer-grid grid gap-10 md:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">
         <div className="text-center md:text-left">
           <Link href="/" className="flex items-baseline justify-center gap-1 md:justify-start">
-            <span className="text-[30px] leading-none" style={{ color: '#C9A961', fontFamily: 'var(--font-italianno)' }}>
+            <span className="text-[38px] leading-none" style={{ color: '#C9A961', fontFamily: 'var(--font-italianno)' }}>
               just
             </span>
-            <span className="text-[13px] tracking-[0.28em]" style={{ color: '#E8C4D0', fontFamily: 'var(--font-inter)', fontWeight: 500 }}>
+            <span className="text-[9px] tracking-[0.35em]" style={{ color: '#FBF5F0', fontFamily: 'var(--font-jost)', fontWeight: 500 }}>
               BECAUSE
             </span>
           </Link>
-          <p className="mx-auto mt-3 max-w-[230px] text-[11px] leading-[1.7] md:mx-0" style={{ color: '#B8A090', fontFamily: 'var(--font-inter)' }}>
+          <p className="mx-auto mt-3 max-w-[260px] leading-[1.7] md:mx-0" style={{ color: 'rgba(251,245,240,0.6)', fontFamily: 'var(--font-cormorant)', fontSize: '16px', fontStyle: 'italic' }}>
             Lab-grown diamonds and recycled gold, crafted for every moment that
             does not need a name.
           </p>
@@ -89,12 +89,12 @@ export function Footer() {
 
         {columns.map((column) => (
           <div key={column.title}>
-            <h3 className="mb-4 text-[9px] tracking-[0.22em]" style={{ color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontWeight: 500 }}>
+            <h3 className="mb-4 text-[11px] tracking-[0.2em]" style={{ color: '#C9A961', fontFamily: 'var(--font-jost)', fontWeight: 600 }}>
               {column.title}
             </h3>
             <div className="flex flex-col gap-2">
               {column.links.map((link) => (
-                <Link key={link.label} href={link.href} className="text-[13px] leading-[2.2] md:text-[11px]" style={{ color: '#D4C8C0', fontFamily: 'var(--font-inter)' }}>
+                <Link key={link.label} href={link.href} className="leading-[2.2]" style={{ color: 'rgba(251,245,240,0.7)', fontFamily: 'var(--font-jost)', fontSize: '15px', fontWeight: 300 }}>
                   {link.label}
                 </Link>
               ))}
@@ -103,12 +103,12 @@ export function Footer() {
         ))}
       </div>
 
-      <div className="footer-bottom mt-10 flex flex-col justify-between gap-3 border-t pt-5 text-center text-[10px] md:flex-row md:text-left" style={{ borderColor: 'rgba(201,169,97,0.2)', fontFamily: 'var(--font-inter)' }}>
+      <div className="footer-bottom mt-10 flex flex-col justify-between gap-3 border-t pt-5 text-center md:flex-row md:text-left" style={{ borderColor: 'rgba(201,169,97,0.2)', fontFamily: 'var(--font-jost)', fontSize: '13px' }}>
         <div style={{ color: '#B8A090' }}>© 2026 Just Because. All rights reserved.</div>
         <div
           style={{
-            color: '#C9A961',
-            fontSize: '10px',
+            color: 'rgba(251,245,240,0.4)',
+            fontSize: '13px',
             letterSpacing: '0.1em',
           }}
         >

@@ -264,7 +264,8 @@ function ProductCard({ product }: { product: Product }) {
                   backgroundColor: badge === 'NEW' ? '#1A1014' : '#E8C4D0',
                   color: badge === 'NEW' ? '#FBF5F0' : '#6B2D44',
                   fontFamily: 'var(--font-inter)',
-                  fontSize: '9px',
+                  fontSize: '11px',
+                  fontWeight: 500,
                   letterSpacing: '0.15em',
                   padding: '4px 10px',
                 }}
@@ -274,10 +275,10 @@ function ProductCard({ product }: { product: Product }) {
             )}
           </div>
           <div style={{ padding: '18px 18px 22px', position: 'relative' }}>
-            <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.2em', marginBottom: '7px', textTransform: 'uppercase' }}>
+            <p style={{ color: '#C9A961', fontFamily: 'var(--font-jost)', fontSize: '11px', fontWeight: 500, letterSpacing: '0.2em', marginBottom: '7px', textTransform: 'uppercase' }}>
               {prettify(product.category)}
             </p>
-            <h2 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '18px', fontWeight: 400, lineHeight: 1.25, marginBottom: '9px' }}>
+            <h2 style={{ color: '#1A1014', fontFamily: 'var(--font-cormorant)', fontSize: '18px', fontWeight: 500, lineHeight: 1.25, marginBottom: '9px' }}>
               {product.title}
             </h2>
             <div className="mb-3 flex items-center gap-[7px]">
@@ -286,10 +287,10 @@ function ProductCard({ product }: { product: Product }) {
               ))}
             </div>
             <p style={{ margin: 0 }}>
-              <span style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px', marginRight: '6px' }}>From</span>
-              <span style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '16px', fontWeight: 500 }}>{formatPrice(product.basePrice)}</span>
+              <span style={{ color: '#B8A090', fontFamily: 'var(--font-jost)', fontSize: '12px', marginRight: '6px' }}>From</span>
+              <span style={{ color: '#1A1014', fontFamily: 'var(--font-jost)', fontSize: '17px', fontWeight: 500 }}>{formatPrice(product.basePrice)}</span>
             </p>
-            <div data-hover-cta className="absolute inset-x-0 bottom-0 translate-y-full transition-transform duration-300 ease-out group-hover:translate-y-0" style={{ backgroundColor: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.18em', padding: '11px', textAlign: 'center' }}>
+            <div data-hover-cta className="absolute inset-x-0 bottom-0 translate-y-full transition-transform duration-300 ease-out group-hover:translate-y-0" style={{ backgroundColor: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-jost)', fontSize: '13px', fontWeight: 500, letterSpacing: '0.12em', padding: '11px', textAlign: 'center' }}>
               Customize →
             </div>
           </div>
@@ -479,10 +480,10 @@ function ProductsContent() {
       </div>
 
       <header className="px-6 py-12 md:px-20 md:py-16" style={{ borderBottom: '0.5px solid #EDD9AF' }}>
-        <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.3em', marginBottom: '10px' }}>
+        <p style={{ color: '#C9A961', fontFamily: 'var(--font-jost)', fontSize: '11px', fontWeight: 500, letterSpacing: '0.2em', marginBottom: '10px' }}>
           JUST BECAUSE COLLECTION
         </p>
-        <h1 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: 'clamp(34px, 5vw, 52px)', fontWeight: 400, lineHeight: 1.05, margin: 0 }}>
+        <h1 style={{ color: '#1A1014', fontFamily: 'var(--font-cormorant)', fontSize: 'clamp(2.5rem, 5vw, 4rem)', fontWeight: 400, lineHeight: 1.05, margin: 0 }}>
           Lab-grown pieces, made personal
         </h1>
       </header>

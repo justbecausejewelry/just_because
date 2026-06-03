@@ -751,12 +751,12 @@ export default function ProductDetailPage() {
             <span style={{ color: '#1A1014' }}>{product.title}</span>
           </nav>
 
-          <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.2em', marginBottom: '10px', textTransform: 'uppercase' }}>{prettify(product.category)}</p>
-          <h1 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: 'clamp(28px, 5vw, 42px)', fontWeight: 400, lineHeight: 1.1, margin: '0 0 10px' }}>
+          <p style={{ color: '#C9A961', fontFamily: 'var(--font-jost)', fontSize: '11px', fontWeight: 500, letterSpacing: '0.2em', marginBottom: '10px', textTransform: 'uppercase' }}>{prettify(product.category)}</p>
+          <h1 style={{ color: '#1A1014', fontFamily: 'var(--font-cormorant)', fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: 400, lineHeight: 1.1, margin: '0 0 10px' }}>
             {product.title}
           </h1>
           <div>
-            <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', marginBottom: '6px' }}>From</p>
+            <p style={{ color: '#B8A090', fontFamily: 'var(--font-jost)', fontSize: '12px', marginBottom: '6px' }}>From</p>
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentPrice}
@@ -764,7 +764,7 @@ export default function ProductDetailPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.25 }}
-                style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: 'clamp(34px, 5vw, 42px)', letterSpacing: '-0.02em' }}
+                style={{ color: '#1A1014', fontFamily: 'var(--font-cormorant)', fontSize: '2.5rem', letterSpacing: 0, fontWeight: 400 }}
               >
                 {currentPrice}
               </motion.div>
@@ -790,14 +790,14 @@ export default function ProductDetailPage() {
               >
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '16px', marginBottom: '14px' }}>
                   <div>
-                    <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '6px' }}>
+                    <p style={{ color: '#C9A961', fontFamily: 'var(--font-jost)', fontSize: '10px', fontWeight: 500, letterSpacing: '0.18em', marginBottom: '6px' }}>
                       DIAMOND SIZE
                     </p>
-                    <h2 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '22px', fontWeight: 400, margin: 0 }}>
+                    <h2 style={{ color: '#1A1014', fontFamily: 'var(--font-cormorant)', fontSize: '22px', fontWeight: 500, margin: 0 }}>
                       Preview on hand
                     </h2>
                   </div>
-                  <div style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '24px', whiteSpace: 'nowrap' }}>
+                  <div style={{ color: '#1A1014', fontFamily: 'var(--font-cormorant)', fontSize: '2.5rem', fontWeight: 400, whiteSpace: 'nowrap' }}>
                     {visualizerCarat.toFixed(1)} ct
                   </div>
                 </div>

@@ -324,17 +324,18 @@ export function Navbar() {
       <style>{`
         .nav-logo-script {
           font-family: var(--font-italianno), cursive !important;
-          font-size: 30px !important;
+          font-size: 2.4rem !important;
           color: #1A1014 !important;
           line-height: 0.85 !important;
           display: block !important;
         }
 
         .mega-link {
-          font-size: 13px;
+          font-size: 15px;
           color: #1A1014;
           text-decoration: none;
-          font-family: var(--font-inter);
+          font-family: var(--font-jost);
+          font-weight: 300;
           line-height: 2.2;
           display: block;
           transition: color 0.15s ease;
@@ -461,7 +462,7 @@ export function Navbar() {
             }}>
               <span style={{
                 fontFamily: "'Italianno', cursive",
-                fontSize: '2.2rem',
+                fontSize: '2.4rem',
                 fontStyle: 'italic',
                 color: '#1A1014',
                 lineHeight: '1',
@@ -481,11 +482,11 @@ export function Navbar() {
               </span>
 
               <span style={{
-                fontFamily: "'Cormorant Garamond', 'Didact Gothic', serif",
-                fontSize: '0.6rem',
-                letterSpacing: '0.38em',
+                fontFamily: 'var(--font-jost), sans-serif',
+                fontSize: '9px',
+                letterSpacing: '0.35em',
                 color: '#1A1014',
-                fontWeight: '600',
+                fontWeight: 500,
                 textTransform: 'uppercase',
                 lineHeight: '1',
               }}>
@@ -502,13 +503,13 @@ export function Navbar() {
                 onMouseEnter={() => handleMouseEnter(label)}
                 onMouseLeave={handleMouseLeave}
               >
-                <span style={{ fontSize: '12px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontWeight: activeMenu === label ? 500 : 400, letterSpacing: '0.02em', whiteSpace: 'nowrap', cursor: 'pointer' }}>
+                <span style={{ fontSize: '15px', color: '#1A1014', fontFamily: 'var(--font-jost)', fontWeight: activeMenu === label ? 500 : 400, letterSpacing: '0.02em', whiteSpace: 'nowrap', cursor: 'pointer' }}>
                   {label}
                 </span>
               </div>
             ))}
 
-            <Link href="/products?category=gifts" style={{ fontSize: '12px', color: '#C9A961', textDecoration: 'none', fontFamily: 'var(--font-inter)', fontWeight: 500, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
+            <Link href="/products?category=gifts" style={{ fontSize: '15px', color: '#C9A961', textDecoration: 'none', fontFamily: 'var(--font-jost)', fontWeight: 500, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
               * Gifts
             </Link>
           </nav>
@@ -520,7 +521,7 @@ export function Navbar() {
               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', alignItems: 'center', gap: '6px', color: '#1A1014' }}
             >
               <Search size={18} color="#1A1014" />
-              <span style={{ fontSize: '11px', letterSpacing: '0.12em', fontFamily: 'var(--font-inter)', fontWeight: 500 }}>SEARCH</span>
+              <span style={{ fontSize: '13px', letterSpacing: '0.08em', fontFamily: 'var(--font-jost)', fontWeight: 500 }}>SEARCH</span>
             </button>
 
             <Link href="/account" className="desktop-nav-icon" style={{ alignItems: 'center', color: '#1A1014', textDecoration: 'none' }} aria-label="Account">
@@ -528,7 +529,7 @@ export function Navbar() {
             </Link>
 
             {isAdmin && (
-              <Link href="/admin" className="desktop-nav-icon" style={{ alignItems: 'center', color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '11px', fontWeight: 500, letterSpacing: '0.08em', textDecoration: 'none' }}>
+              <Link href="/admin" className="desktop-nav-icon" style={{ alignItems: 'center', color: '#C9A961', fontFamily: 'var(--font-jost)', fontSize: '13px', fontWeight: 500, letterSpacing: '0.08em', textDecoration: 'none' }}>
                 ADMIN
               </Link>
             )}
@@ -601,7 +602,7 @@ export function Navbar() {
               <div style={{ display: 'flex', gap: '48px', flex: 1 }}>
                 {activeEntry.sections.map((section) => (
                   <div key={section.title} style={{ minWidth: '140px' }}>
-                    <div style={{ fontSize: '9px', letterSpacing: '0.28em', color: '#C9A961', fontFamily: 'var(--font-inter)', fontWeight: 500, marginBottom: '12px', paddingBottom: '8px', borderBottom: '0.5px solid #EDD9AF' }}>
+                    <div style={{ fontSize: '11px', letterSpacing: '0.2em', color: '#C9A961', fontFamily: 'var(--font-jost)', fontWeight: 500, marginBottom: '12px', paddingBottom: '8px', borderBottom: '0.5px solid #EDD9AF' }}>
                       {section.title}
                     </div>
                     {section.links.map((link) => (
@@ -619,7 +620,7 @@ export function Navbar() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={image.src} alt={image.label} />
                     <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(to top, rgba(26,16,20,0.7) 0%, transparent 100%)', padding: '20px 12px 12px' }}>
-                      <div style={{ fontSize: '9px', letterSpacing: '0.22em', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontWeight: 500 }}>
+                      <div style={{ fontSize: '11px', letterSpacing: '0.2em', color: '#FBF5F0', fontFamily: 'var(--font-jost)', fontWeight: 500 }}>
                         {image.label}
                       </div>
                     </div>
@@ -664,7 +665,7 @@ export function Navbar() {
               }}>
                 <span style={{
                   fontFamily: "'Italianno', cursive",
-                  fontSize: '2.2rem',
+                  fontSize: '2.4rem',
                   fontStyle: 'italic',
                   color: '#FBF5F0',
                   lineHeight: '1',
@@ -684,11 +685,11 @@ export function Navbar() {
                 </span>
 
                 <span style={{
-                  fontFamily: "'Cormorant Garamond', 'Didact Gothic', serif",
-                  fontSize: '0.6rem',
-                  letterSpacing: '0.38em',
+                  fontFamily: 'var(--font-jost), sans-serif',
+                  fontSize: '9px',
+                  letterSpacing: '0.35em',
                   color: '#FBF5F0',
-                  fontWeight: '600',
+                  fontWeight: 500,
                   textTransform: 'uppercase',
                   lineHeight: '1',
                 }}>
@@ -728,7 +729,7 @@ export function Navbar() {
                   textDecoration: 'none',
                   color: '#FBF5F0',
                   fontSize: '16px',
-                  fontFamily: 'var(--font-inter)',
+                  fontFamily: 'var(--font-jost)',
                 }}
               >
                 {item.label}
@@ -748,7 +749,7 @@ export function Navbar() {
                 textDecoration: 'none',
                 color: '#C9A961',
                 fontSize: '16px',
-                fontFamily: 'var(--font-inter)',
+                fontFamily: 'var(--font-jost)',
                 fontWeight: 500,
               }}
             >
@@ -769,7 +770,7 @@ export function Navbar() {
                   textDecoration: 'none',
                   color: '#C9A961',
                   fontSize: '16px',
-                  fontFamily: 'var(--font-inter)',
+                  fontFamily: 'var(--font-jost)',
                   fontWeight: 500,
                 }}
               >
@@ -788,11 +789,11 @@ export function Navbar() {
               gap: '12px',
             }}
           >
-            <Link href="/account" onClick={() => setMobileOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'rgba(251,245,240,0.7)', fontSize: '14px', textDecoration: 'none', fontFamily: 'var(--font-inter)' }}>
+            <Link href="/account" onClick={() => setMobileOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'rgba(251,245,240,0.7)', fontSize: '14px', textDecoration: 'none', fontFamily: 'var(--font-jost)' }}>
               <User size={18} />
               Account
             </Link>
-            <Link href="/wishlist" onClick={() => setMobileOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'rgba(251,245,240,0.7)', fontSize: '14px', textDecoration: 'none', fontFamily: 'var(--font-inter)' }}>
+            <Link href="/wishlist" onClick={() => setMobileOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'rgba(251,245,240,0.7)', fontSize: '14px', textDecoration: 'none', fontFamily: 'var(--font-jost)' }}>
               <Heart size={18} />
               Wishlist
             </Link>

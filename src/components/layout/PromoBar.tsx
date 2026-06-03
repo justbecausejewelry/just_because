@@ -58,10 +58,10 @@ export function PromoBar() {
                 </span>
                 <span
                   style={{
-                    fontSize: '11px',
-                    letterSpacing: '0.2em',
+                    fontSize: '12px',
+                    letterSpacing: '0.14em',
                     color: 'rgba(237,217,175,0.85)',
-                    fontFamily: 'var(--font-inter)',
+                    fontFamily: 'var(--font-jost)',
                     fontWeight: 400,
                     textTransform: 'uppercase',
                   }}

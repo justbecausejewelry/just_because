@@ -65,9 +65,10 @@ export function Hero() {
               <div
                 style={{
                   color: '#C9A961',
-                  fontFamily: 'var(--font-inter)',
-                  fontSize: '9px',
-                  letterSpacing: '0.22em',
+                  fontFamily: 'var(--font-jost)',
+                  fontSize: '11px',
+                  fontWeight: 500,
+                  letterSpacing: '0.2em',
                   marginBottom: '3px',
                 }}
               >
@@ -76,9 +77,9 @@ export function Hero() {
               <div
                 style={{
                   color: '#1A1014',
-                  fontFamily: 'var(--font-playfair)',
-                  fontSize: '15px',
-                  fontWeight: 400,
+                  fontFamily: 'var(--font-cormorant)',
+                  fontSize: '18px',
+                  fontWeight: 500,
                 }}
               >
                 {heroProduct.title}
@@ -86,8 +87,9 @@ export function Hero() {
               <div
                 style={{
                   color: '#B8A090',
-                  fontFamily: 'var(--font-inter)',
-                  fontSize: '10px',
+                  fontFamily: 'var(--font-jost)',
+                  fontSize: '13px',
+                  letterSpacing: '0.04em',
                   marginTop: '2px',
                 }}
               >
@@ -96,8 +98,8 @@ export function Hero() {
               <div
                 style={{
                   color: '#1A1014',
-                  fontFamily: 'var(--font-inter)',
-                  fontSize: '12px',
+                  fontFamily: 'var(--font-jost)',
+                  fontSize: '17px',
                   fontWeight: 500,
                   marginTop: '3px',
                 }}
@@ -112,28 +114,30 @@ export function Hero() {
       <div className="hero-copy order-2 flex items-center px-6 py-10 text-center md:order-1 md:px-10 md:py-[60px] md:text-left lg:px-20 lg:py-20">
         <div>
           <p
-            className="mb-5 text-[9px] tracking-[0.32em] md:text-[10px]"
-            style={{ color: '#C9A961', fontFamily: 'var(--font-inter)' }}
+            className="mb-5 uppercase"
+            style={{ color: '#C9A961', fontFamily: 'var(--font-jost)', fontSize: '11px', fontWeight: 500, letterSpacing: '0.2em' }}
           >
             DESIGN YOUR RING
           </p>
           <h1
-            className="mb-6 text-[36px] leading-[1.1] md:text-[44px] lg:text-[64px]"
+            className="mb-6"
             style={{
               color: '#1A1014',
-              fontFamily: 'var(--font-playfair)',
+              fontFamily: 'var(--font-cormorant)',
+              fontSize: 'clamp(3rem, 6vw, 5rem)',
               fontWeight: 400,
+              lineHeight: 1.1,
             }}
           >
             A reason,
             <br />
-            <em style={{ color: '#E8C4D0', fontStyle: 'italic' }}>
+            <em style={{ color: '#E8C4D0', fontSize: 'clamp(3rem, 6vw, 5rem)', fontStyle: 'italic' }}>
               in itself.
             </em>
           </h1>
           <p
-            className="mx-auto mb-10 max-w-[380px] text-[13px] leading-[1.75] md:mx-0 md:text-[15px]"
-            style={{ color: '#3D3028', fontFamily: 'var(--font-inter)' }}
+            className="mx-auto mb-10 max-w-[430px] md:mx-0"
+            style={{ color: '#6B5B4E', fontFamily: 'var(--font-jost)', fontSize: '17px', fontWeight: 300, lineHeight: 1.8 }}
           >
             Lab-grown diamonds and 18k recycled gold, crafted for the moments
             that don&apos;t ask for an occasion.
@@ -142,24 +146,30 @@ export function Hero() {
           <div className="flex flex-col gap-[10px] sm:flex-row">
             <Link
               href="/products"
-              className="w-full px-8 py-[14px] text-center text-[11px] tracking-[0.18em] sm:w-auto"
+              className="w-full px-8 py-[14px] text-center uppercase sm:w-auto"
               style={{
                 backgroundColor: '#1A1014',
                 border: 'none',
                 color: '#FBF5F0',
-                fontFamily: 'var(--font-inter)',
+                fontFamily: 'var(--font-jost)',
+                fontSize: '13px',
+                fontWeight: 500,
+                letterSpacing: '0.12em',
               }}
             >
               Shop the collection
             </Link>
             <Link
               href="/build"
-              className="w-full border px-8 py-[14px] text-center text-[11px] tracking-[0.18em] sm:w-auto"
+              className="w-full border px-8 py-[14px] text-center uppercase sm:w-auto"
               style={{
                 backgroundColor: 'transparent',
                 borderColor: '#EDD9AF',
                 color: '#1A1014',
-                fontFamily: 'var(--font-inter)',
+                fontFamily: 'var(--font-jost)',
+                fontSize: '13px',
+                fontWeight: 500,
+                letterSpacing: '0.12em',
               }}
             >
               Build a ring
@@ -167,8 +177,8 @@ export function Hero() {
           </div>
 
           <div
-            className="mt-12 grid grid-cols-2 gap-x-4 gap-y-2 text-[10px] tracking-[0.15em] sm:flex sm:flex-wrap"
-            style={{ color: '#5C4F47', fontFamily: 'var(--font-inter)' }}
+            className="mt-12 grid grid-cols-2 gap-x-4 gap-y-2 sm:flex sm:flex-wrap"
+            style={{ color: '#B8A090', fontFamily: 'var(--font-jost)', fontSize: '13px', letterSpacing: '0.06em' }}
           >
             <span>IGI Certified</span>
             <span>-</span>

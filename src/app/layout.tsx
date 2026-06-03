@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Playfair_Display, Inter, Italianno } from 'next/font/google'
+import { Cormorant_Garamond, Jost, Italianno } from 'next/font/google'
 import { AppShell } from '@/components/layout/AppShell'
 import { CartProvider } from '@/context/CartContext'
 import { ToastProvider } from '@/context/ToastContext'
@@ -8,15 +8,18 @@ import { PageViewTracker } from '@/components/analytics/PageViewTracker'
 import DiamondCursor from '@/components/ui/DiamondCursor'
 import './globals.css'
 
-const playfair = Playfair_Display({
+const cormorant = Cormorant_Garamond({
   subsets: ['latin'],
-  variable: '--font-playfair',
+  weight: ['300', '400', '500', '600'],
+  style: ['normal', 'italic'],
+  variable: '--font-cormorant',
   display: 'swap',
 })
 
-const inter = Inter({
+const jost = Jost({
   subsets: ['latin'],
-  variable: '--font-inter',
+  weight: ['300', '400', '500', '600'],
+  variable: '--font-jost',
   display: 'swap',
 })
 
@@ -45,7 +48,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${playfair.variable} ${inter.variable} ${italianno.variable} antialiased`}
+        className={`${cormorant.variable} ${jost.variable} ${italianno.variable} font-sans antialiased`}
         style={{ backgroundColor: '#FBF5F0', color: '#1A1014' }}
       >
         <DiamondCursor />

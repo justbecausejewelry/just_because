@@ -13,8 +13,8 @@
   --color-petal:    #FCF0F4;
   --color-deepnoir: #2A1E24;
 
-  --font-display: var(--font-playfair), serif;
-  --font-body:    var(--font-inter), sans-serif;
+  --font-display: var(--font-cormorant), Georgia, serif;
+  --font-body:    var(--font-jost), sans-serif;
   --font-script:  var(--font-italianno), cursive;
 
   --transition-luxe: cubic-bezier(0.4, 0, 0.2, 1);
@@ -167,8 +167,9 @@
 .eyebrow-luxury {
   color: var(--color-gold);
   font-family: var(--font-body);
-  font-size: 9px;
-  letter-spacing: 0.3em;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
 }
 
@@ -192,8 +193,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-inter);
-  --font-serif: var(--font-playfair);
+  --font-sans: var(--font-jost);
+  --font-serif: var(--font-cormorant);
 }
 
 * {
@@ -201,15 +202,70 @@
 }
 
 body {
+  --font-playfair: var(--font-cormorant);
+  --font-inter: var(--font-jost);
+  --font-display: var(--font-cormorant), Georgia, serif;
+  --font-body: var(--font-jost), sans-serif;
   background-color: #FBF5F0;
   margin: 0;
   padding: 0;
   color: var(--foreground);
-  font-family: var(--font-inter), sans-serif;
+  font-family: var(--font-jost), sans-serif;
+  font-size: 16px;
+  font-weight: 300;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: geometricPrecision;
 }
 
 a {
+  color: inherit;
+  font-family: var(--font-jost), sans-serif;
   text-decoration: none;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  color: #1A1014;
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+h1 {
+  font-size: clamp(3rem, 6vw, 5rem);
+  line-height: 1.1;
+}
+
+h2 {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  line-height: 1.15;
+}
+
+h3 {
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  line-height: 1.2;
+}
+
+h4 {
+  font-size: 1.25rem;
+  line-height: 1.25;
+}
+
+p {
+  color: #6B5B4E;
+  font-family: var(--font-jost), sans-serif;
+  font-size: 1rem;
+  font-weight: 300;
+  line-height: 1.7;
+}
+
+.font-display {
+  font-family: var(--font-cormorant), Georgia, serif !important;
+  font-style: italic;
 }
 
 button,
@@ -278,6 +334,8 @@ textarea:focus {
 * { box-sizing: border-box; }
 img, video { max-width: 100%; }
 body {
+  --font-playfair: var(--font-cormorant);
+  --font-inter: var(--font-jost);
   overflow-x: hidden;
   background-color: #FBF5F0;
 }

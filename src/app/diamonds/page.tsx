@@ -406,13 +406,13 @@ function DiamondModal({
         </div>
 
         <div style={{ padding: '40px' }}>
-          <div style={{ fontSize: '10px', letterSpacing: '0.3em', color: '#C9A961', marginBottom: '8px', fontFamily: 'var(--font-inter)' }}>
+          <div style={{ fontSize: '11px', letterSpacing: '0.2em', color: '#C9A961', marginBottom: '8px', fontFamily: 'var(--font-jost)', fontWeight: 500 }}>
             LAB-GROWN DIAMOND - {diamond.id}
           </div>
-          <h2 style={{ fontFamily: 'var(--font-playfair)', fontSize: '28px', fontWeight: 400, color: '#1A1014', marginBottom: '24px', lineHeight: 1.2 }}>
+          <h2 style={{ fontFamily: 'var(--font-cormorant)', fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: 400, color: '#1A1014', marginBottom: '24px', lineHeight: 1.1 }}>
             {diamond.carat} Carat {diamond.shape}
             <br />
-            <span style={{ fontSize: '18px', color: '#B8A090' }}>Lab Grown Diamond</span>
+            <span style={{ fontFamily: 'var(--font-jost)', fontSize: '17px', color: '#B8A090', fontWeight: 300 }}>Lab Grown Diamond</span>
           </h2>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '1px', background: '#EDD9AF', border: '0.5px solid #EDD9AF', marginBottom: '24px' }}>
@@ -423,8 +423,8 @@ function DiamondModal({
               ['CUT', diamond.cut],
             ].map(([label, value]) => (
               <div key={label} style={{ background: '#FBF5F0', padding: '14px 8px', textAlign: 'center' }}>
-                <div style={{ fontSize: '9px', letterSpacing: '0.2em', color: '#B8A090', marginBottom: '6px', fontFamily: 'var(--font-inter)' }}>{label}</div>
-                <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '18px', color: '#1A1014' }}>{value}</div>
+                <div style={{ fontSize: '10px', letterSpacing: '0.18em', color: '#B8A090', marginBottom: '6px', fontFamily: 'var(--font-jost)', fontWeight: 500, textTransform: 'uppercase' }}>{label}</div>
+                <div style={{ fontFamily: 'var(--font-cormorant)', fontSize: '22px', color: '#1A1014', fontWeight: 500 }}>{value}</div>
               </div>
             ))}
           </div>
@@ -562,8 +562,8 @@ function DiamondModal({
           <div style={{ background: customPrice !== originalCustomPrice ? 'rgba(201,169,97,0.06)' : 'transparent', border: '0.5px solid #EDD9AF', padding: '16px 20px', marginBottom: '20px', transition: 'all 0.3s' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '16px' }}>
               <div>
-                <div style={{ fontSize: '10px', color: '#B8A090', letterSpacing: '0.2em', fontFamily: 'var(--font-inter)', marginBottom: '4px' }}>YOUR DIAMOND PRICE</div>
-                <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '36px', color: '#1A1014', lineHeight: 1, transition: 'all 0.3s' }}>${customPrice.toLocaleString()}</div>
+                <div style={{ fontSize: '10px', color: '#B8A090', letterSpacing: '0.18em', fontFamily: 'var(--font-jost)', fontWeight: 500, marginBottom: '4px' }}>YOUR DIAMOND PRICE</div>
+                <div style={{ fontFamily: 'var(--font-cormorant)', fontSize: '2.5rem', color: '#1A1014', fontWeight: 400, lineHeight: 1, transition: 'all 0.3s' }}>${customPrice.toLocaleString()}</div>
                 <div style={{ fontSize: '11px', color: '#B8A090', fontFamily: 'var(--font-inter)', marginTop: '4px' }}>
                   {customCarat.toFixed(2)}ct - {customColor} - {customClarity}
                   <br />
@@ -783,13 +783,13 @@ function DiamondsContent() {
       `}</style>
 
       <header style={{ background: '#1A1014', padding: '64px 24px 48px', textAlign: 'center' }}>
-        <div style={{ fontSize: '10px', letterSpacing: '0.35em', color: '#C9A961', marginBottom: '14px', fontFamily: 'var(--font-inter)' }}>
+        <div style={{ fontSize: '11px', letterSpacing: '0.2em', color: '#C9A961', marginBottom: '14px', fontFamily: 'var(--font-jost)', fontWeight: 500 }}>
           LAB-GROWN DIAMONDS
         </div>
-        <h1 style={{ fontFamily: 'var(--font-playfair)', fontSize: 'clamp(36px,5vw,60px)', fontWeight: 400, color: '#FBF5F0', marginBottom: '8px' }}>
+        <h1 style={{ fontFamily: 'var(--font-cormorant)', fontSize: 'clamp(3rem,6vw,5rem)', fontWeight: 400, color: '#FBF5F0', marginBottom: '8px' }}>
           Find your perfect <span style={{ fontStyle: 'italic', color: '#C9A961' }}>diamond.</span>
         </h1>
-        <p style={{ fontSize: '14px', color: 'rgba(184,160,144,0.8)', maxWidth: '480px', margin: '0 auto 32px', lineHeight: 1.8, fontFamily: 'var(--font-inter)' }}>
+        <p style={{ fontSize: '17px', color: 'rgba(184,160,144,0.8)', maxWidth: '520px', margin: '0 auto 32px', lineHeight: 1.8, fontFamily: 'var(--font-jost)', fontWeight: 300 }}>
           Every diamond IGI certified. Same fire, same brilliance as mined, grown sustainably in our solar foundry.
         </p>
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap', maxWidth: '900px', margin: '0 auto' }}>
@@ -1051,10 +1051,10 @@ function DiamondsContent() {
                     </div>
                   </div>
                   <div style={{ background: '#FDF8F2', padding: '16px' }}>
-                    <div style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '12px', fontWeight: 500, letterSpacing: '0.12em', marginBottom: '6px', textTransform: 'uppercase' }}>
+                    <div style={{ color: '#1A1014', fontFamily: 'var(--font-jost)', fontSize: '13px', fontWeight: 500, letterSpacing: '0.12em', marginBottom: '6px', textTransform: 'uppercase' }}>
                       {diamond.shape}
                     </div>
-                    <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '20px', color: '#1A1014', marginBottom: '6px' }}>
+                    <div style={{ fontFamily: 'var(--font-cormorant)', fontSize: '22px', color: '#1A1014', fontWeight: 500, marginBottom: '6px' }}>
                       {diamond.carat}ct
                     </div>
                     <div style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', marginBottom: '14px' }}>
@@ -1062,7 +1062,7 @@ function DiamondsContent() {
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
                       <div>
-                        <div style={{ fontFamily: 'var(--font-inter)', fontSize: '16px', color: '#C9A961', fontWeight: 500 }}>${diamond.price.toLocaleString()}</div>
+                        <div style={{ fontFamily: 'var(--font-jost)', fontSize: '17px', color: '#C9A961', fontWeight: 500 }}>${diamond.price.toLocaleString()}</div>
                         <div style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px' }}>
                           ${Math.round((diamond.price || 0) / (diamond.carat || 1)).toLocaleString()}/ct
                         </div>
