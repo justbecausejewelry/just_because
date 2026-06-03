@@ -15,15 +15,15 @@ export function Hero() {
       className="hero-section grid min-h-screen grid-cols-1 md:grid-cols-[50%_50%] lg:grid-cols-[45%_55%]"
       style={{ backgroundColor: '#FBF5F0' }}
     >
-      <div className="hero-image order-1 w-full md:order-2 md:h-full">
-        <div className="relative h-[60vw] min-h-[280px] max-h-[400px] w-full overflow-hidden md:h-full md:max-h-none">
+      <div className="hero-image order-1 h-[60vw] min-h-[280px] max-h-[400px] w-full md:order-2 md:h-full md:max-h-none">
+        <div className="relative w-full h-full overflow-hidden">
           <Image
             src="/images/hero-necklace.jpg"
-            alt="Just Because luxury jewelry"
+            alt="Just Because pearl necklace"
             fill
+            className="object-cover object-[center_30%]"
             priority
             sizes="(max-width: 768px) 100vw, 55vw"
-            style={{ objectFit: 'cover', objectPosition: 'center' }}
             quality={90}
           />
           <div
