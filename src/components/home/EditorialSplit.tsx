@@ -51,6 +51,7 @@ export function EditorialSplit() {
               width: '100%',
               height: '100%',
               objectFit: 'cover',
+              objectPosition: 'center center',
               transition: 'transform 0.8s ease',
             }}
             onMouseEnter={(event) => {
@@ -289,6 +290,7 @@ export function EditorialSplit() {
               width: '100%',
               height: '100%',
               objectFit: 'cover',
+              objectPosition: 'center center',
               transition: 'transform 0.8s ease',
             }}
             onMouseEnter={(event) => {

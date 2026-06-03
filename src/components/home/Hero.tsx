@@ -17,14 +17,16 @@ export function Hero() {
     >
       <div className="hero-image order-1 h-[60vw] min-h-[280px] max-h-[400px] w-full md:order-2 md:h-full md:max-h-none">
         <div className="relative w-full h-full overflow-hidden">
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src="/images/hero-necklace.jpg"
             alt="Just Because pearl necklace"
-            fill
-            className="object-cover object-[center_30%]"
-            priority
-            sizes="(max-width: 768px) 100vw, 55vw"
-            quality={90}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              objectPosition: 'center 65%',
+            }}
           />
           <div
             className="absolute inset-0"
