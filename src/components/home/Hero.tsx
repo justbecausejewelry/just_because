@@ -19,7 +19,7 @@ export function Hero() {
         <div className="relative w-full h-full overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/images/hero-necklace.jpg"
+            src="/images/necklace.jpg"
             alt="Just Because pearl necklace"
             style={{
               width: '100%',
