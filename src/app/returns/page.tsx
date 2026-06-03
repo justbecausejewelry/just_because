@@ -41,10 +41,10 @@ function PolicyButton({ href, children }: { href: string; children: ReactNode })
         background: '#1A1014',
         color: '#FBF5F0',
         display: 'inline-flex',
-        fontFamily: 'var(--font-inter)',
-        fontSize: '11px',
+        fontFamily: 'var(--font-jost)',
+        fontSize: '13px',
         fontWeight: 500,
-        letterSpacing: '0.18em',
+        letterSpacing: '0.1em',
         padding: '14px 24px',
         textDecoration: 'none',
         textTransform: 'uppercase',
@@ -69,9 +69,10 @@ export default function ReturnsPage() {
         <p
           style={{
             color: '#C9A961',
-            fontFamily: 'var(--font-inter)',
-            fontSize: '10px',
-            letterSpacing: '0.32em',
+            fontFamily: 'var(--font-jost)',
+            fontSize: '12px',
+            fontWeight: 600,
+            letterSpacing: '0.22em',
             marginBottom: '16px',
             textTransform: 'uppercase',
           }}
@@ -256,8 +257,8 @@ export default function ReturnsPage() {
               background: '#FDF8F2',
               border: '0.5px solid #C9A961',
               color: '#6B5B4E',
-              fontFamily: 'var(--font-inter)',
-              fontSize: '13px',
+              fontFamily: 'var(--font-jost)',
+              fontSize: '16px',
               lineHeight: 1.8,
               padding: '22px',
             }}

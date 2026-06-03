@@ -89,12 +89,12 @@ export function Footer() {
 
         {columns.map((column) => (
           <div key={column.title}>
-            <h3 className="mb-4 text-[11px] tracking-[0.2em]" style={{ color: '#C9A961', fontFamily: 'var(--font-jost)', fontWeight: 600 }}>
+            <h3 className="mb-4 text-[12px] tracking-[0.22em]" style={{ color: '#C9A961', fontFamily: 'var(--font-jost)', fontWeight: 600 }}>
               {column.title}
             </h3>
             <div className="flex flex-col gap-2">
               {column.links.map((link) => (
-                <Link key={link.label} href={link.href} className="leading-[2.2]" style={{ color: 'rgba(251,245,240,0.7)', fontFamily: 'var(--font-jost)', fontSize: '15px', fontWeight: 300 }}>
+                <Link key={link.label} href={link.href} className="leading-[2.4]" style={{ color: 'rgba(251,245,240,0.75)', fontFamily: 'var(--font-jost)', fontSize: '15px', fontWeight: 300 }}>
                   {link.label}
                 </Link>
               ))}

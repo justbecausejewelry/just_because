@@ -213,7 +213,7 @@ body {
   font-family: var(--font-jost), sans-serif;
   font-size: 16px;
   font-weight: 300;
-  line-height: 1.7;
+  line-height: 1.75;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: geometricPrecision;
@@ -236,31 +236,35 @@ h4 {
 }
 
 h1 {
-  font-size: clamp(3rem, 6vw, 5rem);
+  font-size: clamp(2.8rem, 6vw, 5rem);
+  font-weight: 400;
   line-height: 1.1;
 }
 
 h2 {
-  font-size: clamp(2rem, 4vw, 3.5rem);
-  line-height: 1.15;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  font-weight: 400;
+  line-height: 1.2;
 }
 
 h3 {
-  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  font-weight: 500;
   line-height: 1.2;
 }
 
 h4 {
-  font-size: 1.25rem;
+  font-size: 1.3rem;
+  font-weight: 500;
   line-height: 1.25;
 }
 
 p {
   color: #6B5B4E;
   font-family: var(--font-jost), sans-serif;
-  font-size: 1rem;
+  font-size: 16px;
   font-weight: 300;
-  line-height: 1.7;
+  line-height: 1.8;
 }
 
 .font-display {
@@ -1084,4 +1088,112 @@ img {
 
 .img-cover.is-top {
   object-position: center top !important;
+}
+
+/* -- GLOBAL READABILITY FIXES -- */
+.eyebrow,
+.eyebrow-luxury,
+.label,
+.tag,
+[class*="tracking-wider"],
+[class*="tracking-widest"] {
+  color: #C9A961 !important;
+  font-family: var(--font-jost), sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.22em !important;
+  line-height: 1.5 !important;
+  opacity: 1 !important;
+  text-transform: uppercase;
+}
+
+.btn-primary,
+.btn-outline,
+.btn-gold,
+button,
+[role="button"],
+input[type="submit"],
+input[type="button"] {
+  font-family: var(--font-jost), sans-serif;
+}
+
+.btn-primary,
+.btn-gold {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase;
+}
+
+.btn-outline {
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase;
+}
+
+input,
+select,
+textarea {
+  color: #1A1014 !important;
+  font-family: var(--font-jost), sans-serif !important;
+  font-size: 15px !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #B8A090 !important;
+  font-size: 15px !important;
+}
+
+label,
+th {
+  font-family: var(--font-jost), sans-serif !important;
+}
+
+th {
+  color: #B8A090 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.15em !important;
+}
+
+td {
+  color: #1A1014 !important;
+  font-size: 14px !important;
+}
+
+.site-footer h3 {
+  color: #C9A961 !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.22em !important;
+}
+
+.site-footer a {
+  color: rgba(251,245,240,0.75) !important;
+  font-size: 15px !important;
+  font-weight: 300 !important;
+  line-height: 2.4 !important;
+}
+
+.site-footer a:hover {
+  color: #FBF5F0 !important;
+}
+
+[style*="color: #C9A961"] {
+  opacity: 1 !important;
+}
+
+[style*="font-size: 7px"],
+[style*="font-size: 8px"],
+[style*="font-size: 9px"],
+[style*="font-size: 10px"],
+[style*="font-size: 11px"] {
+  font-size: 12px !important;
+}
+
+[style*="font-size: 12px"],
+[style*="font-size: 13px"] {
+  font-size: 14px !important;
 }

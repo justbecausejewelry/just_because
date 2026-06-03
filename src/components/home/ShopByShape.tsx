@@ -82,10 +82,11 @@ export function ShopByShape() {
     >
       <p
         style={{
-          fontSize: '10px',
-          letterSpacing: '0.3em',
+          fontSize: '12px',
+          fontWeight: 600,
+          letterSpacing: '0.22em',
           color: '#C9A961',
-          fontFamily: 'var(--font-inter)',
+          fontFamily: 'var(--font-jost)',
           marginBottom: '14px',
         }}
       >
@@ -94,8 +95,8 @@ export function ShopByShape() {
 
       <h2
         style={{
-          fontFamily: 'var(--font-playfair)',
-          fontSize: windowWidth < 768 ? '22px' : '30px',
+          fontFamily: 'var(--font-cormorant)',
+          fontSize: windowWidth < 768 ? '2rem' : 'clamp(2rem,4vw,3.2rem)',
           fontWeight: 400,
           color: '#1A1014',
           margin: 0,
@@ -193,10 +194,10 @@ export function ShopByShape() {
                   />
                   <span
                     style={{
-                      fontSize: windowWidth < 768 ? '9px' : '13px',
+                      fontSize: windowWidth < 768 ? '14px' : '15px',
                       color: isSelected ? '#C9A961' : '#B8A090',
                       letterSpacing: '0.08em',
-                      fontFamily: 'var(--font-inter)',
+                      fontFamily: 'var(--font-jost)',
                       fontWeight: isSelected ? 500 : 400,
                     }}
                   >
@@ -224,9 +225,9 @@ export function ShopByShape() {
       <div
         style={{
           marginTop: '24px',
-          fontSize: '11px',
+          fontSize: '14px',
           color: '#B8A090',
-          fontFamily: 'var(--font-inter)',
+          fontFamily: 'var(--font-jost)',
           letterSpacing: '0.1em',
         }}
       >
@@ -235,7 +236,7 @@ export function ShopByShape() {
           href={selectedHref}
           style={{
             color: '#C9A961',
-            fontSize: '11px',
+            fontSize: '14px',
             letterSpacing: '0.1em',
             textDecoration: 'none',
             marginLeft: '16px',

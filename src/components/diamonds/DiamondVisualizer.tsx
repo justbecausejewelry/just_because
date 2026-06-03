@@ -166,12 +166,12 @@ export default function DiamondVisualizer({
         background: '#FDF8F2',
         border: '0.5px solid #EDD9AF',
         display: 'grid',
-        fontFamily: 'var(--font-inter)',
+        fontFamily: 'var(--font-jost)',
         gap: '16px',
         padding: '24px',
       }}
     >
-      <div style={{ color: '#C9A961', fontSize: '9px', letterSpacing: '0.3em' }}>
+      <div style={{ color: '#C9A961', fontSize: '12px', fontWeight: 600, letterSpacing: '0.22em' }}>
         SEE IT ON YOUR HAND
       </div>
 
@@ -190,8 +190,8 @@ export default function DiamondVisualizer({
                   borderRadius: '2px',
                   color: selected ? '#FBF5F0' : '#1A1014',
                   cursor: 'pointer',
-                  fontFamily: 'var(--font-inter)',
-                  fontSize: '10px',
+                  fontFamily: 'var(--font-jost)',
+                  fontSize: '13px',
                   letterSpacing: '0.08em',
                   padding: '8px 10px',
                   transition: 'all 400ms cubic-bezier(0.4, 0, 0.2, 1)',
@@ -268,10 +268,10 @@ export default function DiamondVisualizer({
             borderRadius: '20px',
           }}
         >
-          <span style={{ color: '#C9A961', fontSize: '12px', fontWeight: 500 }}>
+          <span style={{ color: '#C9A961', fontSize: '14px', fontWeight: 500 }}>
             {selectedCarat.toFixed(2)} ct
           </span>
-          <span style={{ color: 'rgba(251,245,240,0.6)', fontSize: '11px' }}>
+          <span style={{ color: 'rgba(251,245,240,0.75)', fontSize: '14px' }}>
             &asymp; {mmSize} mm
           </span>
         </div>
@@ -279,10 +279,10 @@ export default function DiamondVisualizer({
 
       <div style={{ display: 'grid', gap: '10px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
-          <span style={{ color: '#1A1014', fontSize: '12px', fontWeight: 500 }}>
+          <span style={{ color: '#1A1014', fontSize: '14px', fontWeight: 500 }}>
             Carat Weight
           </span>
-          <span style={{ color: '#C9A961', fontSize: '12px', fontWeight: 500 }}>
+          <span style={{ color: '#C9A961', fontSize: '14px', fontWeight: 500 }}>
             {selectedCarat.toFixed(2)} ct
           </span>
         </div>
@@ -315,8 +315,8 @@ export default function DiamondVisualizer({
                   border: 'none',
                   color: selected ? '#C9A961' : '#B8A090',
                   cursor: 'pointer',
-                  fontFamily: 'var(--font-inter)',
-                  fontSize: '10px',
+                  fontFamily: 'var(--font-jost)',
+                  fontSize: '12px',
                   fontWeight: selected ? 500 : 400,
                   padding: '4px 0',
                 }}

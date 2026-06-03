@@ -423,14 +423,14 @@ function DiamondModal({
               ['CUT', diamond.cut],
             ].map(([label, value]) => (
               <div key={label} style={{ background: '#FBF5F0', padding: '14px 8px', textAlign: 'center' }}>
-                <div style={{ fontSize: '10px', letterSpacing: '0.18em', color: '#B8A090', marginBottom: '6px', fontFamily: 'var(--font-jost)', fontWeight: 500, textTransform: 'uppercase' }}>{label}</div>
+                <div style={{ fontSize: '11px', letterSpacing: '0.18em', color: '#B8A090', marginBottom: '6px', fontFamily: 'var(--font-jost)', fontWeight: 500, textTransform: 'uppercase' }}>{label}</div>
                 <div style={{ fontFamily: 'var(--font-cormorant)', fontSize: '22px', color: '#1A1014', fontWeight: 500 }}>{value}</div>
               </div>
             ))}
           </div>
 
           <div style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', padding: '20px', marginBottom: '20px' }}>
-            <div style={{ fontSize: '10px', letterSpacing: '0.25em', color: '#C9A961', marginBottom: '16px', fontFamily: 'var(--font-inter)' }}>
+            <div style={{ fontSize: '12px', letterSpacing: '0.22em', color: '#C9A961', marginBottom: '16px', fontFamily: 'var(--font-jost)', fontWeight: 600 }}>
               - CUSTOMIZE YOUR DIAMOND
             </div>
 
@@ -1051,23 +1051,23 @@ function DiamondsContent() {
                     </div>
                   </div>
                   <div style={{ background: '#FDF8F2', padding: '16px' }}>
-                    <div style={{ color: '#1A1014', fontFamily: 'var(--font-jost)', fontSize: '13px', fontWeight: 500, letterSpacing: '0.12em', marginBottom: '6px', textTransform: 'uppercase' }}>
+                    <div style={{ color: '#1A1014', fontFamily: 'var(--font-jost)', fontSize: '15px', fontWeight: 500, letterSpacing: '0.12em', marginBottom: '6px', textTransform: 'uppercase' }}>
                       {diamond.shape}
                     </div>
                     <div style={{ fontFamily: 'var(--font-cormorant)', fontSize: '22px', color: '#1A1014', fontWeight: 500, marginBottom: '6px' }}>
                       {diamond.carat}ct
                     </div>
-                    <div style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', marginBottom: '14px' }}>
+                    <div style={{ color: '#B8A090', fontFamily: 'var(--font-jost)', fontSize: '14px', marginBottom: '14px' }}>
                       {diamond.color} color - {diamond.clarity} clarity - {diamond.cut}
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
                       <div>
                         <div style={{ fontFamily: 'var(--font-jost)', fontSize: '17px', color: '#C9A961', fontWeight: 500 }}>${diamond.price.toLocaleString()}</div>
-                        <div style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px' }}>
+                        <div style={{ color: '#B8A090', fontFamily: 'var(--font-jost)', fontSize: '14px' }}>
                           ${Math.round((diamond.price || 0) / (diamond.carat || 1)).toLocaleString()}/ct
                         </div>
                       </div>
-                      <div style={{ fontSize: '10px', color: '#C9A961', fontFamily: 'var(--font-inter)', letterSpacing: '0.1em' }}>VIEW -</div>
+                      <div style={{ fontSize: '12px', color: '#C9A961', fontFamily: 'var(--font-jost)', fontWeight: 600, letterSpacing: '0.1em' }}>VIEW -</div>
                     </div>
                   </div>
                 </button>

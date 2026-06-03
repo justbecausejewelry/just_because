@@ -112,19 +112,20 @@ export function Reviews() {
       >
         <div
           style={{
-            fontSize: '10px',
-            letterSpacing: '0.32em',
+            fontSize: '12px',
+            fontWeight: 600,
+            letterSpacing: '0.22em',
             color: '#C9A961',
             marginBottom: '12px',
-            fontFamily: 'var(--font-inter)',
+            fontFamily: 'var(--font-jost)',
           }}
         >
           REAL CUSTOMERS
         </div>
         <h2
           style={{
-            fontFamily: 'var(--font-playfair)',
-            fontSize: 'clamp(28px,4vw,48px)',
+            fontFamily: 'var(--font-cormorant)',
+            fontSize: 'clamp(2rem,4vw,3.2rem)',
             fontWeight: 400,
             color: '#1A1014',
             marginBottom: '12px',
@@ -144,9 +145,9 @@ export function Reviews() {
         </div>
         <div
           style={{
-            fontSize: '13px',
+            fontSize: '14px',
             color: '#B8A090',
-            fontFamily: 'var(--font-inter)',
+            fontFamily: 'var(--font-jost)',
           }}
         >
           4.9 / 5 · 2,847 verified reviews
@@ -278,11 +279,11 @@ export function Reviews() {
                 <div style={{ fontSize: '14px', color: '#C9A961' }}>{'★'.repeat(review.rating)}</div>
                 <div
                   style={{
-                    fontSize: '10px',
+                    fontSize: '14px',
                     letterSpacing: '0.1em',
                     color: '#B8A090',
                     marginTop: '3px',
-                    fontFamily: 'var(--font-inter)',
+                    fontFamily: 'var(--font-jost)',
                   }}
                 >
                   Verified · {review.product}
@@ -290,13 +291,14 @@ export function Reviews() {
               </div>
               <div
                 style={{
-                  fontSize: '9px',
+                  fontSize: '12px',
                   letterSpacing: '0.15em',
                   color: '#C9A961',
                   background: 'rgba(201,169,97,0.08)',
                   border: '0.5px solid rgba(201,169,97,0.2)',
                   padding: '3px 8px',
-                  fontFamily: 'var(--font-inter)',
+                  fontFamily: 'var(--font-jost)',
+                  fontWeight: 600,
                 }}
               >
                 VERIFIED
