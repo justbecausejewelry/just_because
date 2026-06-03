@@ -450,28 +450,30 @@ export function Navbar() {
             position: 'relative',
           }}
         >
-          <Link href="/" style={{ textDecoration: 'none', flexShrink: 0, minWidth: 'fit-content', zIndex: 2 }}>
-            <div style={{ alignItems: 'center', display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
-              <div
+          <Link href="/" style={{ textDecoration: 'none', flexShrink: 0, minWidth: 'fit-content', userSelect: 'none', zIndex: 2 }}>
+            <div style={{ alignItems: 'center', display: 'flex', flexDirection: 'column', gap: '1px', lineHeight: 1 }}>
+              <span
                 style={{
                   fontFamily: 'var(--font-italianno)',
                   filter: 'drop-shadow(0 1px 3px rgba(201,169,97,0.25))',
-                  fontSize: '2.4rem',
+                  fontSize: '2.2rem',
                   fontStyle: 'italic',
                   color: '#C9A961',
-                  lineHeight: 0.86,
-                  letterSpacing: '0.02em',
+                  display: 'block',
+                  lineHeight: 1,
+                  letterSpacing: '0.03em',
                   whiteSpace: 'nowrap',
                 }}
               >
                 just
-              </div>
+              </span>
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px',
-                  marginTop: '1px',
+                  gap: '5px',
+                  marginTop: '-4px',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 <div
@@ -485,10 +487,12 @@ export function Navbar() {
                 <span
                   style={{
                     fontFamily: 'var(--font-inter)',
-                    fontSize: '9px',
-                    letterSpacing: '0.36em',
+                    fontSize: '7.5px',
+                    letterSpacing: '0.32em',
                     color: '#1A1014',
                     fontWeight: 500,
+                    lineHeight: 1,
+                    textTransform: 'uppercase',
                     whiteSpace: 'nowrap',
                   }}
                 >
@@ -667,13 +671,13 @@ export function Navbar() {
               borderBottom: '0.5px solid rgba(201,169,97,0.15)',
             }}
           >
-            <Link href="/" onClick={() => setMobileOpen(false)} style={{ textDecoration: 'none', flexShrink: 0, minWidth: 'fit-content' }}>
-              <div style={{ filter: 'drop-shadow(0 1px 3px rgba(201,169,97,0.25))', fontFamily: 'var(--font-italianno)', fontSize: '2.4rem', fontStyle: 'italic', color: '#C9A961', lineHeight: 0.86, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
+            <Link href="/" onClick={() => setMobileOpen(false)} style={{ textDecoration: 'none', flexShrink: 0, minWidth: 'fit-content', userSelect: 'none' }}>
+              <span style={{ display: 'block', filter: 'drop-shadow(0 1px 3px rgba(201,169,97,0.25))', fontFamily: 'var(--font-italianno)', fontSize: '2.2rem', fontStyle: 'italic', color: '#C9A961', lineHeight: 1, letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>
                 just
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '1px' }}>
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '-4px', whiteSpace: 'nowrap' }}>
                 <div style={{ width: '18px', height: '0.5px', background: 'rgba(201,169,97,0.8)' }} />
-                <span style={{ fontFamily: 'var(--font-inter)', fontSize: '9px', fontWeight: 500, letterSpacing: '0.36em', color: 'rgba(251,245,240,0.7)', whiteSpace: 'nowrap' }}>
+                <span style={{ fontFamily: 'var(--font-inter)', fontSize: '7.5px', fontWeight: 500, letterSpacing: '0.32em', color: 'rgba(251,245,240,0.7)', lineHeight: 1, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                   BECAUSE
                 </span>
                 <div style={{ width: '18px', height: '0.5px', background: 'rgba(201,169,97,0.8)' }} />

@@ -139,11 +139,11 @@ export default function AdminLayout({
           gap: '16px',
         }}
       >
-        <Link href="/" style={{ textDecoration: 'none' }}>
-          <div style={{ fontFamily: 'var(--font-italianno)', fontSize: '28px', color: '#C9A961', lineHeight: 0.9 }}>just</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+        <Link href="/" style={{ textDecoration: 'none', flexShrink: 0, minWidth: 'fit-content', userSelect: 'none' }}>
+          <span style={{ display: 'block', fontFamily: 'var(--font-italianno)', fontSize: '2.2rem', fontStyle: 'italic', color: '#C9A961', lineHeight: 1, letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>just</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '-4px', whiteSpace: 'nowrap' }}>
             <div style={{ width: '10px', height: '0.5px', background: 'rgba(201,169,97,0.4)' }} />
-            <span style={{ fontFamily: 'var(--font-inter)', fontSize: '8px', letterSpacing: '0.35em', color: 'rgba(201,169,97,0.6)' }}>BECAUSE</span>
+            <span style={{ fontFamily: 'var(--font-inter)', fontSize: '7.5px', fontWeight: 500, letterSpacing: '0.32em', lineHeight: 1, color: 'rgba(201,169,97,0.6)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>BECAUSE</span>
             <div style={{ width: '10px', height: '0.5px', background: 'rgba(201,169,97,0.4)' }} />
           </div>
           <div style={{ fontSize: '9px', color: 'rgba(184,160,144,0.5)', fontFamily: 'var(--font-inter)', letterSpacing: '0.2em', marginTop: '8px' }}>
