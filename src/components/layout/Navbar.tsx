@@ -468,14 +468,16 @@ export function Navbar() {
           }}
         >
           <Link href="/" style={{ textDecoration: 'none', flexShrink: 0, zIndex: 2 }}>
-            <div style={{ lineHeight: 1 }}>
+            <div style={{ alignItems: 'center', display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
               <div
                 style={{
                   fontFamily: 'var(--font-italianno)',
-                  fontSize: '28px',
+                  filter: 'drop-shadow(0 1px 3px rgba(201,169,97,0.25))',
+                  fontSize: '2.6rem',
+                  fontStyle: 'italic',
                   color: '#C9A961',
-                  lineHeight: 0.85,
-                  letterSpacing: '0.01em',
+                  lineHeight: 0.86,
+                  letterSpacing: '0.02em',
                 }}
               >
                 just
@@ -484,25 +486,25 @@ export function Navbar() {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '5px',
-                  marginTop: '2px',
+                  gap: '6px',
+                  marginTop: '1px',
                 }}
               >
                 <div
                   style={{
-                    width: '12px',
+                    width: '18px',
                     height: '0.5px',
-                    background: '#1A1014',
+                    background: '#C9A961',
                     flexShrink: 0,
                   }}
                 />
                 <span
                   style={{
                     fontFamily: 'var(--font-inter)',
-                    fontSize: '8.5px',
-                    letterSpacing: '0.38em',
+                    fontSize: '9px',
+                    letterSpacing: '0.36em',
                     color: '#1A1014',
-                    fontWeight: 400,
+                    fontWeight: 500,
                     whiteSpace: 'nowrap',
                   }}
                 >
@@ -510,9 +512,9 @@ export function Navbar() {
                 </span>
                 <div
                   style={{
-                    width: '12px',
+                    width: '18px',
                     height: '0.5px',
-                    background: '#1A1014',
+                    background: '#C9A961',
                     flexShrink: 0,
                   }}
                 />
@@ -682,15 +684,15 @@ export function Navbar() {
             }}
           >
             <Link href="/" onClick={() => setMobileOpen(false)} style={{ textDecoration: 'none' }}>
-              <div style={{ fontFamily: 'var(--font-italianno)', fontSize: '28px', color: '#C9A961', lineHeight: 0.85 }}>
+              <div style={{ filter: 'drop-shadow(0 1px 3px rgba(201,169,97,0.25))', fontFamily: 'var(--font-italianno)', fontSize: '2.6rem', fontStyle: 'italic', color: '#C9A961', lineHeight: 0.86, letterSpacing: '0.02em' }}>
                 just
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
-                <div style={{ width: '10px', height: '0.5px', background: 'rgba(251,245,240,0.4)' }} />
-                <span style={{ fontFamily: 'var(--font-inter)', fontSize: '8px', letterSpacing: '0.38em', color: 'rgba(251,245,240,0.55)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '1px' }}>
+                <div style={{ width: '18px', height: '0.5px', background: 'rgba(201,169,97,0.8)' }} />
+                <span style={{ fontFamily: 'var(--font-inter)', fontSize: '9px', fontWeight: 500, letterSpacing: '0.36em', color: 'rgba(251,245,240,0.7)' }}>
                   BECAUSE
                 </span>
-                <div style={{ width: '10px', height: '0.5px', background: 'rgba(251,245,240,0.4)' }} />
+                <div style={{ width: '18px', height: '0.5px', background: 'rgba(201,169,97,0.8)' }} />
               </div>
             </Link>
 

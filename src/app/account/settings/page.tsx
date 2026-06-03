@@ -1,6 +1,6 @@
 'use client'
 
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Pencil, Trash2 } from 'lucide-react'
@@ -27,7 +27,7 @@ type SavedAddress = {
 
 type AddressForm = Omit<SavedAddress, 'id' | 'userId'>
 
-const ringSizes = ['4', '4.5', '5', '5.5', '6', '6.5', '7', '7.5', '8', '8.5', '9']
+const ringSizes = Array.from({ length: 25 }, (_, index) => String(3 + index * 0.5))
 
 const emptyAddress: AddressForm = {
   label: 'Home',
@@ -60,8 +60,7 @@ export default function AccountSettingsPage() {
   const [showAddressForm, setShowAddressForm] = useState(false)
   const [addressForm, setAddressForm] = useState<AddressForm>(emptyAddress)
   const [profileForm, setProfileForm] = useState({
-    firstName: '',
-    lastName: '',
+    fullName: '',
     email: '',
     phone: '',
     ringSize: '',
@@ -74,47 +73,78 @@ export default function AccountSettingsPage() {
   const [deleteConfirm, setDeleteConfirm] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSavingProfile, setIsSavingProfile] = useState(false)
+  const loadedUserIdRef = useRef<string | null>(null)
 
   const passwordStrength = useMemo(() => strengthFor(passwordForm.newPassword), [passwordForm.newPassword])
   const strengthColor = passwordStrength <= 1 ? '#A85C6A' : passwordStrength === 2 ? '#B7791F' : passwordStrength === 3 ? '#C9A961' : '#7A8F72'
 
   useEffect(() => {
-    const load = async () => {
-      const {
-        data: { user: currentUser },
-      } = await supabaseAuth.auth.getUser()
+    let cancelled = false
 
-      if (!currentUser) {
+    const loadForUser = async (currentUser: User) => {
+      if (loadedUserIdRef.current === currentUser.id) return
+      loadedUserIdRef.current = currentUser.id
+
+      try {
+        setIsLoading(true)
+        setUser(currentUser)
+        const currentProfile = await getOrCreateProfile(
+          currentUser.id,
+          currentUser.email || '',
+          typeof currentUser.user_metadata?.name === 'string' ? currentUser.user_metadata.name : undefined
+        )
+
+        if (cancelled) return
+
+        setProfileForm({
+          fullName: `${currentProfile?.firstName || ''} ${currentProfile?.lastName || ''}`.trim(),
+          email: currentUser.email || '',
+          phone: currentProfile?.phone || '',
+          ringSize: currentProfile?.ringSize || '',
+        })
+
+        const { data: savedAddresses } = await supabaseAuth
+          .from('SavedAddress')
+          .select('*')
+          .eq('userId', currentUser.id)
+          .order('isDefault', { ascending: false })
+
+        if (!cancelled) {
+          setAddresses((savedAddresses || []) as SavedAddress[])
+        }
+      } catch (error) {
+        console.error('Settings load error:', error)
+        showToast('Unable to load settings', 'error')
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange((event, session) => {
+      if (cancelled) return
+
+      if (event === 'SIGNED_OUT' || !session?.user) {
         router.replace('/login?redirect=/account/settings')
         return
       }
 
-      setUser(currentUser)
-      const currentProfile = await getOrCreateProfile(
-        currentUser.id,
-        currentUser.email || '',
-        typeof currentUser.user_metadata?.name === 'string' ? currentUser.user_metadata.name : undefined
-      )
-      setProfileForm({
-        firstName: currentProfile?.firstName || '',
-        lastName: currentProfile?.lastName || '',
-        email: currentUser.email || '',
-        phone: currentProfile?.phone || '',
-        ringSize: currentProfile?.ringSize || '',
-      })
+      void loadForUser(session.user)
+    })
 
-      const { data: savedAddresses } = await supabaseAuth
-        .from('SavedAddress')
-        .select('*')
-        .eq('userId', currentUser.id)
-        .order('isDefault', { ascending: false })
+    const fallbackTimer = window.setTimeout(() => {
+      if (!cancelled && !loadedUserIdRef.current) {
+        router.replace('/login?redirect=/account/settings')
+      }
+    }, 5000)
 
-      setAddresses((savedAddresses || []) as SavedAddress[])
-      setIsLoading(false)
+    return () => {
+      cancelled = true
+      window.clearTimeout(fallbackTimer)
+      subscription.unsubscribe()
     }
-
-    void load()
-  }, [router])
+  }, [router, showToast])
 
   const saveProfile = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -123,6 +153,8 @@ export default function AccountSettingsPage() {
     setIsSavingProfile(true)
 
     try {
+      const [firstName = '', ...lastNameParts] = profileForm.fullName.trim().split(/\s+/)
+      const lastName = lastNameParts.join(' ')
       const { data: existing } = await supabaseAuth
         .from('UserProfile')
         .select('id')
@@ -133,8 +165,8 @@ export default function AccountSettingsPage() {
         const { error } = await supabaseAuth
           .from('UserProfile')
           .update({
-            firstName: profileForm.firstName,
-            lastName: profileForm.lastName,
+            firstName,
+            lastName,
             phone: profileForm.phone,
             ringSize: profileForm.ringSize,
             updatedAt: new Date().toISOString(),
@@ -148,8 +180,8 @@ export default function AccountSettingsPage() {
           .insert({
             userId: user.id,
             email: user.email,
-            firstName: profileForm.firstName,
-            lastName: profileForm.lastName,
+            firstName,
+            lastName,
             phone: profileForm.phone,
             ringSize: profileForm.ringSize,
           })
@@ -249,11 +281,8 @@ export default function AccountSettingsPage() {
 
       <form onSubmit={saveProfile} style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '4px', padding: '28px', marginBottom: '20px' }}>
         <p className="eyebrow-luxury" style={{ marginBottom: '18px' }}>PERSONAL INFORMATION</p>
-        <div className="grid gap-4 md:grid-cols-2">
-          <label><span className="eyebrow-luxury" style={{ display: 'block', marginBottom: '8px' }}>FIRST NAME</span><input className="input-luxury" value={profileForm.firstName} onChange={(event) => setProfileForm((prev) => ({ ...prev, firstName: event.target.value }))} /></label>
-          <label><span className="eyebrow-luxury" style={{ display: 'block', marginBottom: '8px' }}>LAST NAME</span><input className="input-luxury" value={profileForm.lastName} onChange={(event) => setProfileForm((prev) => ({ ...prev, lastName: event.target.value }))} /></label>
-        </div>
         <div className="mt-4 grid gap-4">
+          <label><span className="eyebrow-luxury" style={{ display: 'block', marginBottom: '8px' }}>FULL NAME</span><input className="input-luxury" value={profileForm.fullName} onChange={(event) => setProfileForm((prev) => ({ ...prev, fullName: event.target.value }))} /></label>
           <label><span className="eyebrow-luxury" style={{ display: 'block', marginBottom: '8px' }}>EMAIL</span><input className="input-luxury" value={profileForm.email} disabled readOnly /></label>
           <label><span className="eyebrow-luxury" style={{ display: 'block', marginBottom: '8px' }}>PHONE NUMBER</span><input className="input-luxury" value={profileForm.phone} onChange={(event) => setProfileForm((prev) => ({ ...prev, phone: event.target.value }))} /></label>
           <label>
@@ -274,7 +303,7 @@ export default function AccountSettingsPage() {
         {addresses.map((address) => (
           <div key={address.id} style={{ background: '#FBF5F0', border: '0.5px solid #EDD9AF', padding: '16px 20px', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', gap: '18px' }}>
             <div>
-              <span style={{ color: '#C9A961', border: '0.5px solid #C9A961', borderRadius: '999px', fontFamily: 'var(--font-inter)', fontSize: '10px', padding: '3px 9px' }}>{address.label}</span>
+              <span style={{ color: '#C9A961', border: '0.5px solid #C9A961', borderRadius: '4px', fontFamily: 'var(--font-inter)', fontSize: '10px', padding: '3px 9px' }}>{address.label}</span>
               <p style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', margin: '10px 0 4px' }}>{address.firstName} {address.lastName}</p>
               <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', lineHeight: 1.6, margin: 0 }}>
                 {address.addressLine1}{address.addressLine2 ? `, ${address.addressLine2}` : ''}<br />

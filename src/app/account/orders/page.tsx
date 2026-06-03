@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ShoppingBag } from 'lucide-react'
+import type { User } from '@supabase/supabase-js'
 import { supabaseAuth } from '@/lib/auth'
 
 type OrderItem = {
@@ -46,29 +47,60 @@ export default function AccountOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [expanded, setExpanded] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const loadedUserIdRef = useRef<string | null>(null)
 
   useEffect(() => {
-    const load = async () => {
-      const {
-        data: { user },
-      } = await supabaseAuth.auth.getUser()
+    let cancelled = false
 
-      if (!user) {
+    const loadForUser = async (user: User) => {
+      if (loadedUserIdRef.current === user.id) return
+      loadedUserIdRef.current = user.id
+
+      try {
+        setIsLoading(true)
+        const { data } = await supabaseAuth
+          .from('Order')
+          .select('*, OrderItem(*)')
+          .eq('customerEmail', user.email || '')
+          .order('createdAt', { ascending: false })
+
+        if (!cancelled) {
+          setOrders((data || []) as Order[])
+        }
+      } catch (error) {
+        console.error('Orders load error:', error)
+        if (!cancelled) {
+          setOrders([])
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange((event, session) => {
+      if (cancelled) return
+
+      if (event === 'SIGNED_OUT' || !session?.user) {
         router.replace('/login?redirect=/account/orders')
         return
       }
 
-      const { data } = await supabaseAuth
-        .from('Order')
-        .select('*, OrderItem(*)')
-        .eq('customerEmail', user.email || '')
-        .order('createdAt', { ascending: false })
+      void loadForUser(session.user)
+    })
 
-      setOrders((data || []) as Order[])
-      setIsLoading(false)
+    const fallbackTimer = window.setTimeout(() => {
+      if (!cancelled && !loadedUserIdRef.current) {
+        router.replace('/login?redirect=/account/orders')
+      }
+    }, 5000)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(fallbackTimer)
+      subscription.unsubscribe()
     }
-
-    void load()
   }, [router])
 
   if (isLoading) {
@@ -88,19 +120,26 @@ export default function AccountOrdersPage() {
         <section style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', padding: '56px 24px', textAlign: 'center' }}>
           <ShoppingBag size={52} color="#C9A961" strokeWidth={1.2} style={{ margin: '0 auto 18px' }} />
           <h2 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '24px', fontWeight: 400, margin: 0 }}>No orders yet</h2>
-          <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '14px', margin: '10px 0 24px' }}>Your order history will appear here.</p>
-          <Link href="/products" className="btn-primary">SHOP THE COLLECTION</Link>
+          <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '14px', margin: '10px 0 24px' }}>No orders yet. Start browsing.</p>
+          <Link href="/diamonds" className="btn-primary">START BROWSING -</Link>
         </section>
       ) : (
         <section>
-          {orders.map((order) => (
+          {orders.map((order) => {
+            const itemCount = (order.OrderItem || []).reduce((total, item) => total + (item.quantity || 1), 0)
+            const itemSummary = itemCount
+              ? `${itemCount} ${itemCount === 1 ? 'item' : 'items'}`
+              : 'No item details'
+
+            return (
             <article key={order.id} style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '4px', padding: '20px 24px', marginBottom: '16px' }}>
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
                   <h2 style={{ color: '#C9A961', fontFamily: 'var(--font-playfair)', fontSize: '18px', fontWeight: 400, margin: 0 }}>{order.orderNumber}</h2>
                   <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', marginTop: '4px' }}>{formatDate(order.createdAt)}</p>
+                  <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', margin: '4px 0 0' }}>{itemSummary}</p>
                 </div>
-                <span style={{ ...statusStyle(order.status), borderRadius: '999px', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.12em', padding: '5px 10px', textTransform: 'uppercase' }}>{order.status.replace(/_/g, ' ')}</span>
+                <span style={{ ...statusStyle(order.status), borderRadius: '4px', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.12em', padding: '5px 10px', textTransform: 'uppercase' }}>{order.status.replace(/_/g, ' ')}</span>
                 <span style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '18px' }}>{formatPrice(order.total || 0)}</span>
               </div>
 
@@ -122,7 +161,8 @@ export default function AccountOrdersPage() {
                 <Link href="/account/messages/new" style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.08em' }}>Need help?</Link>
               </div>
             </article>
-          ))}
+            )
+          })}
         </section>
       )}
     </main>

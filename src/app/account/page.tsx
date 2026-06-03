@@ -358,7 +358,14 @@ export default function AccountPage() {
         </div>
         <div>
           <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '14px', margin: '0 0 4px' }}>Welcome back,</p>
-          <h1 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '28px', fontWeight: 400, margin: 0 }}>{displayName(user, profile)}</h1>
+          <h1 style={{ alignItems: 'center', color: '#1A1014', display: 'flex', flexWrap: 'wrap', fontFamily: 'var(--font-playfair)', fontSize: '28px', fontWeight: 400, gap: '10px', margin: 0 }}>
+            {displayName(user, profile)}
+            {isAdmin ? (
+              <span style={{ background: '#C9A961', borderRadius: '4px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '10px', fontWeight: 500, letterSpacing: '0.16em', padding: '3px 8px' }}>
+                ADMIN
+              </span>
+            ) : null}
+          </h1>
           <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', margin: '6px 0 0' }}>
             {user?.email} {profile?.createdAt ? `- Member since ${new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' }).format(new Date(profile.createdAt))}` : ''}
           </p>

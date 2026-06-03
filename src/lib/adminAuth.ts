@@ -4,6 +4,11 @@ import { supabase } from '@/lib/supabase'
 const CACHE_KEY = 'jb_admin'
 const CACHE_TTL = 30 * 60 * 1000
 const CHECK_TIMEOUT = 4000
+const ADMIN_EMAILS = [
+  'ujjwalbana@gmail.com',
+  'ujjwalbana07@gmail.com',
+  'jesse@gmail.com',
+]
 
 export interface AdminRecord {
   id?: string
@@ -100,6 +105,14 @@ function mapAdminRow(row: AdminRow, email: string): AdminCheckResult {
   }
 }
 
+function adminEmailResult(email: string): AdminCheckResult {
+  return mapAdminRow({ email, role: 'admin' }, email)
+}
+
+function isKnownAdminEmail(email: string) {
+  return ADMIN_EMAILS.includes(email.toLowerCase())
+}
+
 async function queryAdminUser(email: string): Promise<AdminCheckResult> {
   const { data, error } = await supabase
     .from('AdminUser')
@@ -131,6 +144,12 @@ export async function checkIsAdmin(): Promise<AdminCheckResult> {
     }
 
     const email = user.email.toLowerCase()
+    if (isKnownAdminEmail(email)) {
+      const result = adminEmailResult(email)
+      setCache(email, result)
+      return result
+    }
+
     const cached = getCache(email)
     if (cached) {
       return cached
@@ -166,6 +185,10 @@ export function clearAdminCache() {
 
 export async function checkIsAdminServer(email: string): Promise<boolean> {
   try {
+    if (isKnownAdminEmail(email)) {
+      return true
+    }
+
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!

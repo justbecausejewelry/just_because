@@ -79,9 +79,16 @@ export default function AdminLayout({
   }, [sidebarOpen])
 
   const handleSignOut = async () => {
-    clearAdminCache()
-    await supabaseAuth.auth.signOut()
-    router.push('/')
+    try {
+      clearAdminCache()
+      await supabaseAuth.auth.signOut({ scope: 'global' })
+    } finally {
+      if (typeof window !== 'undefined') {
+        window.localStorage.clear()
+        window.sessionStorage.clear()
+        window.location.href = '/login'
+      }
+    }
   }
 
   if (checking) {
