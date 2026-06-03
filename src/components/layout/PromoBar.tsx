@@ -1,6 +1,6 @@
 export function PromoBar() {
   const marqueeItems = [
-    '+91 91284 87999',
+    '+1 (800) 555-0192',
     'Sign up · 30% off your first piece',
     'Free shipping over $200',
     'IGI Certified Lab Diamonds',

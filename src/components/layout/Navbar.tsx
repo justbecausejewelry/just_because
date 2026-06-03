@@ -325,7 +325,7 @@ export function Navbar() {
         .nav-logo-script {
           font-family: var(--font-italianno), cursive !important;
           font-size: 30px !important;
-          color: #C9A961 !important;
+          color: #1A1014 !important;
           line-height: 0.85 !important;
           display: block !important;
         }
@@ -463,7 +463,7 @@ export function Navbar() {
                 fontFamily: "'Italianno', cursive",
                 fontSize: '2.2rem',
                 fontStyle: 'italic',
-                color: '#C9A961',
+                color: '#1A1014',
                 lineHeight: '1',
                 letterSpacing: '0.02em',
               }}>
@@ -471,7 +471,7 @@ export function Navbar() {
               </span>
 
               <span style={{
-                color: '#C9A961',
+                color: '#1A1014',
                 fontSize: '0.65rem',
                 letterSpacing: '3px',
                 margin: '0 4px 0 2px',
@@ -554,8 +554,6 @@ export function Navbar() {
                 </span>
               )}
             </button>
-
-            <span className="desktop-nav-icon" style={{ fontSize: '11px', color: '#B8A090', fontFamily: 'var(--font-inter)', letterSpacing: '0.08em', cursor: 'pointer', alignItems: 'center' }}>USD v</span>
 
             <button
               onClick={() => setMobileOpen((open) => !open)}
@@ -668,7 +666,7 @@ export function Navbar() {
                   fontFamily: "'Italianno', cursive",
                   fontSize: '2.2rem',
                   fontStyle: 'italic',
-                  color: '#C9A961',
+                  color: '#FBF5F0',
                   lineHeight: '1',
                   letterSpacing: '0.02em',
                 }}>
@@ -676,7 +674,7 @@ export function Navbar() {
                 </span>
 
                 <span style={{
-                  color: '#C9A961',
+                  color: '#FBF5F0',
                   fontSize: '0.65rem',
                   letterSpacing: '3px',
                   margin: '0 4px 0 2px',

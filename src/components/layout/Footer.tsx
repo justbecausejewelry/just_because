@@ -1,9 +1,34 @@
 import Link from 'next/link'
 
 const columns = [
-  { title: 'SHOP', links: ['Engagement', 'Rings', 'Necklaces', 'Earrings', 'Bracelets'] },
-  { title: 'LEARN', links: ['Our process', 'The 4 Cs', 'Education', 'Journal'] },
-  { title: 'SUPPORT', links: ['Contact', 'Returns', 'Ring sizing', 'Care guide'] },
+  {
+    title: 'SHOP',
+    links: [
+      { label: 'Engagement', href: '/products?type=engagement_ring' },
+      { label: 'Rings', href: '/products?type=ring' },
+      { label: 'Necklaces', href: '/products?type=necklace' },
+      { label: 'Earrings', href: '/products?type=earring' },
+      { label: 'Bracelets', href: '/products?type=bracelet' },
+    ],
+  },
+  {
+    title: 'LEARN',
+    links: [
+      { label: 'Our process', href: '/products' },
+      { label: 'The 4 Cs', href: '/education/4cs' },
+      { label: 'Education', href: '/education/ring-size' },
+      { label: 'Journal', href: '/products' },
+    ],
+  },
+  {
+    title: 'SUPPORT',
+    links: [
+      { label: 'Contact', href: '/contact' },
+      { label: 'Returns & Exchanges', href: '/returns' },
+      { label: 'Ring sizing', href: '/education/ring-size' },
+      { label: 'Care guide', href: '/products' },
+    ],
+  },
 ]
 
 function InstagramIcon() {
@@ -69,8 +94,8 @@ export function Footer() {
             </h3>
             <div className="flex flex-col gap-2">
               {column.links.map((link) => (
-                <Link key={link} href="/products" className="text-[13px] leading-[2.2] md:text-[11px]" style={{ color: '#D4C8C0', fontFamily: 'var(--font-inter)' }}>
-                  {link}
+                <Link key={link.label} href={link.href} className="text-[13px] leading-[2.2] md:text-[11px]" style={{ color: '#D4C8C0', fontFamily: 'var(--font-inter)' }}>
+                  {link.label}
                 </Link>
               ))}
             </div>
