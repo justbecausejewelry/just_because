@@ -45,7 +45,7 @@ export function EditorialSplit() {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=900&q=90"
+            src="/images/hero-ring.jpg"
             alt="Diamond engagement ring"
             style={{
               width: '100%',
@@ -283,7 +283,7 @@ export function EditorialSplit() {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?w=900&q=90"
+            src="/images/hero-flowers.jpg"
             alt="Everyday diamond ring"
             style={{
               width: '100%',
