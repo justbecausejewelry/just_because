@@ -7,8 +7,7 @@ import { Heart, Menu, Search, ShoppingBag, User, X } from 'lucide-react'
 import { MiniCartDrawer } from '@/components/cart/MiniCartDrawer'
 import { useCart } from '@/context/CartContext'
 import { useWishlist } from '@/context/WishlistContext'
-import { supabaseAuth } from '@/lib/auth'
-import { checkIsAdmin, clearAdminCache } from '@/lib/adminAuth'
+import { useRole } from '@/hooks/useRole'
 
 type MegaMenuLink = {
   label: string
@@ -257,34 +256,18 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [cartOpen, setCartOpen] = useState(false)
-  const [isAdmin, setIsAdmin] = useState(false)
   const menuTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pathname = usePathname()
   const router = useRouter()
   const { isMiniCartOpen, itemCount, closeCart } = useCart()
   const { itemCount: wishlistCount } = useWishlist()
+  const { isAdmin } = useRole()
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10)
     window.addEventListener('scroll', handleScroll)
     handleScroll()
     return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
-
-  useEffect(() => {
-    void checkIsAdmin().then(({ isAdmin: hasAdminAccess }) => setIsAdmin(hasAdminAccess))
-
-    const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        const { isAdmin: hasAdminAccess } = await checkIsAdmin()
-        setIsAdmin(hasAdminAccess)
-      } else {
-        clearAdminCache()
-        setIsAdmin(false)
-      }
-    })
-
-    return () => subscription.unsubscribe()
   }, [])
 
   useEffect(() => {
@@ -467,17 +450,18 @@ export function Navbar() {
             position: 'relative',
           }}
         >
-          <Link href="/" style={{ textDecoration: 'none', flexShrink: 0, zIndex: 2 }}>
+          <Link href="/" style={{ textDecoration: 'none', flexShrink: 0, minWidth: 'fit-content', zIndex: 2 }}>
             <div style={{ alignItems: 'center', display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
               <div
                 style={{
                   fontFamily: 'var(--font-italianno)',
                   filter: 'drop-shadow(0 1px 3px rgba(201,169,97,0.25))',
-                  fontSize: '2.6rem',
+                  fontSize: '2.4rem',
                   fontStyle: 'italic',
                   color: '#C9A961',
                   lineHeight: 0.86,
                   letterSpacing: '0.02em',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 just
@@ -522,7 +506,7 @@ export function Navbar() {
             </div>
           </Link>
 
-          <nav className="desktop-nav-center desktop-mega-nav" style={{ gap: '28px', alignItems: 'center', position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
+          <nav className="desktop-nav-center desktop-mega-nav" style={{ gap: '28px', alignItems: 'center', minWidth: 0, overflow: 'hidden', position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
             {menuLabels.map((label) => (
               <div
                 key={label}
@@ -683,13 +667,13 @@ export function Navbar() {
               borderBottom: '0.5px solid rgba(201,169,97,0.15)',
             }}
           >
-            <Link href="/" onClick={() => setMobileOpen(false)} style={{ textDecoration: 'none' }}>
-              <div style={{ filter: 'drop-shadow(0 1px 3px rgba(201,169,97,0.25))', fontFamily: 'var(--font-italianno)', fontSize: '2.6rem', fontStyle: 'italic', color: '#C9A961', lineHeight: 0.86, letterSpacing: '0.02em' }}>
+            <Link href="/" onClick={() => setMobileOpen(false)} style={{ textDecoration: 'none', flexShrink: 0, minWidth: 'fit-content' }}>
+              <div style={{ filter: 'drop-shadow(0 1px 3px rgba(201,169,97,0.25))', fontFamily: 'var(--font-italianno)', fontSize: '2.4rem', fontStyle: 'italic', color: '#C9A961', lineHeight: 0.86, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
                 just
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '1px' }}>
                 <div style={{ width: '18px', height: '0.5px', background: 'rgba(201,169,97,0.8)' }} />
-                <span style={{ fontFamily: 'var(--font-inter)', fontSize: '9px', fontWeight: 500, letterSpacing: '0.36em', color: 'rgba(251,245,240,0.7)' }}>
+                <span style={{ fontFamily: 'var(--font-inter)', fontSize: '9px', fontWeight: 500, letterSpacing: '0.36em', color: 'rgba(251,245,240,0.7)', whiteSpace: 'nowrap' }}>
                   BECAUSE
                 </span>
                 <div style={{ width: '18px', height: '0.5px', background: 'rgba(201,169,97,0.8)' }} />

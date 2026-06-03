@@ -4,7 +4,8 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabaseAuth } from '@/lib/auth'
-import { checkIsAdmin, clearAdminCache } from '@/lib/adminAuth'
+import { forceSignOut } from '@/lib/forceSignOut'
+import { useRole } from '@/hooks/useRole'
 import {
   LayoutDashboard,
   Package,
@@ -21,7 +22,14 @@ import {
   ExternalLink,
 } from 'lucide-react'
 
-const sidebarLinks = [
+type SidebarLink = {
+  href: string
+  label: string
+  icon: typeof LayoutDashboard
+  exact?: boolean
+}
+
+const sidebarLinks: SidebarLink[] = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { href: '/admin/products', label: 'Products', icon: Package },
   { href: '/admin/orders', label: 'Orders', icon: ShoppingBag },
@@ -30,6 +38,10 @@ const sidebarLinks = [
   { href: '/admin/diamonds', label: 'Diamonds', icon: Diamond },
   { href: '/admin/discount-codes', label: 'Discount Codes', icon: Tag },
   { href: '/admin/support', label: 'Support', icon: MessageSquare },
+]
+
+const superAdminLinks: SidebarLink[] = [
+  { href: '/admin/users', label: 'Users', icon: Users },
 ]
 
 export default function AdminLayout({
@@ -43,21 +55,20 @@ export default function AdminLayout({
   const [allowed, setAllowed] = useState(false)
   const [adminName, setAdminName] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { role, isAdmin, isSuperAdmin, loading: roleLoading } = useRole()
 
   useEffect(() => {
-    checkIsAdmin()
-      .then(({ isAdmin }) => {
-        if (!isAdmin) {
-          router.replace('/')
-          return
-        }
-        setAllowed(true)
-        setChecking(false)
-      })
-      .catch(() => {
-        router.replace('/')
-        setChecking(false)
-      })
+    if (roleLoading) return
+
+    if (!isAdmin) {
+      setAllowed(false)
+      setChecking(false)
+      router.replace('/account')
+      return
+    }
+
+    setAllowed(true)
+    setChecking(false)
 
     supabaseAuth.auth.getUser().then(({ data: { user } }) => {
       const name = typeof user?.user_metadata?.name === 'string' && user.user_metadata.name.trim()
@@ -65,7 +76,7 @@ export default function AdminLayout({
         : user?.email?.split('@')[0] || 'Admin'
       setAdminName(name)
     })
-  }, [router])
+  }, [isAdmin, roleLoading, router])
 
   useEffect(() => {
     setSidebarOpen(false)
@@ -79,16 +90,7 @@ export default function AdminLayout({
   }, [sidebarOpen])
 
   const handleSignOut = async () => {
-    try {
-      clearAdminCache()
-      await supabaseAuth.auth.signOut({ scope: 'global' })
-    } finally {
-      if (typeof window !== 'undefined') {
-        window.localStorage.clear()
-        window.sessionStorage.clear()
-        window.location.href = '/login'
-      }
-    }
+    await forceSignOut()
   }
 
   if (checking) {
@@ -109,7 +111,11 @@ export default function AdminLayout({
     return pathname.startsWith(href)
   }
 
-  const currentPageLabel = sidebarLinks.find(({ href, exact }) => isActive(href, exact))?.label || 'Admin'
+  const visibleSidebarLinks = isSuperAdmin
+    ? [...sidebarLinks, ...superAdminLinks]
+    : sidebarLinks
+
+  const currentPageLabel = visibleSidebarLinks.find(({ href, exact }) => isActive(href, exact))?.label || 'Admin'
 
   const SidebarContent = () => (
     <aside
@@ -163,7 +169,7 @@ export default function AdminLayout({
       </div>
 
       <nav style={{ flex: 1, padding: '12px 0', overflowY: 'auto' }}>
-        {sidebarLinks.map(({ href, label, icon: Icon, exact }) => {
+        {visibleSidebarLinks.map(({ href, label, icon: Icon, exact }) => {
           const active = isActive(href, exact)
           return (
             <Link
@@ -222,7 +228,9 @@ export default function AdminLayout({
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: '12px', color: 'rgba(251,245,240,0.8)', fontFamily: 'var(--font-inter)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{adminName}</div>
-            <div style={{ fontSize: '9px', color: 'rgba(201,169,97,0.5)', letterSpacing: '0.15em' }}>ADMIN</div>
+            <div style={{ fontSize: '9px', color: 'rgba(201,169,97,0.5)', letterSpacing: '0.15em' }}>
+              {role === 'super_admin' ? 'SUPER ADMIN' : 'ADMIN'}
+            </div>
           </div>
         </div>
 

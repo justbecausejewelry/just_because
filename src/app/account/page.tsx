@@ -7,8 +7,9 @@ import { useRouter } from 'next/navigation'
 import { Heart, MessageSquare, Settings, ShoppingBag } from 'lucide-react'
 import type { User } from '@supabase/supabase-js'
 import { supabase, SUPABASE_AUTH_STORAGE_KEY } from '@/lib/supabase'
-import { checkIsAdmin, clearAdminCache } from '@/lib/adminAuth'
+import { forceSignOut } from '@/lib/forceSignOut'
 import { getOrCreateProfile, type UserProfile } from '@/lib/userProfile'
+import { useRole } from '@/hooks/useRole'
 
 type MenuCardProps = {
   href: string
@@ -166,11 +167,8 @@ export default function AccountPage() {
     wishlist: null,
     unreadMessages: null,
   })
-  const [isAdmin, setIsAdmin] = useState(false)
-  const [adminRole, setAdminRole] = useState<string | null>(null)
-  const [adminChecking, setAdminChecking] = useState(true)
   const [pageLoading, setPageLoading] = useState(true)
-  const [signingOut, setSigningOut] = useState(false)
+  const { role, isAdmin, isSuperAdmin, loading: roleLoading } = useRole()
 
   useEffect(() => {
     let cancelled = false
@@ -217,22 +215,11 @@ export default function AccountPage() {
       }
 
       loadedUserIdRef.current = currentUser.id
-      setAdminChecking(true)
 
       void Promise.allSettled([
         loadStats(currentUser.id, email),
         loadProfile(currentUser),
-        checkIsAdmin().then(({ isAdmin: hasAdminAccess, role }) => {
-          if (cancelled) return
-          setIsAdmin(hasAdminAccess)
-          setAdminRole(role)
-          setAdminChecking(false)
-        }),
-      ]).then(() => {
-        if (!cancelled) {
-          setAdminChecking(false)
-        }
-      })
+      ])
     }
 
     const storedSession = getSessionFromStorage()
@@ -281,36 +268,7 @@ export default function AccountPage() {
   }, [pageLoading, router])
 
   const handleSignOut = async () => {
-    setSigningOut(true)
-
-    try {
-      clearAdminCache()
-
-      if (typeof window !== 'undefined') {
-        const keysToRemove = Object.keys(window.localStorage)
-          .filter((key) =>
-            key.includes('supabase')
-            || key.includes('sb-')
-            || key.includes('jb-auth')
-            || key.includes('jb_admin')
-          )
-        keysToRemove.forEach((key) => window.localStorage.removeItem(key))
-
-        const sessionKeys = Object.keys(window.sessionStorage)
-          .filter((key) =>
-            key.includes('supabase')
-            || key.includes('jb_admin')
-            || key.includes('admin')
-          )
-        sessionKeys.forEach((key) => window.sessionStorage.removeItem(key))
-      }
-
-      await supabase.auth.signOut({ scope: 'global' })
-      window.location.href = '/'
-    } catch (err) {
-      console.error('Sign out error:', err)
-      window.location.href = '/'
-    }
+    await forceSignOut()
   }
 
   if (pageLoading) {
@@ -362,7 +320,7 @@ export default function AccountPage() {
             {displayName(user, profile)}
             {isAdmin ? (
               <span style={{ background: '#C9A961', borderRadius: '4px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '10px', fontWeight: 500, letterSpacing: '0.16em', padding: '3px 8px' }}>
-                ADMIN
+                {isSuperAdmin ? 'SUPER ADMIN' : 'ADMIN'}
               </span>
             ) : null}
           </h1>
@@ -394,7 +352,7 @@ export default function AccountPage() {
         <MenuCard href="/account/messages" icon={MessageSquare} title="Messages" description="Chat with our team" badge={stats.unreadMessages} />
         <MenuCard href="/wishlist" icon={Heart} title="Wishlist" description="Your saved pieces" />
         <MenuCard href="/account/settings" icon={Settings} title="Account Settings" description="Update your profile" />
-        {adminChecking ? (
+        {roleLoading ? (
           <div style={{
             height: '72px',
             background: 'rgba(201,169,97,0.04)',
@@ -467,7 +425,7 @@ export default function AccountPage() {
                 color: 'rgba(201,169,97,0.7)',
                 fontFamily: 'var(--font-inter)',
               }}>
-                {adminRole === 'super_admin'
+                {role === 'super_admin'
                   ? '* Super Admin - Full access'
                   : '* Admin - Manage store'}
               </div>
@@ -483,33 +441,28 @@ export default function AccountPage() {
 
       <button
         onClick={handleSignOut}
-        disabled={signingOut}
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
-          background: signingOut ? 'rgba(168,92,106,0.1)' : 'transparent',
+          background: 'transparent',
           border: '0.5px solid #EDD9AF',
           padding: '12px 24px',
-          cursor: signingOut ? 'not-allowed' : 'pointer',
+          cursor: 'pointer',
           fontSize: '12px',
           letterSpacing: '0.15em',
-          color: signingOut ? '#A85C6A' : '#B8A090',
+          color: '#B8A090',
           fontFamily: 'var(--font-inter)',
           marginTop: '32px',
           transition: 'all 0.2s',
         }}
         onMouseEnter={(event) => {
-          if (!signingOut) {
-            event.currentTarget.style.borderColor = '#A85C6A'
-            event.currentTarget.style.color = '#A85C6A'
-          }
+          event.currentTarget.style.borderColor = '#A85C6A'
+          event.currentTarget.style.color = '#A85C6A'
         }}
         onMouseLeave={(event) => {
-          if (!signingOut) {
-            event.currentTarget.style.borderColor = '#EDD9AF'
-            event.currentTarget.style.color = '#B8A090'
-          }
+          event.currentTarget.style.borderColor = '#EDD9AF'
+          event.currentTarget.style.color = '#B8A090'
         }}
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -517,7 +470,7 @@ export default function AccountPage() {
           <polyline points="16 17 21 12 16 7" />
           <line x1="21" y1="12" x2="9" y2="12" />
         </svg>
-        {signingOut ? 'SIGNING OUT...' : 'SIGN OUT'}
+        SIGN OUT
       </button>
 
       <style>{`
