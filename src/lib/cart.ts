@@ -1,3 +1,5 @@
+import { supabase } from '@/lib/supabase'
+
 export type CartPriceBreakdown = {
   base: number
   metal: number
@@ -32,6 +34,43 @@ export type CartItem = {
 }
 
 const CART_KEY = 'jb_cart'
+const SESSION_KEY = 'jb_session'
+
+export function getSessionId(): string {
+  if (typeof window === 'undefined') return 'server'
+
+  let sessionId = sessionStorage.getItem(SESSION_KEY)
+  if (!sessionId) {
+    sessionId = `sess_${Math.random().toString(36).slice(2)}`
+    sessionStorage.setItem(SESSION_KEY, sessionId)
+  }
+
+  return sessionId
+}
+
+export async function trackCartEvent(
+  action: 'added' | 'removed' | 'purchased' | 'abandoned',
+  item: CartItem,
+  userId?: string | null
+) {
+  try {
+    const { error } = await supabase.from('cart_events').insert({
+      user_id: userId || null,
+      session_id: getSessionId(),
+      item_type: item.type,
+      item_name: item.name,
+      item_price: item.unitPrice ?? item.price,
+      product_id: item.type === 'product' ? item.productId || item.id : null,
+      diamond_id: item.type === 'diamond' ? item.productId || item.id : null,
+      action,
+    })
+    if (error) {
+      console.error('Analytics error:', error)
+    }
+  } catch (error) {
+    console.error('Analytics error:', error)
+  }
+}
 
 function saveCart(items: CartItem[]) {
   if (typeof window === 'undefined') return
@@ -63,19 +102,29 @@ export function addToCart(item: CartItem) {
   }
 
   saveCart(existing)
+  void trackCartEvent('added', item)
 }
 
 export function updateCartQuantity(id: string, quantity: number) {
   const existing = getCart()
+  const currentItem = existing.find((item) => item.id === id)
   const nextItems = quantity <= 0
     ? existing.filter((item) => item.id !== id)
     : existing.map((item) => (item.id === id ? { ...item, quantity } : item))
 
   saveCart(nextItems)
+  if (quantity <= 0 && currentItem) {
+    void trackCartEvent('removed', currentItem)
+  }
 }
 
 export function removeFromCart(id: string) {
-  saveCart(getCart().filter((item) => item.id !== id))
+  const existing = getCart()
+  const removedItem = existing.find((item) => item.id === id)
+  saveCart(existing.filter((item) => item.id !== id))
+  if (removedItem) {
+    void trackCartEvent('removed', removedItem)
+  }
 }
 
 export function clearCart() {

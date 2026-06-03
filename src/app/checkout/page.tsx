@@ -8,6 +8,7 @@ import { motion } from 'framer-motion'
 import { Gem } from 'lucide-react'
 import { useCart } from '@/context/CartContext'
 import { supabaseAuth } from '@/lib/auth'
+import { trackCartEvent, type CartItem as AnalyticsCartItem } from '@/lib/cart'
 
 type SavedAddress = {
   id: string
@@ -40,6 +41,34 @@ function Field({ label, value, onChange, placeholder = '' }: { label: string; va
       <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} style={{ background: '#FDF8F2', border: '1px solid #EDD9AF', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', padding: '13px 15px', width: '100%' }} />
     </label>
   )
+}
+
+function toAnalyticsCartItem(item: ReturnType<typeof useCart>['items'][number]): AnalyticsCartItem {
+  const isDiamond = item.selectedMetal === 'Loose diamond'
+
+  return {
+    id: item.id,
+    type: isDiamond ? 'diamond' : 'product',
+    name: item.productTitle,
+    price: item.unitPrice,
+    imageUrl: item.productImage,
+    carat: item.selectedCarat,
+    shape: item.selectedShape,
+    quantity: item.quantity,
+    productId: item.productId,
+    productSlug: item.productSlug,
+    productTitle: item.productTitle,
+    productImage: item.productImage,
+    selectedMetal: item.selectedMetal,
+    selectedCarat: item.selectedCarat,
+    selectedShape: item.selectedShape,
+    selectedColor: item.selectedColor,
+    selectedClarity: item.selectedClarity,
+    ringSize: item.ringSize,
+    engraving: item.engraving,
+    unitPrice: item.unitPrice,
+    priceBreakdown: item.priceBreakdown,
+  }
 }
 
 export default function CheckoutPage() {
@@ -210,6 +239,7 @@ export default function CheckoutPage() {
           })
       }
 
+      await Promise.all(items.map((item) => trackCartEvent('purchased', toAnalyticsCartItem(item), user?.id || null)))
       await clearCart()
       router.push(`/order-confirmed?order=${payload.order.id}&number=${payload.orderNumber || payload.order.orderNumber || orderNumber}`)
     } catch (orderError) {

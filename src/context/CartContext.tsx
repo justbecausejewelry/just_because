@@ -13,6 +13,7 @@ import {
   clearCart as clearGuestCart,
   getCart as getGuestCart,
   removeFromCart as removeGuestCartItem,
+  trackCartEvent,
   updateCartQuantity as updateGuestCartQuantity,
   type CartItem as GuestCartItem,
 } from '@/lib/cart'
@@ -252,7 +253,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       .single()
 
     if (!error && data) {
-      setItems((prev) => [...prev, { ...item, id: (data as CartRow).id }])
+      const savedItem = { ...item, id: (data as CartRow).id }
+      setItems((prev) => [...prev, savedItem])
+      void trackCartEvent('added', cartItemToGuestItem(savedItem, savedItem.id), userId)
       setIsMiniCartOpen(true)
       window.setTimeout(() => setIsMiniCartOpen(false), 3000)
     }
@@ -266,6 +269,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
 
     const previous = items
+    const removedItem = previous.find((item) => item.id === id)
     setItems((prev) => prev.filter((item) => item.id !== id))
 
     const { error } = await supabase
@@ -276,6 +280,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       setItems(previous)
+    } else if (removedItem) {
+      void trackCartEvent('removed', cartItemToGuestItem(removedItem, removedItem.id), userId)
     }
   }
 

@@ -4,6 +4,7 @@ import { AppShell } from '@/components/layout/AppShell'
 import { CartProvider } from '@/context/CartContext'
 import { ToastProvider } from '@/context/ToastContext'
 import { WishlistProvider } from '@/context/WishlistContext'
+import { PageViewTracker } from '@/components/analytics/PageViewTracker'
 import DiamondCursor from '@/components/ui/DiamondCursor'
 import './globals.css'
 
@@ -51,6 +52,7 @@ export default function RootLayout({
         <CartProvider>
           <WishlistProvider>
             <ToastProvider>
+              <PageViewTracker />
               <AppShell>{children}</AppShell>
             </ToastProvider>
           </WishlistProvider>
