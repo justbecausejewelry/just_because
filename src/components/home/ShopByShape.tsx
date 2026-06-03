@@ -105,6 +105,64 @@ export function ShopByShape() {
         Find your diamond&apos;s silhouette
       </h2>
 
+      {windowWidth < 768 ? (
+        <div
+          className="shop-shape-mobile-grid"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+            gap: '14px',
+            marginTop: '32px',
+          }}
+        >
+          {shapes.map((shape) => {
+            const isSelected = selected === shape.name
+            return (
+              <Link
+                key={shape.name}
+                href={shape.href}
+                onClick={() => setSelected(shape.name)}
+                style={{
+                  alignItems: 'center',
+                  background: isSelected ? '#FDF8F2' : '#FBF5F0',
+                  border: `0.5px solid ${isSelected ? '#C9A961' : '#EDD9AF'}`,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
+                  minHeight: '132px',
+                  padding: '16px 10px',
+                  textDecoration: 'none',
+                }}
+              >
+                <Image
+                  src={shape.src}
+                  alt={`${shape.name} cut diamond`}
+                  width={80}
+                  height={80}
+                  sizes="80px"
+                  style={{
+                    height: '80px',
+                    mixBlendMode: 'multiply',
+                    objectFit: 'contain',
+                    width: '80px',
+                  }}
+                />
+                <span
+                  style={{
+                    color: isSelected ? '#C9A961' : '#1A1014',
+                    fontFamily: 'var(--font-jost)',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    letterSpacing: '0.08em',
+                  }}
+                >
+                  {shape.name}
+                </span>
+              </Link>
+            )
+          })}
+        </div>
+      ) : (
       <div
         style={{
           display: 'flex',
@@ -221,6 +279,7 @@ export function ShopByShape() {
           <ChevronRight size={20} color={rightHover ? '#FBF5F0' : '#1A1014'} />
         </button>
       </div>
+      )}
 
       <div
         style={{

@@ -8,21 +8,38 @@ export function EditorialSplit() {
       <style>{`
         @media (max-width: 768px) {
           .editorial-split-section {
+            display: flex !important;
+            flex-direction: column !important;
             grid-template-columns: 1fr !important;
             height: auto !important;
+            min-height: 0 !important;
           }
 
           .editorial-split-image {
-            height: 300px !important;
+            height: 55vw !important;
+            min-height: 300px !important;
+            order: 1 !important;
           }
 
           .editorial-split-copy {
-            padding: 40px 28px !important;
+            order: 2 !important;
+            padding: 44px 20px !important;
+          }
+
+          .editorial-split-copy h2 {
+            font-size: clamp(34px, 11vw, 46px) !important;
           }
 
           .editorial-split-actions {
             flex-direction: column !important;
             align-items: flex-start !important;
+            width: 100% !important;
+          }
+
+          .editorial-split-actions a,
+          .editorial-split-copy > a {
+            text-align: center !important;
+            width: 100% !important;
           }
         }
       `}</style>

@@ -479,11 +479,11 @@ function ProductsContent() {
         <span style={{ fontSize: '11px', color: '#1A1014', fontFamily: 'var(--font-inter)', letterSpacing: '0.08em' }}>Collection</span>
       </div>
 
-      <header className="px-6 py-12 md:px-20 md:py-16" style={{ borderBottom: '0.5px solid #EDD9AF' }}>
+      <header className="products-hero px-6 py-12 md:px-20 md:py-16" style={{ borderBottom: '0.5px solid #EDD9AF' }}>
         <p style={{ color: '#C9A961', fontFamily: 'var(--font-jost)', fontSize: '11px', fontWeight: 500, letterSpacing: '0.2em', marginBottom: '10px' }}>
           JUST BECAUSE COLLECTION
         </p>
-        <h1 style={{ color: '#1A1014', fontFamily: 'var(--font-cormorant)', fontSize: 'clamp(2.5rem, 5vw, 4rem)', fontWeight: 400, lineHeight: 1.05, margin: 0 }}>
+        <h1 style={{ color: '#1A1014', fontFamily: 'var(--font-cormorant)', fontSize: 'clamp(2rem, 7vw, 4rem)', fontWeight: 400, lineHeight: 1.05, margin: 0 }}>
           Lab-grown pieces, made personal
         </h1>
       </header>
@@ -623,11 +623,11 @@ function ProductsContent() {
               <button onClick={loadProducts} style={{ backgroundColor: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.18em', padding: '12px 18px' }}>RETRY</button>
             </div>
           ) : isLoading ? (
-            <div className="grid grid-cols-2 gap-5 lg:grid-cols-3">
+            <div className="products-grid grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 9 }, (_, index) => <SkeletonCard key={index} />)}
             </div>
           ) : products.length ? (
-            <div className="grid grid-cols-2 gap-5 lg:grid-cols-3">
+            <div className="products-grid grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {products.map((product) => <ProductCard key={product.id} product={product} />)}
             </div>
           ) : (

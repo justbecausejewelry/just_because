@@ -499,7 +499,7 @@ export default function AccountPage() {
 
         @media (max-width: 480px) {
           .account-stats-grid {
-            grid-template-columns: 1fr !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
           }
           .account-menu-card {
             padding: 18px !important;

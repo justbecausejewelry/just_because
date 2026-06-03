@@ -66,7 +66,7 @@ export default function CartPage() {
         <Gem color="#C9A961" size={72} strokeWidth={1.1} />
         <h2 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '32px', fontWeight: 400, marginTop: '20px' }}>Your cart is empty</h2>
         <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '14px', marginBottom: '24px' }}>Discover something beautiful</p>
-        <div className="flex flex-wrap justify-center gap-3">
+        <div className="cart-empty-actions flex flex-wrap justify-center gap-3">
           <Link href="/products" style={{ background: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.18em', padding: '14px 24px', textDecoration: 'none' }}>SHOP THE COLLECTION</Link>
           <Link href="/build" style={{ border: '1px solid #EDD9AF', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.18em', padding: '14px 24px', textDecoration: 'none' }}>BUILD YOUR OWN RING</Link>
         </div>
@@ -94,7 +94,7 @@ export default function CartPage() {
         {items.length === 0 ? (
           emptyActions
         ) : (
-          <div className="mt-8 grid gap-8 md:grid-cols-[60fr_40fr] lg:mt-10 lg:grid-cols-[65fr_35fr] lg:gap-12">
+          <div className="cart-layout mt-8 grid gap-8 md:grid-cols-[60fr_40fr] lg:mt-10 lg:grid-cols-[65fr_35fr] lg:gap-12">
             <section>
               <div className="hidden grid-cols-[100px_1fr_auto_auto_auto] gap-5 border-b pb-3 lg:grid" style={{ borderColor: '#EDD9AF' }}>
                 {['Product', 'Details', 'Price', 'Quantity', 'Total'].map((label) => (
@@ -102,7 +102,7 @@ export default function CartPage() {
                 ))}
               </div>
               {items.map((item) => (
-                <div key={item.id} className="relative grid grid-cols-[80px_1fr] gap-3 py-6 lg:grid-cols-[100px_1fr_auto_auto_auto] lg:items-center lg:gap-5" style={{ borderBottom: '0.5px solid #EDD9AF' }}>
+                <div key={item.id} className="cart-item-row relative grid grid-cols-[80px_1fr] gap-3 py-6 lg:grid-cols-[100px_1fr_auto_auto_auto] lg:items-center lg:gap-5" style={{ borderBottom: '0.5px solid #EDD9AF' }}>
                   <div style={{ width: 'clamp(80px, 14vw, 100px)', height: 'clamp(80px, 14vw, 100px)', background: '#F5E8ED', position: 'relative' }}>
                     {item.productImage ? <Image src={item.productImage} alt={item.productTitle} fill sizes="100px" style={{ objectFit: 'cover' }} /> : <div className="flex h-full items-center justify-center"><Gem color="#C9A961" size={34} /></div>}
                   </div>

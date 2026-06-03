@@ -461,7 +461,7 @@ export function BestSellers() {
           </button>
         </div>
       ) : (
-        <div className="best-sellers-grid mt-12 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+        <div className="best-sellers-grid mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
           {isLoading
             ? Array.from({ length: 5 }, (_, index) => <SkeletonCard key={index} />)
             : products.map((product) => (

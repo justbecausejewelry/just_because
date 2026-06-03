@@ -782,17 +782,27 @@ function DiamondsContent() {
         }
       `}</style>
 
-      <header style={{ background: '#1A1014', padding: '64px 24px 48px', textAlign: 'center' }}>
+      <header className="diamond-hero" style={{ background: '#1A1014', padding: '64px 24px 48px', textAlign: 'center' }}>
         <div style={{ fontSize: '11px', letterSpacing: '0.2em', color: '#C9A961', marginBottom: '14px', fontFamily: 'var(--font-jost)', fontWeight: 500 }}>
           LAB-GROWN DIAMONDS
         </div>
-        <h1 style={{ fontFamily: 'var(--font-cormorant)', fontSize: 'clamp(3rem,6vw,5rem)', fontWeight: 400, color: '#FBF5F0', marginBottom: '8px' }}>
-          Find your perfect <span style={{ fontStyle: 'italic', color: '#C9A961' }}>diamond.</span>
+        <h1 style={{ fontFamily: 'var(--font-cormorant)', fontSize: 'clamp(2rem,4vw,5rem)', fontWeight: 400, color: '#FBF5F0', lineHeight: 1.05, margin: '0 auto 8px', maxWidth: '340px', overflowWrap: 'anywhere' }}>
+          Find your perfect <span style={{ display: 'block', fontStyle: 'italic', color: '#C9A961' }}>diamond.</span>
         </h1>
         <p style={{ fontSize: '17px', color: 'rgba(184,160,144,0.8)', maxWidth: '520px', margin: '0 auto 32px', lineHeight: 1.8, fontFamily: 'var(--font-jost)', fontWeight: 300 }}>
           Every diamond IGI certified. Same fire, same brilliance as mined, grown sustainably in our solar foundry.
         </p>
-        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap', maxWidth: '900px', margin: '0 auto' }}>
+        <div
+          className="diamond-shape-filter-bar scrollbar-hide"
+          style={{
+            display: 'flex',
+            gap: '8px',
+            justifyContent: 'center',
+            flexWrap: 'wrap',
+            maxWidth: '900px',
+            margin: '0 auto',
+          }}
+        >
           {['All', ...availableShapes].map((shape) => (
             <button
               key={shape}
@@ -808,6 +818,8 @@ function DiamondsContent() {
                 fontFamily: 'var(--font-inter)',
                 transition: 'all 0.2s',
                 borderRadius: '2px',
+                flexShrink: 0,
+                whiteSpace: 'nowrap',
               }}
             >
               {shape === 'All' ? `ALL (${shapeBase.length})` : `${shape.toUpperCase()} (${shapeCounts[shape] || 0})`}
@@ -901,7 +913,7 @@ function DiamondsContent() {
             <div style={{ fontSize: '13px', color: '#B8A090', fontFamily: 'var(--font-inter)' }}>
               Showing <span style={{ color: '#C9A961', fontWeight: 500 }}>{loading ? '...' : filtered.length}</span> of {diamonds.length} diamonds
             </div>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div className="diamond-sort-bar scrollbar-hide" style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '11px', color: '#B8A090', fontFamily: 'var(--font-inter)' }}>SORT:</span>
               {[
                 ['price_low', 'Price: Low'],
@@ -909,7 +921,7 @@ function DiamondsContent() {
                 ['carat_high', 'Carat: High'],
                 ['carat_low', 'Carat: Low'],
               ].map(([value, label]) => (
-                <button key={value} onClick={() => setSortBy(value)} style={{ padding: '6px 14px', background: sortBy === value ? '#1A1014' : 'transparent', border: `0.5px solid ${sortBy === value ? '#1A1014' : '#EDD9AF'}`, color: sortBy === value ? '#FBF5F0' : '#B8A090', fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-inter)', borderRadius: '2px' }}>
+                <button key={value} onClick={() => setSortBy(value)} style={{ padding: '6px 14px', background: sortBy === value ? '#1A1014' : 'transparent', border: `0.5px solid ${sortBy === value ? '#1A1014' : '#EDD9AF'}`, color: sortBy === value ? '#FBF5F0' : '#B8A090', fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-inter)', borderRadius: '2px', flexShrink: 0, whiteSpace: 'nowrap' }}>
                   {label}
                 </button>
               ))}
