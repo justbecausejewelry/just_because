@@ -429,14 +429,6 @@ html {
   transform: scale(1.04);
 }
 
-.jb-card-hover [data-hover-cta] {
-  transform: translateY(100%);
-}
-
-.jb-card-hover:hover [data-hover-cta] {
-  transform: translateY(0);
-}
-
 .jb-wishlist-button:hover {
   background: #FBF5F0 !important;
   border-color: #E8C4D0 !important;

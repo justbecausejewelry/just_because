@@ -218,9 +218,13 @@ function ProductCard({ product }: { product: Product }) {
       transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
       className="jb-card-hover group relative h-full"
     >
-      <Link href={`/products/${product.slug}`} style={{ textDecoration: 'none' }}>
+      <Link href={`/products/${product.slug}`} className="block h-full" style={{ textDecoration: 'none' }}>
         <div
           style={{
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100%',
+            position: 'relative',
             backgroundColor: '#FDF8F2',
             border: '0.5px solid #EDD9AF',
             borderRadius: '2px',
@@ -274,7 +278,7 @@ function ProductCard({ product }: { product: Product }) {
               </span>
             )}
           </div>
-          <div style={{ padding: '18px 18px 22px', position: 'relative' }}>
+          <div style={{ padding: '16px' }}>
             <p style={{ color: '#C9A961', fontFamily: 'var(--font-jost)', fontSize: '11px', fontWeight: 500, letterSpacing: '0.2em', marginBottom: '7px', textTransform: 'uppercase' }}>
               {prettify(product.category)}
             </p>
@@ -290,7 +294,7 @@ function ProductCard({ product }: { product: Product }) {
               <span style={{ color: '#B8A090', fontFamily: 'var(--font-jost)', fontSize: '12px', marginRight: '6px' }}>From</span>
               <span style={{ color: '#1A1014', fontFamily: 'var(--font-jost)', fontSize: '17px', fontWeight: 500 }}>{formatPrice(product.basePrice)}</span>
             </p>
-            <div data-hover-cta className="absolute inset-x-0 bottom-0 translate-y-full transition-transform duration-300 ease-out group-hover:translate-y-0" style={{ backgroundColor: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-jost)', fontSize: '13px', fontWeight: 500, letterSpacing: '0.12em', padding: '11px', textAlign: 'center' }}>
+            <div data-hover-cta style={{ backgroundColor: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-jost)', fontSize: '13px', fontWeight: 500, letterSpacing: '0.12em', marginTop: '14px', padding: '11px', textAlign: 'center' }}>
               Customize →
             </div>
           </div>

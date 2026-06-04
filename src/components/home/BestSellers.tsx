@@ -137,8 +137,12 @@ function ProductCard({ product }: { product: Product }) {
         style={{ textDecoration: 'none' }}
       >
         <div
-          className="h-full overflow-hidden"
           style={{
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100%',
+            position: 'relative',
+            overflow: 'hidden',
             backgroundColor: '#FDF8F2',
             border: '0.5px solid #EDD9AF',
             borderRadius: '2px',
@@ -194,7 +198,7 @@ function ProductCard({ product }: { product: Product }) {
 
           </div>
 
-          <div style={{ padding: '14px 16px 18px', position: 'relative' }}>
+          <div style={{ padding: '16px' }}>
             <p
               style={{
                 color: '#C9A961',
@@ -264,7 +268,6 @@ function ProductCard({ product }: { product: Product }) {
 
             <div
               data-hover-cta
-              className="absolute inset-x-0 bottom-0 translate-y-full transition-transform duration-300 ease-out group-hover:translate-y-0"
               style={{
                 backgroundColor: '#1A1014',
                 color: '#FBF5F0',
@@ -272,6 +275,7 @@ function ProductCard({ product }: { product: Product }) {
                 fontSize: '13px',
                 fontWeight: 500,
                 letterSpacing: '0.12em',
+                marginTop: '14px',
                 padding: '10px',
                 textAlign: 'center',
                 width: '100%',
