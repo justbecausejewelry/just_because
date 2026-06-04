@@ -39,14 +39,14 @@ export function Hero() {
             style={{
               color: '#1A1014',
               fontFamily: 'var(--font-cormorant)',
-              fontSize: 'clamp(3rem, 6vw, 5rem)',
+              fontSize: 'clamp(2.4rem, 4.5vw, 4rem)',
               fontWeight: 400,
               lineHeight: 1.1,
             }}
           >
             A reason,
             <br />
-            <em style={{ color: '#E8C4D0', fontSize: 'clamp(3rem, 6vw, 5rem)', fontStyle: 'italic' }}>
+            <em style={{ color: '#E8C4D0', fontSize: 'clamp(2.4rem, 4.5vw, 4rem)', fontStyle: 'italic' }}>
               in itself.
             </em>
           </h1>
