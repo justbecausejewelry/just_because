@@ -30,7 +30,7 @@ export function Hero() {
         <div>
           <p
             className="mb-5 uppercase"
-            style={{ color: '#C9A961', fontFamily: 'var(--font-jost)', fontSize: '11px', fontWeight: 500, letterSpacing: '0.2em' }}
+            style={{ color: '#C9A961', fontFamily: 'var(--font-jost)', fontSize: '10.5px', fontWeight: 500, letterSpacing: '0.2em' }}
           >
             DESIGN YOUR RING
           </p>
@@ -39,20 +39,20 @@ export function Hero() {
             style={{
               color: '#1A1014',
               fontFamily: 'var(--font-cormorant)',
-              fontSize: 'clamp(2.4rem, 4.5vw, 4rem)',
+              fontSize: 'clamp(2rem, 3.8vw, 3.4rem)',
               fontWeight: 400,
               lineHeight: 1.1,
             }}
           >
             A reason,
             <br />
-            <em style={{ color: '#E8C4D0', fontSize: 'clamp(2.4rem, 4.5vw, 4rem)', fontStyle: 'italic' }}>
+            <em style={{ color: '#E8C4D0', fontSize: 'clamp(2rem, 3.8vw, 3.4rem)', fontStyle: 'italic' }}>
               in itself.
             </em>
           </h1>
           <p
             className="mx-auto mb-10 max-w-[430px] md:mx-0"
-            style={{ color: '#6B5B4E', fontFamily: 'var(--font-jost)', fontSize: '17px', fontWeight: 300, lineHeight: 1.8 }}
+            style={{ color: '#6B5B4E', fontFamily: 'var(--font-jost)', fontSize: '15px', fontWeight: 300, lineHeight: 1.8 }}
           >
             Lab-grown diamonds and 18k recycled gold, crafted for the moments
             that don&apos;t ask for an occasion.
@@ -67,7 +67,7 @@ export function Hero() {
                 border: 'none',
                 color: '#FBF5F0',
                 fontFamily: 'var(--font-jost)',
-                fontSize: '13px',
+                fontSize: '11.5px',
                 fontWeight: 500,
                 letterSpacing: '0.12em',
               }}
@@ -82,7 +82,7 @@ export function Hero() {
                 borderColor: '#EDD9AF',
                 color: '#1A1014',
                 fontFamily: 'var(--font-jost)',
-                fontSize: '13px',
+                fontSize: '11.5px',
                 fontWeight: 500,
                 letterSpacing: '0.12em',
               }}
@@ -93,7 +93,7 @@ export function Hero() {
 
           <div
             className="mt-12 grid grid-cols-2 gap-x-4 gap-y-2 sm:flex sm:flex-wrap"
-            style={{ color: '#B8A090', fontFamily: 'var(--font-jost)', fontSize: '13px', letterSpacing: '0.06em' }}
+            style={{ color: '#B8A090', fontFamily: 'var(--font-jost)', fontSize: '12px', letterSpacing: '0.06em' }}
           >
             <span>IGI Certified</span>
             <span>-</span>
