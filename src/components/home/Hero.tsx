@@ -1,13 +1,4 @@
-import Image from 'next/image'
 import Link from 'next/link'
-
-const heroProduct = {
-  title: 'Etoile Solitaire',
-  subtitle: '18K White Gold · Round',
-  price: 'From $4,200',
-  image: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=400&q=90',
-  slug: 'etoile-solitaire',
-}
 
 export function Hero() {
   return (
@@ -32,82 +23,6 @@ export function Hero() {
             className="absolute inset-0"
             style={{ backgroundColor: 'rgba(251,245,240,0.08)' }}
           />
-          <Link
-            href={`/products/${heroProduct.slug}`}
-            className="absolute bottom-5 left-5 flex max-w-[calc(100%-40px)] items-center gap-3 px-4 py-3 text-left no-underline md:bottom-8 md:left-8"
-            style={{
-              background: 'rgba(253,248,242,0.96)',
-              borderLeft: '3px solid #C9A961',
-              boxShadow: '0 4px 20px rgba(26,16,20,0.06)',
-              color: '#1A1014',
-            }}
-          >
-            <div
-              style={{
-                position: 'relative',
-                width: '48px',
-                height: '48px',
-                flexShrink: 0,
-                overflow: 'hidden',
-                background: '#F5E8ED',
-                border: '0.5px solid #EDD9AF',
-              }}
-            >
-              <Image
-                src={heroProduct.image}
-                alt={heroProduct.title}
-                fill
-                sizes="48px"
-                style={{ objectFit: 'cover', objectPosition: 'center' }}
-              />
-            </div>
-            <div className="min-w-0">
-              <div
-                style={{
-                  color: '#C9A961',
-                  fontFamily: 'var(--font-jost)',
-                  fontSize: '11px',
-                  fontWeight: 500,
-                  letterSpacing: '0.2em',
-                  marginBottom: '3px',
-                }}
-              >
-                FEATURED PIECE
-              </div>
-              <div
-                style={{
-                  color: '#1A1014',
-                  fontFamily: 'var(--font-cormorant)',
-                  fontSize: '18px',
-                  fontWeight: 500,
-                }}
-              >
-                {heroProduct.title}
-              </div>
-              <div
-                style={{
-                  color: '#B8A090',
-                  fontFamily: 'var(--font-jost)',
-                  fontSize: '13px',
-                  letterSpacing: '0.04em',
-                  marginTop: '2px',
-                }}
-              >
-                {heroProduct.subtitle}
-              </div>
-              <div
-                style={{
-                  color: '#1A1014',
-                  fontFamily: 'var(--font-jost)',
-                  fontSize: '17px',
-                  fontWeight: 500,
-                  marginTop: '3px',
-                }}
-              >
-                {heroProduct.price}
-              </div>
-            </div>
-          </Link>
         </div>
       </div>
 
