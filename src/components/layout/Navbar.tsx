@@ -436,6 +436,7 @@ export function Navbar() {
           borderBottom: `0.5px solid ${scrolled ? '#EDD9AF' : 'transparent'}`,
           boxShadow: scrolled ? '0 2px 20px rgba(26,16,20,0.06)' : 'none',
           transition: 'all 0.3s ease',
+          zoom: 0.9,
         }}
       >
         <div
