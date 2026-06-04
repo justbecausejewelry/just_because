@@ -324,14 +324,14 @@ export function Navbar() {
       <style>{`
         .nav-logo-script {
           font-family: var(--font-italianno), cursive !important;
-          font-size: 2.4rem !important;
+          font-size: 2.0rem !important;
           color: #1A1014 !important;
           line-height: 0.85 !important;
           display: block !important;
         }
 
         .mega-link {
-          font-size: 15px;
+          font-size: 14px;
           color: #1A1014;
           text-decoration: none;
           font-family: var(--font-jost);
@@ -461,7 +461,7 @@ export function Navbar() {
             }}>
               <span style={{
                 fontFamily: "'Italianno', cursive",
-                fontSize: '2.4rem',
+                fontSize: '2.0rem',
                 fontStyle: 'italic',
                 color: '#C9A961',
                 lineHeight: '1',
@@ -472,7 +472,7 @@ export function Navbar() {
 
               <span style={{
                 fontFamily: "'Cormorant Garamond', serif",
-                fontSize: '1.1rem',
+                fontSize: '1.0rem',
                 fontStyle: 'italic',
                 color: '#C9A961',
                 lineHeight: '1',
@@ -494,13 +494,13 @@ export function Navbar() {
                 onMouseEnter={() => handleMouseEnter(label)}
                 onMouseLeave={handleMouseLeave}
               >
-                <span style={{ fontSize: '15px', color: '#1A1014', fontFamily: 'var(--font-jost)', fontWeight: activeMenu === label ? 500 : 400, letterSpacing: '0.02em', whiteSpace: 'nowrap', cursor: 'pointer' }}>
+                <span style={{ fontSize: '14px', color: '#1A1014', fontFamily: 'var(--font-jost)', fontWeight: activeMenu === label ? 500 : 400, letterSpacing: '0.02em', whiteSpace: 'nowrap', cursor: 'pointer' }}>
                   {label}
                 </span>
               </div>
             ))}
 
-            <Link href="/products?category=gifts" style={{ fontSize: '15px', color: '#C9A961', textDecoration: 'none', fontFamily: 'var(--font-jost)', fontWeight: 500, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
+            <Link href="/products?category=gifts" style={{ fontSize: '14px', color: '#C9A961', textDecoration: 'none', fontFamily: 'var(--font-jost)', fontWeight: 500, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
               * Gifts
             </Link>
           </nav>
@@ -655,7 +655,7 @@ export function Navbar() {
               }}>
                 <span style={{
                   fontFamily: "'Italianno', cursive",
-                  fontSize: '2.4rem',
+                  fontSize: '2.0rem',
                   fontStyle: 'italic',
                   color: '#C9A961',
                   lineHeight: '1',
@@ -666,7 +666,7 @@ export function Navbar() {
 
                 <span style={{
                   fontFamily: "'Cormorant Garamond', serif",
-                  fontSize: '1.1rem',
+                  fontSize: '1.0rem',
                   fontStyle: 'italic',
                   color: '#C9A961',
                   lineHeight: '1',
