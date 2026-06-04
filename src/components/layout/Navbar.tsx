@@ -324,7 +324,7 @@ export function Navbar() {
       <style>{`
         .nav-logo-script {
           font-family: var(--font-italianno), cursive !important;
-          font-size: 2.0rem !important;
+          font-size: 1.9rem !important;
           color: #1A1014 !important;
           line-height: 0.85 !important;
           display: block !important;
@@ -431,7 +431,7 @@ export function Navbar() {
         style={{
           position: 'sticky',
           top: 0,
-          zIndex: 200,
+          zIndex: 50,
           background: '#FBF5F0',
           borderBottom: `0.5px solid ${scrolled ? '#EDD9AF' : 'transparent'}`,
           boxShadow: scrolled ? '0 2px 20px rgba(26,16,20,0.06)' : 'none',
@@ -461,7 +461,7 @@ export function Navbar() {
             }}>
               <span style={{
                 fontFamily: "'Italianno', cursive",
-                fontSize: '2.0rem',
+                fontSize: '1.9rem',
                 fontStyle: 'italic',
                 color: '#C9A961',
                 lineHeight: '1',
@@ -472,7 +472,7 @@ export function Navbar() {
 
               <span style={{
                 fontFamily: "'Cormorant Garamond', serif",
-                fontSize: '1.0rem',
+                fontSize: '0.95rem',
                 fontStyle: 'italic',
                 color: '#C9A961',
                 lineHeight: '1',
@@ -500,12 +500,12 @@ export function Navbar() {
               </div>
             ))}
 
-            <Link href="/products?category=gifts" style={{ fontSize: '14px', color: '#C9A961', textDecoration: 'none', fontFamily: 'var(--font-jost)', fontWeight: 500, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
+            <Link href="/products?category=gifts" className="mr-4" style={{ fontSize: '14px', color: '#C9A961', textDecoration: 'none', fontFamily: 'var(--font-jost)', fontWeight: 500, letterSpacing: '0.02em', whiteSpace: 'nowrap', marginRight: '16px' }}>
               * Gifts
             </Link>
           </nav>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '18px', flexShrink: 0, zIndex: 2 }}>
+          <div className="flex items-center gap-4 md:gap-6" style={{ display: 'flex', alignItems: 'center', gap: '24px', flexShrink: 0, zIndex: 2 }}>
             <button
               onClick={() => setSearchOpen((open) => !open)}
               className="desktop-nav-icon"
@@ -560,7 +560,7 @@ export function Navbar() {
         </div>
 
         {searchOpen && (
-          <div style={{ borderTop: '0.5px solid #EDD9AF', padding: '16px 60px', background: '#FBF5F0', display: 'flex', alignItems: 'center', gap: '16px', animation: 'megaFadeIn 0.2s ease' }}>
+          <div style={{ position: 'relative', zIndex: 40, borderTop: '0.5px solid #EDD9AF', padding: '16px 60px', background: '#FBF5F0', display: 'flex', alignItems: 'center', gap: '16px', animation: 'megaFadeIn 0.2s ease' }}>
             <Search size={18} color="#B8A090" />
             <input
               autoFocus
@@ -655,7 +655,7 @@ export function Navbar() {
               }}>
                 <span style={{
                   fontFamily: "'Italianno', cursive",
-                  fontSize: '2.0rem',
+                  fontSize: '1.9rem',
                   fontStyle: 'italic',
                   color: '#C9A961',
                   lineHeight: '1',
@@ -666,7 +666,7 @@ export function Navbar() {
 
                 <span style={{
                   fontFamily: "'Cormorant Garamond', serif",
-                  fontSize: '1.0rem',
+                  fontSize: '0.95rem',
                   fontStyle: 'italic',
                   color: '#C9A961',
                   lineHeight: '1',

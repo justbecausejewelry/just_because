@@ -25,7 +25,7 @@ const jost = Jost({
 
 const italianno = Italianno({
   subsets: ['latin'],
-  weight: '400',
+  weight: ['400'],
   variable: '--font-italianno',
   display: 'swap',
 })

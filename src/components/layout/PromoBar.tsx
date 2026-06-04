@@ -17,6 +17,7 @@ export function PromoBar() {
         padding: '11px 0',
         overflow: 'hidden',
         position: 'relative',
+        zIndex: 30,
         borderBottom: '0.5px solid rgba(201,169,97,0.2)',
       }}
     >
