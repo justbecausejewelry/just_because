@@ -62,13 +62,40 @@ export function Footer() {
     <footer className="site-footer px-6 pb-7 pt-12 md:px-10 md:py-[60px] lg:px-20" style={{ backgroundColor: '#1A1014', color: '#B8A090' }}>
       <div className="footer-grid grid gap-10 md:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">
         <div className="text-center md:text-left">
-          <Link href="/" className="flex items-baseline justify-center gap-1 md:justify-start">
-            <span className="text-[38px] leading-none" style={{ color: '#C9A961', fontFamily: 'var(--font-italianno)' }}>
-              just
+          <Link href="/" className="shrink-0 select-none" style={{ textDecoration: 'none' }}>
+            <div style={{
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'baseline',
+              gap: '0px',
+              whiteSpace: 'nowrap',
+              justifyContent: 'center',
+            }}>
+            <span style={{
+              fontFamily: "'Italianno', cursive",
+              fontSize: '2.4rem',
+              fontStyle: 'italic',
+              color: '#C9A961',
+              lineHeight: '1',
+              letterSpacing: '0.01em',
+            }}>
+              Just
             </span>
-            <span className="text-[9px] tracking-[0.35em]" style={{ color: '#FBF5F0', fontFamily: 'var(--font-jost)', fontWeight: 500 }}>
-              BECAUSE
+
+            <span style={{
+              fontFamily: "'Cormorant Garamond', serif",
+              fontSize: '1.1rem',
+              fontStyle: 'italic',
+              color: '#C9A961',
+              lineHeight: '1',
+              fontWeight: 500,
+              letterSpacing: '0.08em',
+              marginLeft: '6px',
+              alignSelf: 'center',
+            }}>
+              Because
             </span>
+            </div>
           </Link>
           <p className="mx-auto mt-3 max-w-[260px] leading-[1.7] md:mx-0" style={{ color: 'rgba(251,245,240,0.6)', fontFamily: 'var(--font-cormorant)', fontSize: '16px', fontStyle: 'italic' }}>
             Lab-grown diamonds and recycled gold, crafted for every moment that

@@ -451,46 +451,37 @@ export function Navbar() {
             position: 'relative',
           }}
         >
-          <Link href="/" className="shrink-0 select-none">
+          <Link href="/" className="shrink-0 select-none" style={{ textDecoration: 'none' }}>
             <div style={{
               display: 'flex',
               flexDirection: 'row',
               alignItems: 'baseline',
               gap: '0px',
               whiteSpace: 'nowrap',
-              textDecoration: 'none',
             }}>
               <span style={{
                 fontFamily: "'Italianno', cursive",
                 fontSize: '2.4rem',
                 fontStyle: 'italic',
-                color: '#1A1014',
+                color: '#C9A961',
                 lineHeight: '1',
-                letterSpacing: '0.02em',
+                letterSpacing: '0.01em',
               }}>
-                just
+                Just
               </span>
 
               <span style={{
-                color: '#1A1014',
-                fontSize: '0.65rem',
-                letterSpacing: '3px',
-                margin: '0 4px 0 2px',
-                opacity: 0.7,
-              }}>
-                ─
-              </span>
-
-              <span style={{
-                fontFamily: 'var(--font-jost), sans-serif',
-                fontSize: '9px',
-                letterSpacing: '0.35em',
-                color: '#1A1014',
+                fontFamily: "'Cormorant Garamond', serif",
+                fontSize: '1.1rem',
+                fontStyle: 'italic',
+                color: '#C9A961',
+                lineHeight: '1',
                 fontWeight: 500,
-                textTransform: 'uppercase',
-                lineHeight: '1',
+                letterSpacing: '0.08em',
+                marginLeft: '6px',
+                alignSelf: 'center',
               }}>
-                BECAUSE
+                Because
               </span>
             </div>
           </Link>
@@ -654,46 +645,37 @@ export function Navbar() {
               borderBottom: '0.5px solid rgba(201,169,97,0.15)',
             }}
           >
-            <Link href="/" onClick={() => setMobileOpen(false)} className="shrink-0 select-none">
+            <Link href="/" onClick={() => setMobileOpen(false)} className="shrink-0 select-none" style={{ textDecoration: 'none' }}>
               <div style={{
                 display: 'flex',
                 flexDirection: 'row',
                 alignItems: 'baseline',
                 gap: '0px',
                 whiteSpace: 'nowrap',
-                textDecoration: 'none',
               }}>
                 <span style={{
                   fontFamily: "'Italianno', cursive",
                   fontSize: '2.4rem',
                   fontStyle: 'italic',
-                  color: '#FBF5F0',
+                  color: '#C9A961',
                   lineHeight: '1',
-                  letterSpacing: '0.02em',
+                  letterSpacing: '0.01em',
                 }}>
-                just
+                  Just
                 </span>
 
                 <span style={{
-                  color: '#FBF5F0',
-                  fontSize: '0.65rem',
-                  letterSpacing: '3px',
-                  margin: '0 4px 0 2px',
-                  opacity: 0.7,
-                }}>
-                  ─
-                </span>
-
-                <span style={{
-                  fontFamily: 'var(--font-jost), sans-serif',
-                  fontSize: '9px',
-                  letterSpacing: '0.35em',
-                  color: '#FBF5F0',
+                  fontFamily: "'Cormorant Garamond', serif",
+                  fontSize: '1.1rem',
+                  fontStyle: 'italic',
+                  color: '#C9A961',
+                  lineHeight: '1',
                   fontWeight: 500,
-                  textTransform: 'uppercase',
-                  lineHeight: '1',
+                  letterSpacing: '0.08em',
+                  marginLeft: '6px',
+                  alignSelf: 'center',
                 }}>
-                  BECAUSE
+                  Because
                 </span>
               </div>
             </Link>
