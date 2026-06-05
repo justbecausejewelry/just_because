@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ShoppingBag } from 'lucide-react'
+import { RotateCcw, ShoppingBag } from 'lucide-react'
 import type { User } from '@supabase/supabase-js'
 import { supabaseAuth } from '@/lib/auth'
+import { checkReturnEligibility } from '@/lib/returnEligibility'
 
 type OrderItem = {
   id: string
@@ -15,6 +16,7 @@ type OrderItem = {
   selectedShape?: string | null
   unitPrice?: number | null
   quantity?: number | null
+  engraving?: string | null
 }
 
 type Order = {
@@ -113,8 +115,14 @@ export default function AccountOrdersPage() {
 
   return (
     <main style={{ minHeight: '100vh', background: '#FBF5F0', maxWidth: '900px', margin: '0 auto', padding: '60px 24px' }}>
-      <Link href="/account" style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '12px', letterSpacing: '0.08em' }}>{'<-'} Back to account</Link>
-      <h1 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '42px', fontWeight: 400, margin: '28px 0' }}>My Orders</h1>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '28px' }}>
+        <Link href="/account" style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '12px', letterSpacing: '0.08em' }}>{'<-'} Back to account</Link>
+        <Link href="/account/returns" style={{ alignItems: 'center', color: '#C9A961', display: 'inline-flex', fontFamily: 'var(--font-inter)', fontSize: '11px', gap: '6px', letterSpacing: '0.08em', textDecoration: 'none' }}>
+          <RotateCcw size={14} />
+          My Returns
+        </Link>
+      </div>
+      <h1 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '42px', fontWeight: 400, margin: '0 0 28px' }}>My Orders</h1>
 
       {orders.length === 0 ? (
         <section style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', padding: '56px 24px', textAlign: 'center' }}>
@@ -130,6 +138,11 @@ export default function AccountOrdersPage() {
             const itemSummary = itemCount
               ? `${itemCount} ${itemCount === 1 ? 'item' : 'items'}`
               : 'No item details'
+            const eligibility = checkReturnEligibility({
+              createdAt: order.createdAt,
+              status: order.status,
+              items: order.OrderItem,
+            })
 
             return (
             <article key={order.id} style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '4px', padding: '20px 24px', marginBottom: '16px' }}>
@@ -154,12 +167,42 @@ export default function AccountOrdersPage() {
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: '16px', marginTop: '16px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', marginTop: '16px' }}>
                 <button onClick={() => setExpanded((current) => current === order.id ? null : order.id)} style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.08em' }}>
                   {expanded === order.id ? 'Hide details' : 'View details'}
                 </button>
                 <Link href="/account/messages/new" style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.08em' }}>Need help?</Link>
+                {eligibility.eligible ? (
+                  <Link
+                    href={`/account/returns/new?order=${order.id}`}
+                    style={{
+                      alignItems: 'center',
+                      background: 'transparent',
+                      border: '0.5px solid #EDD9AF',
+                      color: '#6B5B4E',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      fontFamily: 'var(--font-inter)',
+                      fontSize: '12px',
+                      gap: '6px',
+                      letterSpacing: '0.08em',
+                      padding: '8px 16px',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    Return Item
+                  </Link>
+                ) : null}
               </div>
+              {eligibility.eligible ? (
+                <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', margin: '8px 0 0' }}>
+                  {eligibility.daysRemaining} days left to return
+                </p>
+              ) : (
+                <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', margin: '8px 0 0' }}>
+                  {eligibility.reason}
+                </p>
+              )}
             </article>
             )
           })}

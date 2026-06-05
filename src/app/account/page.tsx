@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ComponentType } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Heart, MessageSquare, Settings, ShoppingBag } from 'lucide-react'
+import { Heart, MessageSquare, RotateCcw, Settings, ShoppingBag } from 'lucide-react'
 import type { User } from '@supabase/supabase-js'
 import { supabase, SUPABASE_AUTH_STORAGE_KEY } from '@/lib/supabase'
 import { forceSignOut } from '@/lib/forceSignOut'
@@ -349,6 +349,7 @@ export default function AccountPage() {
 
       <section className="account-menu-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
         <MenuCard href="/account/orders" icon={ShoppingBag} title="My Orders" description="Track and view your orders" />
+        <MenuCard href="/account/returns" icon={RotateCcw} title="My Returns" description="Track your return requests" />
         <MenuCard href="/account/messages" icon={MessageSquare} title="Messages" description="Chat with our team" badge={stats.unreadMessages} />
         <MenuCard href="/wishlist" icon={Heart} title="Wishlist" description="Your saved pieces" />
         <MenuCard href="/account/settings" icon={Settings} title="Account Settings" description="Update your profile" />

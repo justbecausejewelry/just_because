@@ -274,6 +274,8 @@ export default function AccountSettingsPage() {
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '28px' }}>
         <Link href="/account" style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.08em' }}>Account</Link>
         <span style={{ color: '#EDD9AF' }}>/</span>
+        <Link href="/account/returns" style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.08em' }}>Returns</Link>
+        <span style={{ color: '#EDD9AF' }}>/</span>
         <span style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.08em' }}>Settings</span>
       </div>
 

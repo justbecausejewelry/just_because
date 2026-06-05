@@ -9,6 +9,7 @@ import { useRole } from '@/hooks/useRole'
 import {
   LayoutDashboard,
   Package,
+  RotateCcw,
   ShoppingBag,
   BarChart2,
   Users,
@@ -33,6 +34,7 @@ const sidebarLinks: SidebarLink[] = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { href: '/admin/products', label: 'Products', icon: Package },
   { href: '/admin/orders', label: 'Orders', icon: ShoppingBag },
+  { href: '/admin/returns', label: 'Returns', icon: RotateCcw },
   { href: '/admin/analytics', label: 'Analytics', icon: BarChart2 },
   { href: '/admin/customers', label: 'Customers', icon: Users },
   { href: '/admin/diamonds', label: 'Diamonds', icon: Diamond },
@@ -55,6 +57,7 @@ export default function AdminLayout({
   const [allowed, setAllowed] = useState(false)
   const [adminName, setAdminName] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [pendingReturns, setPendingReturns] = useState(0)
   const { role, isAdmin, isSuperAdmin, loading: roleLoading } = useRole()
 
   useEffect(() => {
@@ -77,6 +80,38 @@ export default function AdminLayout({
       setAdminName(name)
     })
   }, [isAdmin, roleLoading, router])
+
+  useEffect(() => {
+    if (!isAdmin) return
+
+    let cancelled = false
+
+    const loadPendingReturns = async () => {
+      const { data: sessionData } = await supabaseAuth.auth.getSession()
+      const token = sessionData.session?.access_token
+      if (!token) return
+
+      try {
+        const response = await fetch('/api/admin/returns', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const payload = await response.json() as {
+          returns?: Array<{ status: string }>
+        }
+        if (!cancelled) {
+          setPendingReturns((payload.returns || []).filter((item) => item.status === 'requested' || item.status === 'under_review').length)
+        }
+      } catch {
+        if (!cancelled) setPendingReturns(0)
+      }
+    }
+
+    void loadPendingReturns()
+
+    return () => {
+      cancelled = true
+    }
+  }, [isAdmin, pathname])
 
   useEffect(() => {
     setSidebarOpen(false)
@@ -236,10 +271,15 @@ export default function AdminLayout({
               }}
             >
               <Icon size={16} strokeWidth={1.5} />
-              <span style={{ fontSize: '12px', fontFamily: 'var(--font-inter)', letterSpacing: '0.04em', fontWeight: active ? 500 : 400 }}>
+              <span style={{ flex: 1, fontSize: '12px', fontFamily: 'var(--font-inter)', letterSpacing: '0.04em', fontWeight: active ? 500 : 400 }}>
                 {label}
               </span>
-              {active && <ChevronRight size={12} style={{ marginLeft: 'auto', opacity: 0.5 }} />}
+              {href === '/admin/returns' && pendingReturns > 0 ? (
+                <span style={{ background: '#C9A961', borderRadius: '999px', color: '#1A1014', fontSize: '10px', fontWeight: 500, lineHeight: 1, padding: '3px 7px' }}>
+                  {pendingReturns}
+                </span>
+              ) : null}
+              {active && <ChevronRight size={12} style={{ opacity: 0.5 }} />}
             </Link>
           )
         })}
