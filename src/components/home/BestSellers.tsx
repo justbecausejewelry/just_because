@@ -69,14 +69,17 @@ function SkeletonCard() {
         backgroundColor: '#FDF8F2',
         border: '0.5px solid #EDD9AF',
         borderRadius: '2px',
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '480px',
         overflow: 'hidden',
       }}
     >
       <div
         className="just-because-shimmer"
-        style={{ aspectRatio: '1', width: '100%' }}
+        style={{ flexShrink: 0, height: '280px', width: '100%' }}
       />
-      <div style={{ padding: '14px 16px 18px' }}>
+      <div style={{ display: 'flex', flex: 1, flexDirection: 'column', padding: '20px 16px 16px' }}>
         <div
           className="just-because-shimmer"
           style={{ height: '9px', width: '45%', marginBottom: '10px' }}
@@ -88,6 +91,11 @@ function SkeletonCard() {
         <div
           className="just-because-shimmer"
           style={{ height: '14px', width: '38%' }}
+        />
+        <div style={{ flex: 1 }} />
+        <div
+          className="just-because-shimmer"
+          style={{ height: '46px', width: '100%' }}
         />
       </div>
     </div>
@@ -141,9 +149,10 @@ function ProductCard({ product }: { product: Product }) {
             display: 'flex',
             flexDirection: 'column',
             height: '100%',
+            minHeight: '480px',
             position: 'relative',
             overflow: 'hidden',
-            backgroundColor: '#FDF8F2',
+            background: '#FDF8F2',
             border: '0.5px solid #EDD9AF',
             borderRadius: '2px',
             cursor: 'pointer',
@@ -154,7 +163,9 @@ function ProductCard({ product }: { product: Product }) {
           <div
             className={`product-img-wrap ${imagePosition === 'center top' ? 'is-top' : ''}`}
             style={{
-              aspectRatio: '1',
+              width: '100%',
+              height: '280px',
+              flexShrink: 0,
               position: 'relative',
               overflow: 'hidden',
               backgroundColor: '#FDF8F2',
@@ -198,15 +209,17 @@ function ProductCard({ product }: { product: Product }) {
 
           </div>
 
-          <div style={{ padding: '16px' }}>
+          <div style={{ display: 'flex', flex: 1, flexDirection: 'column', padding: '20px 16px 16px' }}>
             <p
               style={{
                 color: '#C9A961',
+                flexShrink: 0,
                 fontFamily: 'var(--font-jost)',
                 fontSize: '11px',
                 fontWeight: 500,
+                height: '16px',
                 letterSpacing: '0.2em',
-                marginBottom: '6px',
+                marginBottom: '8px',
                 textTransform: 'uppercase',
               }}
             >
@@ -215,17 +228,23 @@ function ProductCard({ product }: { product: Product }) {
             <h3
               style={{
                 color: '#1A1014',
+                display: '-webkit-box',
+                flexShrink: 0,
                 fontFamily: 'var(--font-cormorant)',
                 fontSize: '18px',
                 fontWeight: 500,
-                lineHeight: 1.3,
-                marginBottom: '8px',
+                height: '50px',
+                lineHeight: 1.35,
+                marginBottom: '12px',
+                overflow: 'hidden',
+                WebkitBoxOrient: 'vertical',
+                WebkitLineClamp: 2,
               }}
             >
               {product.title}
             </h3>
 
-            <div className="mb-[10px] flex items-center gap-[6px]">
+            <div style={{ display: 'flex', flexShrink: 0, gap: '6px', height: '16px', marginBottom: '12px' }}>
               {product.availableMetals?.slice(0, 4).map((metal) => (
                 <span
                   key={metal}
@@ -241,7 +260,7 @@ function ProductCard({ product }: { product: Product }) {
               ))}
             </div>
 
-            <div className="flex items-end justify-between gap-3">
+            <div style={{ alignItems: 'center', display: 'flex', flexShrink: 0, gap: '6px', height: '32px', marginBottom: '16px' }}>
               <p style={{ margin: 0 }}>
                 <span
                   style={{
@@ -266,18 +285,24 @@ function ProductCard({ product }: { product: Product }) {
               </p>
             </div>
 
+            <div style={{ flex: 1 }} />
+
             <div
               data-hover-cta
               style={{
-                backgroundColor: '#1A1014',
+                background: '#1A1014',
+                border: 'none',
                 color: '#FBF5F0',
+                cursor: 'pointer',
+                flexShrink: 0,
                 fontFamily: 'var(--font-jost)',
-                fontSize: '13px',
+                fontSize: '12px',
                 fontWeight: 500,
                 letterSpacing: '0.12em',
-                marginTop: '14px',
-                padding: '10px',
+                marginTop: 'auto',
+                padding: '14px',
                 textAlign: 'center',
+                textTransform: 'uppercase',
                 width: '100%',
               }}
             >
@@ -465,7 +490,7 @@ export function BestSellers() {
           </button>
         </div>
       ) : (
-        <div className="best-sellers-grid mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
+        <div className="best-sellers-grid mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5" style={{ alignItems: 'stretch' }}>
           {isLoading
             ? Array.from({ length: 5 }, (_, index) => <SkeletonCard key={index} />)
             : products.map((product) => (

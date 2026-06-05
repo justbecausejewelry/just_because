@@ -177,12 +177,14 @@ function ProductPlaceholder({ size = 52 }: { size?: number }) {
 
 function SkeletonCard() {
   return (
-    <div style={{ backgroundColor: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '2px', overflow: 'hidden' }}>
-      <div className="just-because-shimmer" style={{ aspectRatio: '1', width: '100%' }} />
-      <div style={{ padding: '18px 18px 22px' }}>
+    <div style={{ backgroundColor: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '2px', display: 'flex', flexDirection: 'column', minHeight: '480px', overflow: 'hidden' }}>
+      <div className="just-because-shimmer" style={{ flexShrink: 0, height: '280px', width: '100%' }} />
+      <div style={{ display: 'flex', flex: 1, flexDirection: 'column', padding: '20px 16px 16px' }}>
         <div className="just-because-shimmer" style={{ height: '10px', width: '42%', marginBottom: '12px' }} />
         <div className="just-because-shimmer" style={{ height: '20px', width: '72%', marginBottom: '14px' }} />
         <div className="just-because-shimmer" style={{ height: '16px', width: '36%' }} />
+        <div style={{ flex: 1 }} />
+        <div className="just-because-shimmer" style={{ height: '46px', width: '100%' }} />
       </div>
     </div>
   )
@@ -224,8 +226,9 @@ function ProductCard({ product }: { product: Product }) {
             display: 'flex',
             flexDirection: 'column',
             height: '100%',
+            minHeight: '480px',
             position: 'relative',
-            backgroundColor: '#FDF8F2',
+            background: '#FDF8F2',
             border: '0.5px solid #EDD9AF',
             borderRadius: '2px',
             cursor: 'pointer',
@@ -236,7 +239,9 @@ function ProductCard({ product }: { product: Product }) {
           <div
             className={`product-img-wrap ${imagePosition === 'center top' ? 'is-top' : ''}`}
             style={{
-              aspectRatio: '1',
+              width: '100%',
+              height: '280px',
+              flexShrink: 0,
               position: 'relative',
               overflow: 'hidden',
               backgroundColor: '#FDF8F2',
@@ -278,23 +283,24 @@ function ProductCard({ product }: { product: Product }) {
               </span>
             )}
           </div>
-          <div style={{ padding: '16px' }}>
-            <p style={{ color: '#C9A961', fontFamily: 'var(--font-jost)', fontSize: '11px', fontWeight: 500, letterSpacing: '0.2em', marginBottom: '7px', textTransform: 'uppercase' }}>
+          <div style={{ display: 'flex', flex: 1, flexDirection: 'column', padding: '20px 16px 16px' }}>
+            <p style={{ color: '#C9A961', flexShrink: 0, fontFamily: 'var(--font-jost)', fontSize: '11px', fontWeight: 500, height: '16px', letterSpacing: '0.2em', marginBottom: '8px', textTransform: 'uppercase' }}>
               {prettify(product.category)}
             </p>
-            <h2 style={{ color: '#1A1014', fontFamily: 'var(--font-cormorant)', fontSize: '18px', fontWeight: 500, lineHeight: 1.25, marginBottom: '9px' }}>
+            <h2 style={{ color: '#1A1014', display: '-webkit-box', flexShrink: 0, fontFamily: 'var(--font-cormorant)', fontSize: '18px', fontWeight: 500, height: '50px', lineHeight: 1.35, marginBottom: '12px', overflow: 'hidden', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2 }}>
               {product.title}
             </h2>
-            <div className="mb-3 flex items-center gap-[7px]">
+            <div style={{ display: 'flex', flexShrink: 0, gap: '6px', height: '16px', marginBottom: '12px' }}>
               {product.availableMetals?.slice(0, 4).map((metal) => (
                 <span key={metal} title={metal} style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: metalSwatches[metal] || '#EDD9AF', border: '0.5px solid #EDD9AF' }} />
               ))}
             </div>
-            <p style={{ margin: 0 }}>
+            <p style={{ alignItems: 'center', display: 'flex', flexShrink: 0, gap: '6px', height: '32px', margin: 0, marginBottom: '16px' }}>
               <span style={{ color: '#B8A090', fontFamily: 'var(--font-jost)', fontSize: '12px', marginRight: '6px' }}>From</span>
               <span style={{ color: '#1A1014', fontFamily: 'var(--font-jost)', fontSize: '17px', fontWeight: 500 }}>{formatPrice(product.basePrice)}</span>
             </p>
-            <div data-hover-cta style={{ backgroundColor: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-jost)', fontSize: '13px', fontWeight: 500, letterSpacing: '0.12em', marginTop: '14px', padding: '11px', textAlign: 'center' }}>
+            <div style={{ flex: 1 }} />
+            <div data-hover-cta style={{ background: '#1A1014', border: 'none', color: '#FBF5F0', cursor: 'pointer', flexShrink: 0, fontFamily: 'var(--font-jost)', fontSize: '12px', fontWeight: 500, letterSpacing: '0.12em', marginTop: 'auto', padding: '14px', textAlign: 'center', textTransform: 'uppercase', width: '100%' }}>
               Customize →
             </div>
           </div>
@@ -627,11 +633,11 @@ function ProductsContent() {
               <button onClick={loadProducts} style={{ backgroundColor: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.18em', padding: '12px 18px' }}>RETRY</button>
             </div>
           ) : isLoading ? (
-            <div className="products-grid grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="products-grid" style={{ alignItems: 'stretch', display: 'grid', gap: '20px', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
               {Array.from({ length: 9 }, (_, index) => <SkeletonCard key={index} />)}
             </div>
           ) : products.length ? (
-            <div className="products-grid grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="products-grid" style={{ alignItems: 'stretch', display: 'grid', gap: '20px', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
               {products.map((product) => <ProductCard key={product.id} product={product} />)}
             </div>
           ) : (
