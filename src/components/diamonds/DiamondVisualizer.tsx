@@ -162,6 +162,7 @@ export default function DiamondVisualizer({
 
   return (
     <div
+      className="diamond-visualizer-container"
       style={{
         background: '#FDF8F2',
         border: '0.5px solid #EDD9AF',
@@ -205,6 +206,7 @@ export default function DiamondVisualizer({
       ) : null}
 
       <div
+        className="visualizer-wrapper"
         ref={containerRef}
         style={{
           aspectRatio: '4 / 3',

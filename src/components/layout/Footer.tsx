@@ -133,6 +133,7 @@ export function Footer() {
       <div className="footer-bottom mt-10 flex flex-col justify-between gap-3 border-t pt-5 text-center md:flex-row md:text-left" style={{ borderColor: 'rgba(201,169,97,0.2)', fontFamily: 'var(--font-jost)', fontSize: '13px' }}>
         <div style={{ color: '#B8A090' }}>© 2026 Just Because. All rights reserved.</div>
         <div
+          className="footer-badges"
           style={{
             color: 'rgba(251,245,240,0.4)',
             fontSize: '13px',

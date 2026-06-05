@@ -70,6 +70,12 @@ function isRingProduct(productType?: string | null, category?: string | null) {
   return ['engagement_ring', 'wedding_ring', 'ring'].includes(type) || cat === 'engagement' || cat === 'wedding'
 }
 
+function validImageUrl(image: string | null | undefined): image is string {
+  if (!image) return false
+  const trimmed = image.trim()
+  return Boolean(trimmed) && !trimmed.endsWith('?') && !trimmed.includes('undefined') && !trimmed.includes('null')
+}
+
 function ProductPlaceholder({ size = 72 }: { size?: number }) {
   return (
     <div className="flex h-full w-full items-center justify-center" style={{ backgroundColor: '#F5E8ED' }}>
@@ -174,10 +180,10 @@ export default function ProductDetailPage() {
     const metalImages = product.metalImages?.[metalKey]
 
     if (metalImages?.length) {
-      return metalImages
+      return metalImages.filter(validImageUrl)
     }
 
-    return product.images || []
+    return (product.images || []).filter(validImageUrl)
   }, [product, selectedMetal])
 
   const primaryImage = images[0] || product?.images?.[0] || ''
@@ -708,6 +714,9 @@ export default function ProductDetailPage() {
                     alt={`${product.title} view ${index + 1}`}
                     fill
                     sizes="72px"
+                    onError={(event) => {
+                      event.currentTarget.parentElement?.style.setProperty('display', 'none')
+                    }}
                     className={`img-cover ${imagePosition === 'center top' ? 'is-top' : ''}`}
                     style={{
                       objectFit: 'cover',
@@ -947,14 +956,15 @@ export default function ProductDetailPage() {
               </button>
 
               <button
+                className="buy-now-btn"
                 onClick={handleBuyNow}
                 disabled={!canAddToCart}
                 style={{
                   flex: 1,
                   height: '56px',
-                  background: !canAddToCart ? '#B8A090' : '#C9A961',
+                  background: !canAddToCart ? '#B8A090' : '#1A1014',
                   border: 'none',
-                  color: '#1A1014',
+                  color: '#FBF5F0',
                   fontSize: '11px',
                   letterSpacing: '0.2em',
                   cursor: !canAddToCart ? 'not-allowed' : 'pointer',
@@ -968,12 +978,12 @@ export default function ProductDetailPage() {
                 }}
                 onMouseEnter={(event) => {
                   if (canAddToCart) {
-                    event.currentTarget.style.background = '#EDD9AF'
+                    event.currentTarget.style.background = '#2A1E24'
                     event.currentTarget.style.transform = 'translateY(-1px)'
                   }
                 }}
                 onMouseLeave={(event) => {
-                  event.currentTarget.style.background = canAddToCart ? '#C9A961' : '#B8A090'
+                  event.currentTarget.style.background = canAddToCart ? '#1A1014' : '#B8A090'
                   event.currentTarget.style.transform = 'translateY(0)'
                 }}
               >
@@ -1126,6 +1136,7 @@ export default function ProductDetailPage() {
           {addedToCart ? 'ADDED' : 'ADD TO CART'}
         </button>
         <button
+          className="buy-now-btn"
           onClick={handleBuyNow}
           disabled={!canAddToCart}
           style={{
