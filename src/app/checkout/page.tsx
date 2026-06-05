@@ -319,7 +319,7 @@ export default function CheckoutPage() {
         <span style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '18px' }}>{formatPrice(total)}</span>
       </button>
 
-      <div className="mx-auto grid max-w-[1200px] gap-10 px-4 py-6 md:grid-cols-[60fr_40fr] md:px-10 md:py-10 lg:grid-cols-[1fr_400px] lg:gap-[60px] lg:px-20">
+      <div className="checkout-layout mx-auto grid max-w-[1200px] gap-10 px-4 py-6 md:grid-cols-[60fr_40fr] md:px-10 md:py-10 lg:grid-cols-[1fr_400px] lg:gap-[60px] lg:px-20">
         <form onSubmit={placeOrder}>
           <motion.section key={step} initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.35 }} style={{ background: '#FBF5F0' }}>
             {step === 1 && (

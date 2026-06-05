@@ -1038,10 +1038,11 @@ function DiamondsContent() {
               </button>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: viewMode === 'grid' ? 'repeat(auto-fill, minmax(220px, 1fr))' : '1fr', gap: '16px' }}>
+            <div className="diamonds-grid" style={{ display: 'grid', gridTemplateColumns: viewMode === 'grid' ? 'repeat(auto-fill, minmax(220px, 1fr))' : '1fr', gap: '16px' }}>
               {filtered.map((diamond) => (
                 <button
                   key={diamond.id}
+                  className="diamond-card"
                   onClick={() => setSelectedDiamond(diamond)}
                   style={{
                     background: '#FDF8F2',

@@ -498,7 +498,7 @@ function ProductsContent() {
         </h1>
       </header>
 
-      <div className="sticky top-[80px] z-50 flex flex-col gap-4 px-4 py-3 md:flex-row md:items-center md:justify-between md:px-10 lg:px-20" style={{ backgroundColor: '#FBF5F0', borderBottom: '0.5px solid #EDD9AF' }}>
+      <div className="products-filter-bar sticky top-[80px] z-50 flex flex-col gap-4 px-4 py-3 md:flex-row md:items-center md:justify-between md:px-10 lg:px-20" style={{ backgroundColor: '#FBF5F0', borderBottom: '0.5px solid #EDD9AF' }}>
         <button
           onClick={() => setMobileFiltersOpen(true)}
           className="flex w-full items-center justify-center gap-2 md:hidden"
@@ -526,7 +526,7 @@ function ProductsContent() {
         </div>
 
         <div className="flex items-center gap-4">
-          <span style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>{products.length} pieces</span>
+          <span className="products-count" style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>{products.length} pieces</span>
           <Select value={sort} onValueChange={(value) => updateFilter('sort', value)}>
             <SelectTrigger style={{ backgroundColor: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '2px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '12px', minWidth: '180px' }}>
               <SelectValue placeholder="Sort" />
