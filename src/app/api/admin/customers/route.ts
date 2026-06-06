@@ -8,6 +8,8 @@ type ProfileRow = {
   firstName?: string | null
   lastName?: string | null
   phone?: string | null
+  signupSource?: string | null
+  signup_source?: string | null
   ringSize?: string | null
   createdAt?: string | null
 }

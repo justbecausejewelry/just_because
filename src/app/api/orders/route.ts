@@ -58,10 +58,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Missing customer or cart items.' }, { status: 400 })
   }
 
+  if (!body.userId) {
+    return NextResponse.json({ error: 'Sign in is required before payment.' }, { status: 401 })
+  }
+
   const orderNumber = body.orderNumber || `JB-${Date.now().toString().slice(-6)}`
-  const isGuest = Boolean(body.isGuest || !body.userId)
-  const guestEmail = isGuest ? body.guestEmail || body.customerEmail : null
-  const guestName = isGuest ? body.guestName || body.customerName : null
+  const isGuest = false
+  const guestEmail = null
+  const guestName = null
 
   const { data: order, error: orderError } = await supabase
     .from('Order')

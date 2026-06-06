@@ -11,6 +11,8 @@ type Customer = {
   firstName?: string | null
   lastName?: string | null
   phone?: string | null
+  signupSource?: string | null
+  signup_source?: string | null
   ringSize?: string | null
   createdAt?: string | null
   orderCount: number
@@ -50,6 +52,10 @@ function formatCurrency(value: number) {
 function customerName(customer: Customer) {
   const name = `${customer.firstName || ''} ${customer.lastName || ''}`.trim()
   return name || customer.email.split('@')[0] || 'Customer'
+}
+
+function customerSignupSource(customer: Customer) {
+  return customer.signupSource || customer.signup_source || 'direct'
 }
 
 export default function AdminCustomersPage() {
@@ -192,7 +198,7 @@ export default function AdminCustomersPage() {
             <table style={{ borderCollapse: 'collapse', minWidth: '920px', width: '100%' }}>
               <thead>
                 <tr style={{ borderBottom: '0.5px solid #EDD9AF' }}>
-                  {['CUSTOMER', 'EMAIL', 'ORDERS', 'SPENT', 'JOINED', 'ACTIONS'].map((heading) => (
+                  {['CUSTOMER', 'EMAIL', 'SOURCE', 'ORDERS', 'SPENT', 'JOINED', 'ACTIONS'].map((heading) => (
                     <th key={heading} style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '9px', fontWeight: 500, letterSpacing: '0.2em', padding: '16px 20px', textAlign: heading === 'ACTIONS' ? 'right' : 'left' }}>
                       {heading}
                     </th>
@@ -217,6 +223,14 @@ export default function AdminCustomersPage() {
                         </div>
                       </td>
                       <td style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', padding: '16px 20px' }}>{customer.email}</td>
+                      <td style={{ padding: '16px 20px' }}>
+                        <span style={{ border: '0.5px solid #EDD9AF', color: customerSignupSource(customer) === 'checkout' ? '#C9A961' : '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.08em', padding: '5px 9px', textTransform: 'uppercase' }}>
+                          {customerSignupSource(customer)}
+                        </span>
+                        {customer.phone ? (
+                          <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', marginTop: '6px' }}>{customer.phone}</p>
+                        ) : null}
+                      </td>
                       <td style={{ padding: '16px 20px' }}>
                         <span style={{ border: customer.orderCount > 0 ? '0.5px solid #C9A961' : '0.5px solid #EDD9AF', color: customer.orderCount > 0 ? '#C9A961' : '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', padding: '5px 9px' }}>
                           {customer.orderCount} {customer.orderCount === 1 ? 'order' : 'orders'}
