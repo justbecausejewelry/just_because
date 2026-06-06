@@ -2,8 +2,10 @@ import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
 type OrderItemInput = {
-  productId: string
+  productId?: string | null
   productTitle?: string
+  productImage?: string
+  variantTitle?: string
   selectedMetal?: string
   selectedCarat?: number
   selectedShape?: string
@@ -39,6 +41,9 @@ export async function POST(request: NextRequest) {
     shippingCost?: number
     taxAmount?: number
     userId?: string | null
+    isGuest?: boolean
+    guestEmail?: string | null
+    guestName?: string | null
     orderNumber?: string
     status?: string
     paymentMethod?: string
@@ -54,6 +59,9 @@ export async function POST(request: NextRequest) {
   }
 
   const orderNumber = body.orderNumber || `JB-${Date.now().toString().slice(-6)}`
+  const isGuest = Boolean(body.isGuest || !body.userId)
+  const guestEmail = isGuest ? body.guestEmail || body.customerEmail : null
+  const guestName = isGuest ? body.guestName || body.customerName : null
 
   const { data: order, error: orderError } = await supabase
     .from('Order')
@@ -63,6 +71,12 @@ export async function POST(request: NextRequest) {
       customerEmail: body.customerEmail,
       customerPhone: body.customerPhone,
       userId: body.userId || null,
+      isGuest,
+      guestEmail,
+      guestName,
+      is_guest: isGuest,
+      guest_email: guestEmail,
+      guest_name: guestName,
       shippingAddress: body.shippingAddress,
       subtotal: body.subtotal,
       shippingAmount: body.shippingAmount || 0,
@@ -85,8 +99,10 @@ export async function POST(request: NextRequest) {
 
   const orderItems = body.items.map((item) => ({
     orderId: (order as CreatedOrder).id,
-    productId: item.productId,
+    productId: item.selectedMetal === 'Loose diamond' ? null : item.productId || null,
     productTitle: item.productTitle,
+    productImage: item.productImage,
+    variantTitle: item.variantTitle,
     selectedMetal: item.selectedMetal,
     selectedCarat: item.selectedCarat,
     selectedShape: item.selectedShape,

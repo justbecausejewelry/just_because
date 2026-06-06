@@ -17,6 +17,8 @@ const confetti = Array.from({ length: 20 }, (_, index) => ({
 function OrderConfirmedContent() {
   const searchParams = useSearchParams()
   const orderNumber = searchParams.get('number') || searchParams.get('order') || 'JB-PENDING'
+  const isGuest = searchParams.get('guest') === '1'
+  const guestEmail = searchParams.get('email') || ''
   const [copied, setCopied] = useState(false)
 
   const copyOrder = async () => {
@@ -66,6 +68,41 @@ function OrderConfirmedContent() {
             return <div key={card.title} style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '2px', padding: '20px', textAlign: 'center' }}><span className="mx-auto mb-3 flex h-8 w-8 items-center justify-center rounded-full" style={{ background: 'rgba(201,169,97,0.14)' }}><Icon color="#C9A961" size={17} /></span><p style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', fontWeight: 500 }}>{card.title}</p><p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', lineHeight: 1.5 }}>{card.body}</p></div>
           })}
         </div>
+
+        {isGuest && (
+          <div
+            style={{
+              background: '#FDF8F2',
+              border: '0.5px solid #EDD9AF',
+              padding: '24px',
+              textAlign: 'center',
+              marginBottom: '32px',
+            }}
+          >
+            <h3
+              style={{
+                fontFamily: 'var(--font-cormorant)',
+                fontSize: '1.4rem',
+                marginBottom: '8px',
+                color: '#1A1014',
+              }}
+            >
+              Save your order history
+            </h3>
+            <p
+              style={{
+                color: '#6B5B4E',
+                fontSize: '14px',
+                marginBottom: '16px',
+              }}
+            >
+              Create an account to track this order, save your wishlist and get early access to new pieces.
+            </p>
+            <Link href={`/signup?email=${encodeURIComponent(guestEmail)}`} className="btn-primary">
+              Create Account
+            </Link>
+          </div>
+        )}
 
         <div className="flex flex-wrap justify-center gap-3">
           <Link href="/products" style={{ background: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.2em', padding: '14px 36px', textDecoration: 'none' }}>CONTINUE SHOPPING</Link>

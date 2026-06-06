@@ -225,6 +225,7 @@ function DiamondModal({
   onClose: () => void
   onChoose: (customDiamond: Diamond) => void
 }) {
+  const router = useRouter()
   const { addItem } = useCart()
   const { showToast } = useToast()
   const [customCarat, setCustomCarat] = useState(diamond.carat || 1)
@@ -281,6 +282,7 @@ function DiamondModal({
     const { data: { user } } = await supabase.auth.getUser()
     setCartNotice({ isGuest: !user })
     showToast('Diamond added to cart', 'success')
+    router.push('/cart')
   }
 
   return (
@@ -612,13 +614,23 @@ function DiamondModal({
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
-            <button onClick={() => onChoose(customDiamond)} style={{ flex: 1, padding: '16px', background: '#1A1014', color: '#FBF5F0', border: 'none', fontSize: '11px', letterSpacing: '0.18em', cursor: 'pointer', fontFamily: 'var(--font-inter)' }}>
-              CHOOSE THIS DIAMOND
+          <div style={{ marginBottom: '20px' }}>
+            <button onClick={() => void addLooseDiamond()} className="btn-primary" style={{ width: '100%', marginBottom: '12px' }}>
+              Add Loose Diamond to Cart - ${customPrice.toLocaleString()}
             </button>
-            <button onClick={() => void addLooseDiamond()} style={{ padding: '16px 20px', background: 'transparent', border: '0.5px solid #EDD9AF', color: '#1A1014', fontSize: '11px', letterSpacing: '0.18em', cursor: 'pointer', fontFamily: 'var(--font-inter)' }}>
-              ADD TO CART
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '4px 0' }}>
+              <div style={{ flex: 1, height: '0.5px', background: '#EDD9AF' }} />
+              <span style={{ fontSize: '11px', color: '#B8A090', letterSpacing: '0.1em' }}>OR</span>
+              <div style={{ flex: 1, height: '0.5px', background: '#EDD9AF' }} />
+            </div>
+
+            <button onClick={() => onChoose(customDiamond)} className="btn-outline" style={{ width: '100%', marginTop: '12px' }}>
+              Use This Diamond to Build a Ring -
             </button>
+            <p style={{ fontSize: '12px', color: '#B8A090', textAlign: 'center', marginTop: '8px' }}>
+              Choose a setting and preview your complete ring
+            </p>
           </div>
         </div>
 
@@ -776,6 +788,7 @@ function DiamondsContent() {
       <style jsx global>{`
         @media (max-width: 900px) {
           .diamond-page-shell { grid-template-columns: 1fr !important; }
+          .diamond-path-grid { grid-template-columns: 1fr !important; }
           .diamond-sidebar { position: static !important; border-right: none !important; border-bottom: 0.5px solid #EDD9AF !important; }
           .diamond-toolbar { align-items: flex-start !important; flex-direction: column !important; }
           .diamond-modal-grid { grid-template-columns: 1fr !important; }
@@ -827,6 +840,34 @@ function DiamondsContent() {
           ))}
         </div>
       </header>
+
+      <section style={{ background: '#FBF5F0', borderBottom: '0.5px solid #EDD9AF', padding: '28px 24px' }}>
+        <div className="diamond-path-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', maxWidth: '1120px', margin: '0 auto' }}>
+          <a href="#diamonds-grid" style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', color: '#1A1014', display: 'block', padding: '24px', textDecoration: 'none' }}>
+            <div style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.28em', marginBottom: '10px' }}>
+              OPTION ONE
+            </div>
+            <h2 style={{ fontFamily: 'var(--font-playfair)', fontSize: '28px', fontWeight: 400, lineHeight: 1.15, margin: '0 0 10px' }}>
+              Buy a loose diamond
+            </h2>
+            <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '13px', lineHeight: 1.7, margin: 0 }}>
+              Choose a certified diamond and add it to cart by itself.
+            </p>
+          </a>
+
+          <Link href="/build" style={{ background: '#1A1014', border: '0.5px solid #EDD9AF', color: '#FBF5F0', display: 'block', padding: '24px', textDecoration: 'none' }}>
+            <div style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.28em', marginBottom: '10px' }}>
+              OPTION TWO
+            </div>
+            <h2 style={{ fontFamily: 'var(--font-playfair)', fontSize: '28px', fontWeight: 400, lineHeight: 1.15, margin: '0 0 10px' }}>
+              Build a ring
+            </h2>
+            <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '13px', lineHeight: 1.7, margin: 0 }}>
+              Start with a center stone, then pair it with a setting.
+            </p>
+          </Link>
+        </div>
+      </section>
 
       <div className="diamond-page-shell" style={{ display: 'grid', gridTemplateColumns: '260px 1fr', maxWidth: '1500px', margin: '0 auto', minHeight: '80vh' }}>
         <aside className="diamond-sidebar" style={{ background: '#FBF5F0', borderRight: '0.5px solid #EDD9AF', padding: '32px 24px', position: 'sticky', top: '72px', height: 'fit-content' }}>
@@ -1096,7 +1137,9 @@ function DiamondsContent() {
           onClose={() => setSelectedDiamond(null)}
           onChoose={(customDiamond) => {
             setSelectedDiamond(null)
+            window.localStorage.setItem('builder_diamond', JSON.stringify(customDiamond))
             const params = new URLSearchParams({
+              step: '2',
               diamond: customDiamond.id,
               carat: customDiamond.carat.toString(),
               color: customDiamond.color,

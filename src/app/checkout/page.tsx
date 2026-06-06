@@ -80,6 +80,11 @@ export default function CheckoutPage() {
   const [summaryOpen, setSummaryOpen] = useState(false)
   const [shippingMethod, setShippingMethod] = useState<'standard' | 'express'>('standard')
   const [userId, setUserId] = useState<string | null>(null)
+  const [checkoutMode, setCheckoutMode] = useState<'guest' | 'signin'>('guest')
+  const [guestEmail, setGuestEmail] = useState('')
+  const [guestName, setGuestName] = useState('')
+  const [signinEmail, setSigninEmail] = useState('')
+  const [signinPassword, setSigninPassword] = useState('')
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([])
   const [selectedAddressId, setSelectedAddressId] = useState('')
   const [saveAddress, setSaveAddress] = useState(false)
@@ -113,9 +118,13 @@ export default function CheckoutPage() {
         data: { user },
       } = await supabaseAuth.auth.getUser()
 
-      if (!user) return
+      if (!user) {
+        setUserId(null)
+        return
+      }
 
       setUserId(user.id)
+      setCheckoutMode('guest')
       setForm((current) => ({
         ...current,
         email: current.email || user.email || '',
@@ -135,6 +144,26 @@ export default function CheckoutPage() {
 
   const setField = (key: keyof typeof form, value: string) => {
     setForm((current) => ({ ...current, [key]: value }))
+  }
+
+  const handleSignIn = async () => {
+    setError('')
+    const { data, error: signInError } = await supabaseAuth.auth.signInWithPassword({
+      email: signinEmail,
+      password: signinPassword,
+    })
+
+    if (signInError || !data.user) {
+      setError(signInError?.message || 'Unable to sign in.')
+      return
+    }
+
+    setUserId(data.user.id)
+    setForm((current) => ({
+      ...current,
+      email: current.email || data.user?.email || signinEmail,
+    }))
+    setCheckoutMode('guest')
   }
 
   const continueTo = (next: number) => {
@@ -173,13 +202,30 @@ export default function CheckoutPage() {
       const {
         data: { user },
       } = await supabaseAuth.auth.getUser()
+      const isGuest = !user
+      const customerName = isGuest ? guestName.trim() : `${form.firstName} ${form.lastName}`.trim()
+      const customerEmail = isGuest ? guestEmail.trim() : form.email.trim()
+
+      if (isGuest) {
+        if (!customerEmail || !customerEmail.includes('@')) {
+          setError('Please enter a valid email address')
+          setIsPlacing(false)
+          return
+        }
+        if (!customerName) {
+          setError('Please enter your name')
+          setIsPlacing(false)
+          return
+        }
+      }
+
       const orderNumber = `JB-${Date.now().toString().slice(-6)}`
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customerName: `${form.firstName} ${form.lastName}`.trim(),
-          customerEmail: form.email,
+          customerName,
+          customerEmail,
           customerPhone: form.phone,
           shippingAddress: {
             firstName: form.firstName,
@@ -207,6 +253,9 @@ export default function CheckoutPage() {
           paymentMethod: 'pending',
           paymentStatus: 'pending',
           userId: user?.id || null,
+          isGuest,
+          guestEmail: isGuest ? customerEmail : null,
+          guestName: isGuest ? customerName : null,
           orderNumber,
         }),
       })
@@ -241,7 +290,15 @@ export default function CheckoutPage() {
 
       await Promise.all(items.map((item) => trackCartEvent('purchased', toAnalyticsCartItem(item), user?.id || null)))
       await clearCart()
-      router.push(`/order-confirmed?order=${payload.order.id}&number=${payload.orderNumber || payload.order.orderNumber || orderNumber}`)
+      const confirmationParams = new URLSearchParams({
+        order: payload.order.id,
+        number: payload.orderNumber || payload.order.orderNumber || orderNumber,
+      })
+      if (isGuest) {
+        confirmationParams.set('guest', '1')
+        confirmationParams.set('email', customerEmail)
+      }
+      router.push(`/order-confirmed?${confirmationParams.toString()}`)
     } catch (orderError) {
       const message = orderError instanceof Error ? orderError.message : 'Unable to place order.'
       console.error('Order error:', orderError)
@@ -321,6 +378,118 @@ export default function CheckoutPage() {
 
       <div className="checkout-layout mx-auto grid max-w-[1200px] gap-10 px-4 py-6 md:grid-cols-[60fr_40fr] md:px-10 md:py-10 lg:grid-cols-[1fr_400px] lg:gap-[60px] lg:px-20">
         <form onSubmit={placeOrder}>
+          {!userId && (
+            <div
+              style={{
+                background: '#FDF8F2',
+                border: '0.5px solid #EDD9AF',
+                padding: '20px',
+                marginBottom: '24px',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 0,
+                  marginBottom: '16px',
+                  border: '0.5px solid #EDD9AF',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setCheckoutMode('guest')}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    background: checkoutMode === 'guest' ? '#1A1014' : 'transparent',
+                    color: checkoutMode === 'guest' ? '#FBF5F0' : '#1A1014',
+                    border: 'none',
+                    fontSize: '12px',
+                    letterSpacing: '0.1em',
+                    cursor: 'pointer',
+                  }}
+                >
+                  CONTINUE AS GUEST
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCheckoutMode('signin')}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    background: checkoutMode === 'signin' ? '#1A1014' : 'transparent',
+                    color: checkoutMode === 'signin' ? '#FBF5F0' : '#1A1014',
+                    border: 'none',
+                    fontSize: '12px',
+                    letterSpacing: '0.1em',
+                    cursor: 'pointer',
+                  }}
+                >
+                  SIGN IN
+                </button>
+              </div>
+
+              {checkoutMode === 'guest' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <input
+                    type="text"
+                    placeholder="Full Name *"
+                    value={guestName}
+                    onChange={(event) => setGuestName(event.target.value)}
+                    className="input-luxury"
+                  />
+                  <input
+                    type="email"
+                    placeholder="Email Address * (for order confirmation)"
+                    value={guestEmail}
+                    onChange={(event) => setGuestEmail(event.target.value)}
+                    className="input-luxury"
+                  />
+                  <p style={{ fontSize: '12px', color: '#B8A090' }}>
+                    You can create an account after checkout to track your orders.
+                  </p>
+                </div>
+              )}
+
+              {checkoutMode === 'signin' && (
+                <div>
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    value={signinEmail}
+                    onChange={(event) => setSigninEmail(event.target.value)}
+                    className="input-luxury"
+                    style={{ marginBottom: '10px' }}
+                  />
+                  <input
+                    type="password"
+                    placeholder="Password"
+                    value={signinPassword}
+                    onChange={(event) => setSigninPassword(event.target.value)}
+                    className="input-luxury"
+                    style={{ marginBottom: '10px' }}
+                  />
+                  <button type="button" onClick={() => void handleSignIn()} className="btn-primary" style={{ width: '100%' }}>
+                    Sign In
+                  </button>
+                  <p
+                    style={{
+                      textAlign: 'center',
+                      fontSize: '12px',
+                      color: '#B8A090',
+                      marginTop: '10px',
+                    }}
+                  >
+                    Don&apos;t have an account?{' '}
+                    <Link href="/signup" style={{ color: '#C9A961' }}>
+                      Create one
+                    </Link>
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           <motion.section key={step} initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.35 }} style={{ background: '#FBF5F0' }}>
             {step === 1 && (
               <div className="grid gap-5">

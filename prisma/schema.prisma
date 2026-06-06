@@ -113,6 +113,13 @@ model Order {
   customerName   String
   customerEmail  String
   customerPhone  String?
+  userId         String?
+  guestEmail     String?
+  guestName      String?
+  isGuest        Boolean?    @default(false)
+  guest_email    String?
+  guest_name     String?
+  is_guest       Boolean?    @default(false)
   status         String      @default("received")
   // received | cad_design | casting | setting | polishing | shipped | delivered | cancelled
 
@@ -138,8 +145,11 @@ model OrderItem {
   id            String  @id @default(cuid())
   orderId       String
   order         Order   @relation(fields: [orderId], references: [id])
-  productId     String
-  product       Product @relation(fields: [productId], references: [id])
+  productId     String?
+  product       Product? @relation(fields: [productId], references: [id])
+  productTitle  String?
+  productImage  String?
+  variantTitle  String?
 
   selectedMetal   String?
   selectedCarat   Float?
@@ -151,6 +161,7 @@ model OrderItem {
   engraving       String?
   quantity        Int     @default(1)
   unitPrice       Float
+  totalPrice      Float?
 
   priceBreakdown  Json?
   // { base: 2000, metal: 0, carat: 5500, shape: 0, color: 500, clarity: 0, total: 8000 }

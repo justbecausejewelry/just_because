@@ -3,7 +3,7 @@
 import { CSSProperties, Suspense, useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useCart } from '@/context/CartContext'
 import { useToast } from '@/context/ToastContext'
 import { ALL_DIAMONDS, Diamond, SHAPE_DATA } from '@/lib/diamondCatalog'
@@ -41,7 +41,11 @@ const metalOptions = [
 const ringSizes = ['4', '4.5', '5', '5.5', '6', '6.5', '7', '7.5', '8', '8.5', '9']
 
 function formatMoney(value: number) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value)
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  }).format(value)
 }
 
 function imageForRing(ring: RingProduct, metal: string) {
@@ -68,16 +72,64 @@ function ringProductsOrAll(products: RingProduct[]) {
   return ringMatches.length > 0 ? ringMatches : products
 }
 
-function StepIndicator({ step }: { step: number }) {
-  const steps = ['SETTING', 'DIAMOND', 'COMPLETE']
+function isStoredDiamond(value: unknown): value is Diamond {
+  if (!value || typeof value !== 'object') return false
+  const candidate = value as Record<string, unknown>
   return (
-    <div style={{ maxWidth: '720px', margin: '0 auto', padding: '34px 24px 24px' }}>
+    typeof candidate.id === 'string' &&
+    typeof candidate.shape === 'string' &&
+    typeof candidate.carat === 'number' &&
+    typeof candidate.color === 'string' &&
+    typeof candidate.clarity === 'string' &&
+    typeof candidate.cut === 'string' &&
+    typeof candidate.price === 'number' &&
+    typeof candidate.img === 'string'
+  )
+}
+
+function diamondFromParams(searchParams: URLSearchParams): Diamond | null {
+  const requestedDiamond = searchParams.get('diamond')
+  if (!requestedDiamond) return null
+
+  const catalogDiamond = ALL_DIAMONDS.find((item) => item.id === requestedDiamond)
+  const carat = Number(searchParams.get('carat'))
+  const price = Number(searchParams.get('price'))
+  const shape = searchParams.get('shape') || catalogDiamond?.shape || 'Round'
+  const shapeImage = SHAPE_DATA.find((item) => item.name === shape)?.img || SHAPE_DATA[0].img
+
+  return {
+    id: requestedDiamond,
+    shape,
+    carat: Number.isFinite(carat) && carat > 0 ? carat : catalogDiamond?.carat || 1,
+    color: searchParams.get('color') || catalogDiamond?.color || 'G',
+    clarity: searchParams.get('clarity') || catalogDiamond?.clarity || 'VS1',
+    cut: catalogDiamond?.cut || 'Excellent',
+    price: Number.isFinite(price) && price > 0 ? price : catalogDiamond?.price || 0,
+    polish: catalogDiamond?.polish || 'Excellent',
+    symmetry: catalogDiamond?.symmetry || 'Excellent',
+    fluorescence: catalogDiamond?.fluorescence || 'None',
+    depthPercent: catalogDiamond?.depthPercent || '62.0',
+    tablePercent: catalogDiamond?.tablePercent || '58',
+    measurements: catalogDiamond?.measurements || '6.50 x 6.50 x 4.00',
+    certificateNumber: catalogDiamond?.certificateNumber || requestedDiamond,
+    certificateType: catalogDiamond?.certificateType || 'IGI',
+    certificateUrl: catalogDiamond?.certificateUrl || null,
+    img: catalogDiamond?.img || shapeImage,
+  }
+}
+
+function StepIndicator({ step }: { step: number }) {
+  const steps = ['CHOOSE DIAMOND', 'CHOOSE SETTING', 'PREVIEW & ORDER']
+
+  return (
+    <div style={{ maxWidth: '760px', margin: '0 auto', padding: '34px 24px 24px' }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', alignItems: 'start', position: 'relative' }}>
         <div style={{ position: 'absolute', left: '16%', right: '16%', top: '18px', height: '0.5px', background: '#EDD9AF' }} />
         {steps.map((label, index) => {
           const stepNumber = index + 1
           const complete = step > stepNumber
           const active = step === stepNumber
+
           return (
             <div key={label} style={{ display: 'grid', justifyItems: 'center', gap: '8px', position: 'relative', zIndex: 1 }}>
               <div style={{
@@ -94,9 +146,9 @@ function StepIndicator({ step }: { step: number }) {
                 fontSize: '12px',
                 fontWeight: 500,
               }}>
-                {complete ? '✓' : stepNumber}
+                {complete ? '+' : stepNumber}
               </div>
-              <div style={{ fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.2em', color: active ? '#1A1014' : '#B8A090' }}>
+              <div style={{ fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.18em', color: active ? '#1A1014' : '#B8A090', textAlign: 'center' }}>
                 {label}
               </div>
             </div>
@@ -107,76 +159,86 @@ function StepIndicator({ step }: { step: number }) {
   )
 }
 
-function DiamondCard({ diamond, onSelect }: { diamond: Diamond; onSelect: () => void }) {
+function DiamondCard({
+  diamond,
+  selected,
+  onSelect,
+}: {
+  diamond: Diamond
+  selected: boolean
+  onSelect: () => void
+}) {
   return (
-    <div style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '2px', overflow: 'hidden' }}>
-      <div style={{ aspectRatio: '1', position: 'relative', background: '#F5E8ED' }}>
-        <Image src={diamond.img} alt={`${diamond.carat}ct ${diamond.shape}`} fill sizes="(max-width: 768px) 100vw, 240px" style={{ objectFit: 'cover' }} quality={90} />
+    <button
+      onClick={onSelect}
+      style={{
+        background: '#FDF8F2',
+        border: selected ? '1px solid #C9A961' : '0.5px solid #EDD9AF',
+        borderRadius: '2px',
+        cursor: 'pointer',
+        overflow: 'hidden',
+        textAlign: 'left',
+      }}
+    >
+      <div style={{ aspectRatio: '1', background: '#FBF5F0', position: 'relative' }}>
+        <Image src={diamond.img} alt={`${diamond.carat}ct ${diamond.shape}`} fill sizes="(max-width: 768px) 100vw, 240px" style={{ objectFit: 'contain', padding: '28px' }} quality={90} />
       </div>
       <div style={{ padding: '16px' }}>
-        <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '17px', color: '#1A1014', marginBottom: '8px' }}>
+        <div style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.18em', marginBottom: '7px' }}>
+          IGI CERTIFIED
+        </div>
+        <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '19px', color: '#1A1014', marginBottom: '8px' }}>
           {diamond.carat}ct {diamond.shape}
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '12px' }}>
-          {[diamond.color, diamond.clarity, diamond.cut].map((spec) => (
-            <span key={spec} style={{ border: '0.5px solid #EDD9AF', background: '#FBF5F0', color: '#B8A090', fontSize: '10px', padding: '2px 7px', fontFamily: 'var(--font-inter)' }}>{spec}</span>
-          ))}
+        <div style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', marginBottom: '13px' }}>
+          {diamond.color} color - {diamond.clarity} clarity - {diamond.cut}
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
-          <span style={{ fontFamily: 'var(--font-playfair)', color: '#1A1014', fontSize: '20px' }}>{formatMoney(diamond.price)}</span>
-          <span style={{ fontFamily: 'var(--font-inter)', color: '#C9A961', fontSize: '9px', letterSpacing: '0.14em' }}>IGI</span>
+        <div style={{ fontFamily: 'var(--font-playfair)', color: '#1A1014', fontSize: '23px' }}>
+          {formatMoney(diamond.price)}
         </div>
-        <button onClick={onSelect} style={{ width: '100%', background: '#1A1014', color: '#FBF5F0', border: 'none', padding: '12px', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.16em', cursor: 'pointer' }}>
-          SELECT THIS DIAMOND -
-        </button>
       </div>
-    </div>
+    </button>
   )
 }
 
 function BuildContent() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const { addItem } = useCart()
   const { showToast } = useToast()
   const [step, setStep] = useState(1)
+  const [selectedDiamond, setSelectedDiamond] = useState<Diamond | null>(null)
+  const [selectedSetting, setSelectedSetting] = useState<RingProduct | null>(null)
+  const [selectedMetal, setSelectedMetal] = useState('14k_white_gold')
+  const [selectedSize, setSelectedSize] = useState('')
   const [rings, setRings] = useState<RingProduct[]>([])
   const [loadingRings, setLoadingRings] = useState(true)
-  const [showAllShapes, setShowAllShapes] = useState(false)
-  const [selectedRing, setSelectedRing] = useState<RingProduct | null>(null)
-  const [selectedDiamond, setSelectedDiamond] = useState<Diamond | null>(null)
-  const [selectedMetal, setSelectedMetal] = useState('14k_white_gold')
-  const [selectedSize, setSelectedSize] = useState<string | null>(null)
+  const [selectedShape, setSelectedShape] = useState('All')
 
   useEffect(() => {
     const requestedDiamond = searchParams.get('diamond')
-    if (!requestedDiamond) return
+    const requestedStep = Number(searchParams.get('step'))
+    let nextDiamond: Diamond | null = null
 
-    const diamond = ALL_DIAMONDS.find((item) => item.id === requestedDiamond)
-    const customCarat = Number(searchParams.get('carat'))
-    const customPrice = Number(searchParams.get('price'))
-    const shape = searchParams.get('shape') || diamond?.shape || 'Round'
-    const shapeImage = SHAPE_DATA.find((item) => item.name === shape)?.img || SHAPE_DATA[0].img
-    const nextDiamond: Diamond = {
-      id: requestedDiamond,
-      shape,
-      carat: Number.isFinite(customCarat) && customCarat > 0 ? customCarat : diamond?.carat || 1,
-      color: searchParams.get('color') || diamond?.color || 'G',
-      clarity: searchParams.get('clarity') || diamond?.clarity || 'VS1',
-      cut: diamond?.cut || 'Excellent',
-      price: Number.isFinite(customPrice) && customPrice > 0 ? customPrice : diamond?.price || 0,
-      polish: diamond?.polish || 'Excellent',
-      symmetry: diamond?.symmetry || 'Excellent',
-      fluorescence: diamond?.fluorescence || 'None',
-      depthPercent: diamond?.depthPercent || '62.0',
-      tablePercent: diamond?.tablePercent || '58',
-      measurements: diamond?.measurements || '6.50 x 6.50 x 4.00',
-      certificateNumber: diamond?.certificateNumber || requestedDiamond,
-      certificateType: diamond?.certificateType || 'IGI',
-      certificateUrl: diamond?.certificateUrl || null,
-      img: diamond?.img || shapeImage,
+    if (requestedDiamond) {
+      try {
+        const storedValue = window.localStorage.getItem('builder_diamond')
+        const parsedValue: unknown = storedValue ? JSON.parse(storedValue) : null
+        if (isStoredDiamond(parsedValue) && parsedValue.id === requestedDiamond) {
+          nextDiamond = parsedValue
+        }
+      } catch {
+        nextDiamond = null
+      }
+
+      nextDiamond = nextDiamond || diamondFromParams(searchParams)
     }
-    setSelectedDiamond(nextDiamond)
-    setStep(1)
+
+    if (nextDiamond) {
+      setSelectedDiamond(nextDiamond)
+      setSelectedShape(nextDiamond.shape)
+      setStep(requestedStep === 2 ? 2 : 1)
+    }
   }, [searchParams])
 
   useEffect(() => {
@@ -208,8 +270,7 @@ function BuildContent() {
           const response = await fetch('/api/products?limit=100', { cache: 'no-store' })
           if (response.ok) {
             const payload = (await response.json()) as ProductListResponse
-            const apiProducts = Array.isArray(payload.products) ? payload.products : []
-            nextRings = ringProductsOrAll(apiProducts)
+            nextRings = ringProductsOrAll(Array.isArray(payload.products) ? payload.products : [])
           }
         } catch {
           nextRings = []
@@ -224,38 +285,46 @@ function BuildContent() {
   }, [])
 
   const diamondOptions = useMemo(() => {
-    const list = showAllShapes
+    const list = selectedShape === 'All'
       ? ALL_DIAMONDS
-      : ALL_DIAMONDS.filter((diamond) => diamond.shape === 'Round' || diamond.shape === 'Oval')
-    return list.slice(0, showAllShapes ? 36 : 18)
-  }, [showAllShapes])
+      : ALL_DIAMONDS.filter((diamond) => diamond.shape === selectedShape)
+    return list.slice(0, 32)
+  }, [selectedShape])
 
-  const settingPrice = selectedRing?.basePrice || 0
+  const shapeOptions = useMemo(() => ['All', ...SHAPE_DATA.map((shape) => shape.name)], [])
+  const settingPrice = selectedSetting?.basePrice || 0
   const diamondPrice = selectedDiamond?.price || 0
   const total = settingPrice + diamondPrice
   const selectedMetalLabel = metalOptions.find(([value]) => value === selectedMetal)?.[1] || '14K White Gold'
-  const ringImage = selectedRing ? imageForRing(selectedRing, selectedMetal) : ''
+  const ringImage = selectedSetting ? imageForRing(selectedSetting, selectedMetal) : ''
 
-  const selectRing = (ring: RingProduct) => {
-    setSelectedRing(ring)
-    setStep(2)
-  }
-
-  const selectDiamond = (diamond: Diamond) => {
-    setSelectedDiamond(diamond)
-    setStep(3)
+  const selectButtonStyle: CSSProperties = {
+    width: '100%',
+    background: '#1A1014',
+    color: '#FBF5F0',
+    border: 'none',
+    padding: '13px',
+    fontFamily: 'var(--font-inter)',
+    fontSize: '10px',
+    letterSpacing: '0.16em',
+    cursor: 'pointer',
   }
 
   const addCompleteRing = async () => {
-    if (!selectedRing || !selectedDiamond || !selectedSize) {
+    if (!selectedDiamond || !selectedSetting) {
+      showToast('Choose a diamond and setting before adding your ring.', 'error')
+      return
+    }
+
+    if (!selectedSize) {
       showToast('Please choose a ring size to complete your custom ring.', 'error')
       return
     }
 
     await addItem({
-      productId: selectedRing.id,
-      productSlug: `custom-${selectedRing.slug}-${selectedDiamond.id.toLowerCase()}`,
-      productTitle: `Custom ${selectedRing.title}`,
+      productId: selectedSetting.id,
+      productSlug: `custom-${selectedSetting.slug}-${selectedDiamond.id.toLowerCase()}`,
+      productTitle: `Custom ${selectedSetting.title}`,
       productImage: ringImage || selectedDiamond.img,
       selectedMetal: selectedMetalLabel,
       selectedCarat: selectedDiamond.carat,
@@ -275,77 +344,126 @@ function BuildContent() {
       },
     })
     showToast('Custom ring added to cart', 'success')
-  }
-
-  const selectButtonStyle: CSSProperties = {
-    width: '100%',
-    background: '#1A1014',
-    color: '#FBF5F0',
-    border: 'none',
-    padding: '13px',
-    fontFamily: 'var(--font-inter)',
-    fontSize: '10px',
-    letterSpacing: '0.16em',
-    cursor: 'pointer',
+    router.push('/cart')
   }
 
   return (
     <div style={{ background: '#FBF5F0', minHeight: '100vh' }}>
       <style jsx global>{`
-        @keyframes builderShimmer {
-          0% { background-position: -220px 0; }
-          100% { background-position: calc(220px + 100%) 0; }
-        }
-
-        .builder-loading-grid {
+        .builder-diamond-grid,
+        .builder-setting-grid {
           display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 18px;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 16px;
         }
 
-        .builder-skeleton {
-          background: linear-gradient(90deg, #FDF8F2 0%, #F5E8ED 45%, #FDF8F2 90%);
-          background-size: 220px 100%;
-          animation: builderShimmer 1200ms ease-in-out infinite;
+        @media (max-width: 1100px) {
+          .builder-diamond-grid,
+          .builder-setting-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+          }
         }
 
-        @media (max-width: 900px) {
-          .builder-ring-grid, .builder-diamond-grid, .builder-loading-grid { grid-template-columns: 1fr !important; }
-          .builder-summary-grid { grid-template-columns: 1fr !important; }
-          .builder-composition { grid-template-columns: 1fr !important; }
+        @media (max-width: 820px) {
+          .builder-diamond-grid,
+          .builder-setting-grid,
+          .builder-preview-grid {
+            grid-template-columns: 1fr !important;
+          }
         }
       `}</style>
 
       <header style={{ background: '#1A1014', padding: '52px 24px 28px', textAlign: 'center' }}>
         <div style={{ fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.32em', color: '#C9A961', marginBottom: '12px' }}>RING BUILDER</div>
         <h1 style={{ fontFamily: 'var(--font-playfair)', fontWeight: 400, color: '#FBF5F0', fontSize: 'clamp(34px, 5vw, 56px)', margin: 0 }}>
-          Build a ring, piece by piece.
+          Choose the diamond first.
         </h1>
       </header>
 
       <StepIndicator step={step} />
 
-      {step === 1 && (
-        <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '16px 24px 80px' }}>
-          <div style={{ marginBottom: '26px' }}>
-            <div style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.3em', marginBottom: '10px' }}>STEP ONE</div>
-            <h2 style={{ fontFamily: 'var(--font-playfair)', color: '#1A1014', fontWeight: 400, fontSize: '32px', margin: 0 }}>Choose your setting</h2>
-          </div>
-
-          {loadingRings ? (
-            <div className="builder-loading-grid" aria-label="Loading ring settings">
-              {[0, 1, 2].map((item) => (
-                <article key={item} style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '2px', overflow: 'hidden' }}>
-                  <div className="builder-skeleton" style={{ aspectRatio: '1' }} />
-                  <div style={{ padding: '18px' }}>
-                    <div className="builder-skeleton" style={{ height: '10px', width: '34%', marginBottom: '12px' }} />
-                    <div className="builder-skeleton" style={{ height: '24px', width: '72%', marginBottom: '18px' }} />
-                    <div className="builder-skeleton" style={{ height: '12px', width: '46%', marginBottom: '18px' }} />
-                    <div className="builder-skeleton" style={{ height: '42px', width: '100%' }} />
-                  </div>
-                </article>
+      {step === 1 ? (
+        <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '16px 24px 110px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.3em', marginBottom: '10px' }}>STEP ONE</div>
+              <h2 style={{ fontFamily: 'var(--font-playfair)', color: '#1A1014', fontWeight: 400, fontSize: '32px', margin: 0 }}>Choose your center stone</h2>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {shapeOptions.map((shape) => (
+                <button
+                  key={shape}
+                  onClick={() => setSelectedShape(shape)}
+                  style={{
+                    background: selectedShape === shape ? '#1A1014' : '#FDF8F2',
+                    border: '0.5px solid #EDD9AF',
+                    color: selectedShape === shape ? '#FBF5F0' : '#1A1014',
+                    cursor: 'pointer',
+                    fontFamily: 'var(--font-inter)',
+                    fontSize: '10px',
+                    letterSpacing: '0.12em',
+                    padding: '9px 12px',
+                  }}
+                >
+                  {shape.toUpperCase()}
+                </button>
               ))}
             </div>
+          </div>
+
+          <div className="builder-diamond-grid">
+            {diamondOptions.map((diamond) => (
+              <DiamondCard
+                key={diamond.id}
+                diamond={diamond}
+                selected={selectedDiamond?.id === diamond.id}
+                onSelect={() => setSelectedDiamond(diamond)}
+              />
+            ))}
+          </div>
+
+          {selectedDiamond ? (
+            <div style={{ position: 'sticky', bottom: 0, background: '#1A1014', margin: '28px -24px -110px', padding: '18px 24px', zIndex: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '18px', flexWrap: 'wrap' }}>
+              <div>
+                <div style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.24em', marginBottom: '5px' }}>SELECTED DIAMOND</div>
+                <div style={{ color: '#FBF5F0', fontFamily: 'var(--font-playfair)', fontSize: '22px' }}>
+                  {selectedDiamond.carat}ct {selectedDiamond.shape} - {formatMoney(selectedDiamond.price)}
+                </div>
+              </div>
+              <button onClick={() => setStep(2)} style={{ ...selectButtonStyle, width: 'auto', minWidth: '220px', background: '#C9A961', color: '#1A1014' }}>
+                CONTINUE TO SETTINGS -
+              </button>
+            </div>
+          ) : null}
+        </main>
+      ) : null}
+
+      {step === 2 ? (
+        <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '16px 24px 90px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: '16px', marginBottom: '26px', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.3em', marginBottom: '10px' }}>STEP TWO</div>
+              <h2 style={{ fontFamily: 'var(--font-playfair)', color: '#1A1014', fontWeight: 400, fontSize: '32px', margin: 0 }}>Choose your setting</h2>
+              {selectedDiamond ? (
+                <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '13px', margin: '8px 0 0' }}>
+                  Building around a {selectedDiamond.carat}ct {selectedDiamond.shape}, {selectedDiamond.color}, {selectedDiamond.clarity} diamond.
+                </p>
+              ) : null}
+            </div>
+            <button onClick={() => setStep(1)} style={{ background: 'transparent', border: '0.5px solid #EDD9AF', color: '#B8A090', padding: '11px 16px', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.14em', cursor: 'pointer' }}>
+              CHANGE DIAMOND
+            </button>
+          </div>
+
+          {!selectedDiamond ? (
+            <div style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', padding: '34px', textAlign: 'center' }}>
+              <h3 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '26px', fontWeight: 400, margin: '0 0 10px' }}>Choose a diamond first</h3>
+              <button onClick={() => setStep(1)} style={{ ...selectButtonStyle, display: 'inline-block', width: 'auto' }}>
+                BACK TO DIAMONDS -
+              </button>
+            </div>
+          ) : loadingRings ? (
+            <div style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', padding: '60px 0' }}>Loading ring settings...</div>
           ) : rings.length === 0 ? (
             <div style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', padding: '36px', textAlign: 'center' }}>
               <h3 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '26px', fontWeight: 400, margin: '0 0 10px' }}>No ring settings found</h3>
@@ -357,20 +475,32 @@ function BuildContent() {
               </Link>
             </div>
           ) : (
-            <div className="builder-ring-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '18px' }}>
+            <div className="builder-setting-grid">
               {rings.map((ring) => {
                 const image = imageForRing(ring, selectedMetal)
                 return (
-                  <article key={ring.id} style={{ background: '#FDF8F2', border: selectedRing?.id === ring.id ? '1px solid #C9A961' : '0.5px solid #EDD9AF', borderRadius: '2px', overflow: 'hidden' }}>
-                    <div style={{ aspectRatio: '1', position: 'relative', background: '#F5E8ED' }}>
-                      {image ? <Image src={image} alt={ring.title} fill sizes="(max-width: 768px) 100vw, 33vw" style={{ objectFit: 'cover' }} quality={90} /> : null}
+                  <article key={ring.id} style={{ background: '#FDF8F2', border: selectedSetting?.id === ring.id ? '1px solid #C9A961' : '0.5px solid #EDD9AF', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{ aspectRatio: '1', position: 'relative', background: '#FBF5F0' }}>
+                      {image ? <Image src={image} alt={ring.title} fill sizes="(max-width: 768px) 100vw, 25vw" style={{ objectFit: 'cover' }} quality={90} /> : null}
                     </div>
                     <div style={{ padding: '18px' }}>
                       <div style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.2em', marginBottom: '7px' }}>{ring.category.replace(/_/g, ' ').toUpperCase()}</div>
                       <h3 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '20px', fontWeight: 400, margin: '0 0 10px' }}>{ring.title}</h3>
                       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '14px' }}>
                         {metalOptions.map(([value, label]) => (
-                          <button key={value} onClick={() => setSelectedMetal(value)} style={{ border: selectedMetal === value ? '1px solid #1A1014' : '0.5px solid #EDD9AF', background: selectedMetal === value ? '#1A1014' : '#FBF5F0', color: selectedMetal === value ? '#FBF5F0' : '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '9px', padding: '5px 7px', cursor: 'pointer' }}>
+                          <button
+                            key={value}
+                            onClick={() => setSelectedMetal(value)}
+                            style={{
+                              border: selectedMetal === value ? '1px solid #1A1014' : '0.5px solid #EDD9AF',
+                              background: selectedMetal === value ? '#1A1014' : '#FBF5F0',
+                              color: selectedMetal === value ? '#FBF5F0' : '#B8A090',
+                              fontFamily: 'var(--font-inter)',
+                              fontSize: '9px',
+                              padding: '5px 7px',
+                              cursor: 'pointer',
+                            }}
+                          >
                             {label.replace('14K ', '')}
                           </button>
                         ))}
@@ -379,7 +509,15 @@ function BuildContent() {
                         <span style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px' }}>Setting</span>
                         <span style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '22px' }}>{formatMoney(ring.basePrice)}</span>
                       </div>
-                      <button onClick={() => selectRing(ring)} style={selectButtonStyle}>SELECT THIS SETTING -</button>
+                      <button
+                        onClick={() => {
+                          setSelectedSetting(ring)
+                          setStep(3)
+                        }}
+                        style={selectButtonStyle}
+                      >
+                        SELECT SETTING -
+                      </button>
                     </div>
                   </article>
                 )
@@ -387,48 +525,31 @@ function BuildContent() {
             </div>
           )}
         </main>
-      )}
+      ) : null}
 
-      {step === 2 && (
-        <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '16px 24px 80px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: '16px', marginBottom: '26px', flexWrap: 'wrap' }}>
-            <div>
-              <div style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.3em', marginBottom: '10px' }}>STEP TWO</div>
-              <h2 style={{ fontFamily: 'var(--font-playfair)', color: '#1A1014', fontWeight: 400, fontSize: '32px', margin: 0 }}>Choose your diamond</h2>
-            </div>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => setStep(1)} style={{ background: 'transparent', border: '0.5px solid #EDD9AF', color: '#B8A090', padding: '11px 16px', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.14em', cursor: 'pointer' }}>BACK</button>
-              <button onClick={() => setShowAllShapes((value) => !value)} style={{ background: showAllShapes ? '#1A1014' : 'transparent', border: '0.5px solid #EDD9AF', color: showAllShapes ? '#FBF5F0' : '#1A1014', padding: '11px 16px', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.14em', cursor: 'pointer' }}>
-                {showAllShapes ? 'POPULAR ONLY' : 'ALL SHAPES'}
-              </button>
-            </div>
-          </div>
-          <div className="builder-diamond-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '16px' }}>
-            {diamondOptions.map((diamond) => <DiamondCard key={diamond.id} diamond={diamond} onSelect={() => selectDiamond(diamond)} />)}
-          </div>
-        </main>
-      )}
-
-      {step === 3 && selectedRing && selectedDiamond && (
-        <main style={{ maxWidth: '960px', margin: '0 auto', padding: '16px 24px 90px' }}>
+      {step === 3 && selectedDiamond && selectedSetting ? (
+        <main style={{ maxWidth: '980px', margin: '0 auto', padding: '16px 24px 90px' }}>
           <div style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', padding: '28px' }}>
-            <div style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.3em', marginBottom: '20px' }}>YOUR CUSTOM RING</div>
-            <div className="builder-composition" style={{ display: 'grid', gridTemplateColumns: '1fr 48px 1fr', gap: '16px', alignItems: 'center', marginBottom: '28px' }}>
-              <div style={{ aspectRatio: '1', position: 'relative', background: '#F5E8ED', border: '0.5px solid #EDD9AF' }}>
-                {ringImage ? <Image src={ringImage} alt={selectedRing.title} fill sizes="300px" style={{ objectFit: 'cover' }} quality={90} /> : null}
+            <div style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.3em', marginBottom: '20px' }}>STEP THREE</div>
+            <h2 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '32px', fontWeight: 400, margin: '0 0 24px' }}>
+              Preview your custom ring
+            </h2>
+
+            <div className="builder-preview-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '28px' }}>
+              <div style={{ aspectRatio: '1', position: 'relative', background: '#FBF5F0', border: '0.5px solid #EDD9AF' }}>
+                {ringImage ? <Image src={ringImage} alt={selectedSetting.title} fill sizes="360px" style={{ objectFit: 'cover' }} quality={90} /> : null}
               </div>
-              <div style={{ color: '#C9A961', fontFamily: 'var(--font-playfair)', fontSize: '34px', textAlign: 'center' }}>+</div>
-              <div style={{ aspectRatio: '1', position: 'relative', background: '#F5E8ED', border: '0.5px solid #EDD9AF' }}>
-                <Image src={selectedDiamond.img} alt={selectedDiamond.shape} fill sizes="300px" style={{ objectFit: 'cover' }} quality={90} />
+              <div style={{ aspectRatio: '1', position: 'relative', background: '#FBF5F0', border: '0.5px solid #EDD9AF' }}>
+                <Image src={selectedDiamond.img} alt={`${selectedDiamond.shape} diamond`} fill sizes="360px" style={{ objectFit: 'contain', padding: '42px' }} quality={90} />
               </div>
             </div>
 
-            <div className="builder-summary-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+            <div className="builder-preview-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
               <div>
                 {[
-                  ['Setting', selectedRing.title],
-                  ['Metal', selectedMetalLabel],
                   ['Diamond', `${selectedDiamond.carat}ct ${selectedDiamond.shape}, ${selectedDiamond.color}, ${selectedDiamond.clarity}`],
+                  ['Setting', selectedSetting.title],
+                  ['Metal', selectedMetalLabel],
                 ].map(([label, value]) => (
                   <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', padding: '10px 0', borderBottom: '0.5px solid #EDD9AF', fontFamily: 'var(--font-inter)', fontSize: '13px' }}>
                     <span style={{ color: '#B8A090' }}>{label}</span>
@@ -438,7 +559,7 @@ function BuildContent() {
 
                 <label style={{ display: 'block', marginTop: '18px' }}>
                   <span style={{ display: 'block', color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.2em', marginBottom: '8px' }}>RING SIZE</span>
-                  <select value={selectedSize || ''} onChange={(event) => setSelectedSize(event.target.value || null)} style={{ width: '100%', background: '#FBF5F0', border: '0.5px solid #EDD9AF', color: '#1A1014', padding: '12px', fontFamily: 'var(--font-inter)' }}>
+                  <select value={selectedSize} onChange={(event) => setSelectedSize(event.target.value)} style={{ width: '100%', background: '#FBF5F0', border: '0.5px solid #EDD9AF', color: '#1A1014', padding: '12px', fontFamily: 'var(--font-inter)' }}>
                     <option value="">Select size</option>
                     {ringSizes.map((size) => <option key={size} value={size}>{size}</option>)}
                   </select>
@@ -453,8 +574,8 @@ function BuildContent() {
 
               <div style={{ background: '#FBF5F0', border: '0.5px solid #EDD9AF', padding: '22px' }}>
                 {[
-                  ['Setting', settingPrice],
                   ['Diamond', diamondPrice],
+                  ['Setting', settingPrice],
                 ].map(([label, value]) => (
                   <div key={label as string} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontFamily: 'var(--font-inter)', fontSize: '13px', color: '#B8A090' }}>
                     <span>{label as string}</span>
@@ -465,17 +586,17 @@ function BuildContent() {
                   <span style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '12px', letterSpacing: '0.18em' }}>TOTAL</span>
                   <span style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '34px' }}>{formatMoney(total)}</span>
                 </div>
-                <button onClick={addCompleteRing} style={{ width: '100%', background: '#1A1014', color: '#FBF5F0', border: 'none', padding: '15px', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.16em', cursor: 'pointer', marginBottom: '12px' }}>
+                <button onClick={addCompleteRing} style={{ ...selectButtonStyle, padding: '15px', fontSize: '11px', marginBottom: '12px' }}>
                   ADD COMPLETE RING TO CART
                 </button>
                 <button onClick={() => setStep(2)} style={{ width: '100%', background: 'transparent', color: '#B8A090', border: '0.5px solid #EDD9AF', padding: '12px', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.14em', cursor: 'pointer' }}>
-                  CHANGE DIAMOND
+                  CHANGE SETTING
                 </button>
               </div>
             </div>
           </div>
         </main>
-      )}
+      ) : null}
     </div>
   )
 }

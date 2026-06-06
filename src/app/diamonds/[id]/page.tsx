@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { Gem } from 'lucide-react'
 import { useCart } from '@/context/CartContext'
 import { getDiamondImage } from '@/lib/diamondImages'
@@ -60,6 +60,7 @@ function formatPrice(value: number) {
 
 export default function DiamondDetailPage() {
   const params = useParams<{ id: string }>()
+  const router = useRouter()
   const { addItem } = useCart()
   const [diamond, setDiamond] = useState<DiamondRow | null>(null)
   const [loading, setLoading] = useState(true)
@@ -160,6 +161,28 @@ export default function DiamondDetailPage() {
 
     const { data: { user } } = await supabase.auth.getUser()
     setCartNotice({ isGuest: !user })
+    router.push('/cart')
+  }
+
+  const buildRingWithDiamond = () => {
+    if (!displayDiamond || !combinationAvailable) return
+
+    const builderDiamond = {
+      ...displayDiamond,
+      img: getDiamondImage(displayDiamond.shape),
+    }
+    window.localStorage.setItem('builder_diamond', JSON.stringify(builderDiamond))
+
+    const builderParams = new URLSearchParams({
+      step: '2',
+      diamond: displayDiamond.id,
+      carat: displayDiamond.carat.toString(),
+      color: displayDiamond.color,
+      clarity: displayDiamond.clarity,
+      price: displayDiamond.price.toString(),
+      shape: displayDiamond.shape,
+    })
+    router.push(`/build?${builderParams.toString()}`)
   }
 
   return (
@@ -305,9 +328,22 @@ export default function DiamondDetailPage() {
               ) : null)}
             </div>
 
-            <button disabled={!combinationAvailable} onClick={() => void addDiamondToCart()} style={{ width: '100%', background: combinationAvailable ? '#1A1014' : '#B8A090', color: '#FBF5F0', border: 'none', cursor: combinationAvailable ? 'pointer' : 'not-allowed', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.2em', padding: '17px' }}>
-              ADD TO CART
-            </button>
+            <div style={{ display: 'grid', gap: '12px' }}>
+              <button disabled={!combinationAvailable} onClick={() => void addDiamondToCart()} style={{ width: '100%', background: combinationAvailable ? '#1A1014' : '#B8A090', color: '#FBF5F0', border: 'none', cursor: combinationAvailable ? 'pointer' : 'not-allowed', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.2em', padding: '17px' }}>
+                ADD LOOSE DIAMOND TO CART - {displayDiamond ? formatPrice(displayDiamond.price) : ''}
+              </button>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '10px', alignItems: 'center', color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.2em' }}>
+                <span style={{ height: '0.5px', background: '#EDD9AF' }} />
+                <span>OR</span>
+                <span style={{ height: '0.5px', background: '#EDD9AF' }} />
+              </div>
+              <button disabled={!combinationAvailable} onClick={buildRingWithDiamond} style={{ width: '100%', background: '#FDF8F2', color: '#1A1014', border: '0.5px solid #EDD9AF', cursor: combinationAvailable ? 'pointer' : 'not-allowed', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.18em', padding: '15px' }}>
+                USE THIS DIAMOND TO BUILD A RING -
+              </button>
+              <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', lineHeight: 1.7, margin: 0 }}>
+                Add the diamond alone, or pair it with a setting in the ring builder.
+              </p>
+            </div>
           </div>
         </section>
       )}
