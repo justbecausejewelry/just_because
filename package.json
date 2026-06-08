@@ -6,6 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "prisma generate && next build --turbopack",
     "update-images": "npx ts-node --project tsconfig.json scripts/updateProductImages.ts",
+    "create-test-users": "npx ts-node --project tsconfig.json scripts/create-test-users.ts",
     "postinstall": "prisma generate",
     "start": "next start",
     "lint": "next lint"
