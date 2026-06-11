@@ -132,12 +132,34 @@ model Order {
   shippingAddress Json?
   billingAddress  Json?
   trackingNumber  String?
+  carrier         String?
+  trackingUrl     String?
+  estimatedDelivery DateTime?
+  shippedAt       DateTime?
+  deliveredAt     DateTime?
   internalNotes   String?
 
   items          OrderItem[]
+  events         OrderEvent[]
 
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+model OrderEvent {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId        String?  @map("order_id")
+  order          Order?   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status         String
+  message        String?
+  trackingNumber String?  @map("tracking_number")
+  carrier        String?
+  trackingUrl    String?  @map("tracking_url")
+  createdAt      DateTime @default(now()) @map("created_at")
+  createdBy      String?  @default("system") @map("created_by")
+
+  @@index([orderId, createdAt])
+  @@map("order_events")
 }
 
 // ─── ORDER ITEMS ──────────────────────────────────────
