@@ -1,346 +1,613 @@
-import * as dotenv from 'dotenv'
-dotenv.config({ path: '.env.local' })
+import { loadEnvFile } from 'node:process'
 
-import { createClient } from '@supabase/supabase-js'
+loadEnvFile('.env.local')
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { PrismaClient } from '@prisma/client'
 
-async function clearData() {
-  console.log('Clearing existing data...')
-  await supabase.from('Review').delete().neq('id', '')
-  await supabase.from('CartItem').delete().neq('id', '')
-  await supabase.from('OrderItem').delete().neq('id', '')
-  await supabase.from('Order').delete().neq('id', '')
-  await supabase.from('PriceLog').delete().neq('id', '')
-  await supabase.from('DiscountCode').delete().neq('id', '')
-  await supabase.from('Diamond').delete().neq('id', '')
-  await supabase.from('AdminUser').delete().neq('id', '')
-  await supabase.from('Product').delete().neq('id', '')
-  console.log('✓ Cleared all data')
-}
+const prisma = new PrismaClient()
 
 const ringMetalPricing = {
   'White Gold': { enabled: true, modifier: 0 },
   'Yellow Gold': { enabled: true, modifier: 200 },
   'Rose Gold': { enabled: true, modifier: 150 },
-  'Platinum': { enabled: true, modifier: 800 },
+  Platinum: { enabled: true, modifier: 800 },
 }
-
 const ringCaratPricing = {
   '6': { enabled: true, modifier: 0 },
   '9': { enabled: true, modifier: 3000 },
   '12': { enabled: true, modifier: 7000 },
 }
 
+const weddingClassicCaratPricing = {
+  '6': { enabled: true, modifier: 0 },
+  '9': { enabled: true, modifier: 2000 },
+}
+
 const ringShapePricing = {
-  'Round': { enabled: true, modifier: 0 },
-  'Oval': { enabled: true, modifier: 200 },
-  'Cushion': { enabled: true, modifier: 150 },
-  'Princess': { enabled: true, modifier: 100 },
-  'Emerald': { enabled: true, modifier: 180 },
-  'Pear': { enabled: true, modifier: 160 },
-  'Marquise': { enabled: true, modifier: 140 },
-  'Heart': { enabled: true, modifier: 120 },
-  'Asscher': { enabled: true, modifier: 170 },
+  Round: { enabled: true, modifier: 0 },
+  Oval: { enabled: true, modifier: 200 },
+  Cushion: { enabled: true, modifier: 150 },
+  Princess: { enabled: true, modifier: 100 },
+  Emerald: { enabled: true, modifier: 180 },
+  Pear: { enabled: true, modifier: 160 },
+  Marquise: { enabled: true, modifier: 140 },
+  Heart: { enabled: true, modifier: 120 },
+  Asscher: { enabled: true, modifier: 170 },
 }
 
 const ringColorPricing = {
-  'D': { enabled: true, modifier: 800 },
-  'E': { enabled: true, modifier: 500 },
-  'F': { enabled: true, modifier: 300 },
-  'G': { enabled: true, modifier: 0 },
-  'H': { enabled: true, modifier: -200 },
-  'I': { enabled: true, modifier: -400 },
+  D: { enabled: true, modifier: 800 },
+  E: { enabled: true, modifier: 500 },
+  F: { enabled: true, modifier: 300 },
+  G: { enabled: true, modifier: 0 },
+  H: { enabled: true, modifier: -200 },
+  I: { enabled: true, modifier: -400 },
 }
 
 const ringClarityPricing = {
-  'IF': { enabled: true, modifier: 600 },
-  'VVS1': { enabled: true, modifier: 400 },
-  'VVS2': { enabled: true, modifier: 200 },
-  'VS1': { enabled: true, modifier: 0 },
-  'VS2': { enabled: true, modifier: -150 },
+  IF: { enabled: true, modifier: 600 },
+  VVS1: { enabled: true, modifier: 400 },
+  VVS2: { enabled: true, modifier: 200 },
+  VS1: { enabled: true, modifier: 0 },
+  VS2: { enabled: true, modifier: -150 },
 }
 
-const engagementRingBase = {
-  productType: 'engagement_ring',
+const cutPricing = {
+  Excellent: { enabled: true, modifier: 0 },
+  'Very Good': { enabled: true, modifier: -100 },
+  Good: { enabled: true, modifier: -200 },
+}
+
+const ringOptions = {
   availableMetals: ['White Gold', 'Yellow Gold', 'Rose Gold', 'Platinum'],
   availableCarats: [6, 9, 12],
-  availableShapes: ['Round', 'Oval', 'Cushion', 'Princess', 'Emerald', 'Pear', 'Marquise', 'Heart', 'Asscher'],
+  availableShapes: [
+    'Round',
+    'Oval',
+    'Cushion',
+    'Princess',
+    'Emerald',
+    'Pear',
+    'Marquise',
+    'Heart',
+    'Asscher',
+  ],
   availableColors: ['D', 'E', 'F', 'G', 'H', 'I'],
   availableClarities: ['IF', 'VVS1', 'VVS2', 'VS1', 'VS2'],
+  availableCuts: ['Excellent', 'Very Good', 'Good'],
   availableSizes: ['4', '4.5', '5', '5.5', '6', '6.5', '7', '7.5', '8', '8.5', '9'],
   engravingAllowed: true,
   engravingMaxChars: 20,
+}
+
+const defaultPricing = {
   metalPricing: ringMetalPricing,
   caratPricing: ringCaratPricing,
   shapePricing: ringShapePricing,
   colorPricing: ringColorPricing,
   clarityPricing: ringClarityPricing,
-  cutPricing: {},
-  isActive: true,
-  images: [],
-  videos: [],
-  tags: [],
-  sortOrder: 0,
+  cutPricing,
+}
+
+const productImages = [
+  'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=900&q=90',
+  'https://images.unsplash.com/photo-1602751584552-8ba73aad10e1?w=900&q=90',
+  'https://images.unsplash.com/photo-1573408301185-9519f94815b1?w=900&q=90',
+  'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=900&q=90',
+]
+
+type SeedProduct = {
+  slug: string
+  sku: string
+  productType: string
+  category: string
+  title: string
+  description: string
+  basePrice: number
+  isFeatured: boolean
+  isNewArrival?: boolean
+  tags?: string[]
+  availableCarats?: number[]
+  availableShapes?: string[]
+  caratPricing?: typeof ringCaratPricing | typeof weddingClassicCaratPricing
+}
+
+const engagementRings: SeedProduct[] = [
+  {
+    slug: 'solis-solitaire',
+    sku: 'JB-ENG-001',
+    productType: 'engagement_ring',
+    category: 'solitaire',
+    title: 'Solis Solitaire',
+    description:
+      'A timeless solitaire that lets the diamond speak for itself. Clean lines, endless light.',
+    basePrice: 2800,
+    isFeatured: true,
+    isNewArrival: true,
+    tags: ['bestseller', 'solitaire', 'classic'],
+  },
+  {
+    slug: 'vela-pave',
+    sku: 'JB-ENG-002',
+    productType: 'engagement_ring',
+    category: 'pave',
+    title: 'Vela Pavé',
+    description:
+      'A river of diamonds follows the band, making every angle a new moment of brilliance.',
+    basePrice: 3200,
+    isFeatured: true,
+    tags: ['pave', 'sparkle', 'popular'],
+  },
+  {
+    slug: 'lumi-halo',
+    sku: 'JB-ENG-003',
+    productType: 'engagement_ring',
+    category: 'halo',
+    title: 'Lumi Halo',
+    description: 'A crown of light surrounds your center stone, doubling its presence.',
+    basePrice: 3600,
+    isFeatured: true,
+    tags: ['halo', 'glamour'],
+  },
+  {
+    slug: 'orla-three-stone',
+    sku: 'JB-ENG-004',
+    productType: 'engagement_ring',
+    category: 'three_stone',
+    title: 'Orla Three Stone',
+    description: 'Past, present, and future. Three stones, one story.',
+    basePrice: 4200,
+    isFeatured: true,
+    tags: ['three-stone', 'meaningful'],
+  },
+  {
+    slug: 'coeur-hidden-halo',
+    sku: 'JB-ENG-005',
+    productType: 'engagement_ring',
+    category: 'hidden_halo',
+    title: 'Coeur Hidden Halo',
+    description:
+      'The secret is what makes it special. A hidden halo reveals itself only to those who look closely.',
+    basePrice: 3900,
+    isFeatured: false,
+    tags: ['hidden-halo', 'unique'],
+  },
+  {
+    slug: 'etoile-channel-set',
+    sku: 'JB-ENG-006',
+    productType: 'engagement_ring',
+    category: 'channel_set',
+    title: 'Etoile Channel Set',
+    description:
+      'Diamonds nestled in a sleek channel of gold. Modern, architectural, forever.',
+    basePrice: 3100,
+    isFeatured: false,
+    tags: ['channel-set', 'modern'],
+  },
+  {
+    slug: 'astra-side-stone',
+    sku: 'JB-ENG-007',
+    productType: 'engagement_ring',
+    category: 'side_stone',
+    title: 'Astra Side Stone',
+    description: 'Flanked by brilliant side stones, your center diamond commands attention.',
+    basePrice: 2950,
+    isFeatured: false,
+    tags: ['side-stone', 'classic'],
+  },
+  {
+    slug: 'soleil-custom',
+    sku: 'JB-ENG-008',
+    productType: 'engagement_ring',
+    category: 'custom',
+    title: 'Soleil Custom',
+    description: 'Your vision, realized. Start with Soleil and make it entirely your own.',
+    basePrice: 5000,
+    isFeatured: false,
+    tags: ['custom', 'bespoke'],
+  },
+]
+
+const weddingRings: SeedProduct[] = [
+  {
+    slug: 'continuum-classic',
+    sku: 'JB-WED-001',
+    productType: 'wedding_ring',
+    category: 'classic',
+    title: 'Continuum Classic Band',
+    description: 'Simple. Pure. Eternal.',
+    basePrice: 1200,
+    isFeatured: false,
+    caratPricing: weddingClassicCaratPricing,
+    availableCarats: [6, 9],
+    availableShapes: ['Round'],
+  },
+  {
+    slug: 'stella-diamond-band',
+    sku: 'JB-WED-002',
+    productType: 'wedding_ring',
+    category: 'diamond',
+    title: 'Stella Diamond Band',
+    description: 'A full circle of light. Every step you take, it sparkles.',
+    basePrice: 1800,
+    isFeatured: true,
+  },
+  {
+    slug: 'ligne-eternity',
+    sku: 'JB-WED-003',
+    productType: 'wedding_ring',
+    category: 'eternity',
+    title: 'Ligne Eternity Band',
+    description: 'Diamonds without end. For love without end.',
+    basePrice: 2400,
+    isFeatured: false,
+  },
+  {
+    slug: 'aurora-stackable',
+    sku: 'JB-WED-004',
+    productType: 'wedding_ring',
+    category: 'stackable',
+    title: 'Aurora Stackable',
+    description: 'Mix, match, layer. Your love story, your stack.',
+    basePrice: 980,
+    isFeatured: false,
+  },
+  {
+    slug: 'maritime-curved',
+    sku: 'JB-WED-005',
+    productType: 'wedding_ring',
+    category: 'curved',
+    title: 'Maritime Curved Band',
+    description: 'Contoured to hug your engagement ring perfectly.',
+    basePrice: 1400,
+    isFeatured: false,
+  },
+]
+
+const necklaces: SeedProduct[] = [
+  {
+    slug: 'solene-pendant',
+    sku: 'JB-NECK-001',
+    title: 'Solène Pendant',
+    productType: 'necklace',
+    category: 'pendant',
+    basePrice: 980,
+    isFeatured: true,
+    description: 'A single diamond, suspended in light. Worn close to the heart.',
+  },
+  {
+    slug: 'petit-diamant-choker',
+    sku: 'JB-NECK-002',
+    title: 'Petit Diamant Choker',
+    productType: 'necklace',
+    category: 'choker',
+    basePrice: 1400,
+    isFeatured: false,
+    description:
+      'Delicate diamonds trace the collarbone. Understated and unforgettable.',
+  },
+  {
+    slug: 'constellation-tennis',
+    sku: 'JB-NECK-003',
+    title: 'Constellation Tennis Necklace',
+    productType: 'necklace',
+    category: 'tennis',
+    basePrice: 2800,
+    isFeatured: true,
+    description:
+      'An unbroken line of diamonds. Like a constellation worn around your neck.',
+  },
+  {
+    slug: 'drop-of-light',
+    sku: 'JB-NECK-004',
+    title: 'Drop of Light',
+    productType: 'necklace',
+    category: 'pendant',
+    basePrice: 1650,
+    isFeatured: false,
+    description: 'A pear-shaped diamond falls like a single drop of light.',
+  },
+]
+
+const bracelets: SeedProduct[] = [
+  {
+    slug: 'continuum-tennis-bracelet',
+    sku: 'JB-BRAC-001',
+    title: 'Continuum Tennis Bracelet',
+    productType: 'bracelet',
+    category: 'tennis',
+    basePrice: 2200,
+    isFeatured: true,
+    description:
+      'The classic tennis bracelet, elevated. Every diamond lab-grown, every one perfect.',
+  },
+  {
+    slug: 'stella-bangle',
+    sku: 'JB-BRAC-002',
+    title: 'Stella Bangle',
+    productType: 'bracelet',
+    category: 'bangle',
+    basePrice: 1600,
+    isFeatured: false,
+    description: 'A solid arc of gold, kissed with diamonds.',
+  },
+  {
+    slug: 'ligne-cuff',
+    sku: 'JB-BRAC-003',
+    title: 'Ligne Cuff',
+    productType: 'bracelet',
+    category: 'cuff',
+    basePrice: 1900,
+    isFeatured: false,
+    description: 'Architectural and bold. A cuff that makes a statement.',
+  },
+]
+
+const earrings: SeedProduct[] = [
+  {
+    slug: 'solis-studs',
+    sku: 'JB-EAR-001',
+    title: 'Solis Studs',
+    productType: 'earring',
+    category: 'stud',
+    basePrice: 1200,
+    isFeatured: true,
+    description: "Two perfect diamonds. The most versatile pieces you'll ever own.",
+  },
+  {
+    slug: 'etoile-drop-earrings',
+    sku: 'JB-EAR-002',
+    title: 'Etoile Drop Earrings',
+    productType: 'earring',
+    category: 'drop',
+    basePrice: 1800,
+    isFeatured: false,
+    description: 'Diamonds that dance with every movement. Designed to be noticed.',
+  },
+]
+
+const diamonds = [
+  ['Round', 0.5, 'D', 'IF', 'Excellent', 800],
+  ['Round', 0.75, 'E', 'VVS1', 'Excellent', 1400],
+  ['Round', 1.0, 'F', 'VVS2', 'Excellent', 2400],
+  ['Round', 1.5, 'G', 'VS1', 'Very Good', 4200],
+  ['Round', 2.0, 'H', 'VS2', 'Excellent', 6800],
+  ['Oval', 1.0, 'D', 'VVS1', 'Excellent', 2800],
+  ['Oval', 1.75, 'F', 'VS1', 'Very Good', 5400],
+  ['Oval', 2.5, 'G', 'VS2', 'Excellent', 9300],
+  ['Cushion', 1.2, 'E', 'VVS2', 'Excellent', 3100],
+  ['Cushion', 2.0, 'H', 'VS1', 'Very Good', 6200],
+  ['Princess', 0.9, 'F', 'VS1', 'Excellent', 2100],
+  ['Princess', 1.8, 'D', 'VVS2', 'Excellent', 6500],
+  ['Emerald', 1.4, 'E', 'VVS1', 'Excellent', 4800],
+  ['Emerald', 3.0, 'G', 'VS2', 'Very Good', 12000],
+  ['Pear', 1.6, 'H', 'VS1', 'Excellent', 5000],
+] as const
+
+const reviews = [
+  {
+    productSlug: 'solis-solitaire',
+    rating: 5,
+    customerName: 'Priya M.',
+    title: 'Just because it was Tuesday',
+    comment:
+      'I bought this for myself on a Tuesday. No occasion. Just because. Best decision of the year. The diamond is absolutely flawless.',
+  },
+  {
+    productSlug: 'solis-solitaire',
+    rating: 5,
+    customerName: 'Sarah K.',
+    title: 'Better than my old one',
+    comment:
+      'The packaging alone made me cry. The diamond outshines my old mined one and it cost half the price. I feel good about this choice.',
+  },
+  {
+    productSlug: 'lumi-halo',
+    rating: 5,
+    customerName: 'Aaron L.',
+    title: 'She said yes',
+    comment:
+      'Customer service walked me through every step. It felt less like e-commerce and more like a friend helping me choose.',
+  },
+  {
+    productSlug: 'vela-pave',
+    rating: 4,
+    customerName: 'Ananya R.',
+    title: 'Stunning piece',
+    comment:
+      'The pavé setting catches light from every angle. I get compliments every single day.',
+  },
+  {
+    productSlug: 'orla-three-stone',
+    rating: 5,
+    customerName: 'James T.',
+    title: 'Worth every penny',
+    comment:
+      'For our 10th anniversary. She recognized the meaning immediately — past, present, future. Perfect.',
+  },
+  {
+    productSlug: 'constellation-tennis',
+    rating: 5,
+    customerName: 'Meera S.',
+    title: 'A dream necklace',
+    comment:
+      'I have wanted a tennis necklace for years. This one is beyond what I imagined.',
+  },
+  {
+    productSlug: 'continuum-tennis-bracelet',
+    rating: 5,
+    customerName: 'Lisa W.',
+    title: 'Classic and perfect',
+    comment:
+      'Exactly what a tennis bracelet should be. Timeless, elegant, and guilt-free.',
+  },
+  {
+    productSlug: 'solis-studs',
+    rating: 4,
+    customerName: 'Kavya P.',
+    title: 'My everyday diamonds',
+    comment: 'Been wearing these every day for 3 months. Still perfect. Worth every rupee.',
+  },
+]
+
+function addMonths(months: number) {
+  const date = new Date()
+  date.setMonth(date.getMonth() + months)
+  return date
+}
+
+function productData(product: SeedProduct, index: number) {
+  return {
+    sku: product.sku,
+    productType: product.productType,
+    category: product.category,
+    title: product.title,
+    description: product.description,
+    basePrice: product.basePrice,
+    ...defaultPricing,
+    caratPricing: product.caratPricing ?? ringCaratPricing,
+    availableMetals: ringOptions.availableMetals,
+    availableCarats: product.availableCarats ?? ringOptions.availableCarats,
+    availableShapes: product.availableShapes ?? ringOptions.availableShapes,
+    availableColors: ringOptions.availableColors,
+    availableClarities: ringOptions.availableClarities,
+    availableCuts: ringOptions.availableCuts,
+    availableSizes: ringOptions.availableSizes,
+    engravingAllowed: ringOptions.engravingAllowed,
+    engravingMaxChars: ringOptions.engravingMaxChars,
+    images: [productImages[index % productImages.length]],
+    hoverImage: productImages[(index + 1) % productImages.length],
+    videos: [],
+    certificateUrl: null,
+    modelUrl: null,
+    isActive: true,
+    isFeatured: product.isFeatured,
+    isNewArrival: product.isNewArrival ?? false,
+    internalNotes: null,
+    tags: product.tags ?? [product.category, product.productType],
+    sortOrder: index,
+    seoTitle: `${product.title} | Just Because`,
+    seoDescription: product.description,
+    slug: product.slug,
+  }
+}
+
+async function clearData() {
+  console.log('Clearing existing data...')
+  await prisma.review.deleteMany()
+  await prisma.cartItem.deleteMany()
+  await prisma.orderItem.deleteMany()
+  await prisma.order.deleteMany()
+  await prisma.priceLog.deleteMany()
+  await prisma.discountCode.deleteMany()
+  await prisma.diamond.deleteMany()
+  await prisma.adminUser.deleteMany()
+  await prisma.product.deleteMany()
 }
 
 async function seedProducts() {
   console.log('Seeding products...')
-
-  const products = [
-    // ENGAGEMENT RINGS
-    {
-      ...engagementRingBase,
-      sku: 'JB-ENG-001',
-      slug: 'solis-solitaire',
-      category: 'solitaire',
-      title: 'Solis Solitaire',
-      description: 'A timeless solitaire that lets the diamond speak for itself. Clean lines, endless light.',
-      basePrice: 2800,
-      isFeatured: true,
-      isNewArrival: true,
-      tags: ['bestseller', 'solitaire', 'classic'],
-    },
-    {
-      ...engagementRingBase,
-      sku: 'JB-ENG-002',
-      slug: 'vela-pave',
-      category: 'pave',
-      title: 'Vela Pavé',
-      description: 'A river of diamonds follows the band, making every angle a new moment of brilliance.',
-      basePrice: 3200,
-      isFeatured: true,
-      isNewArrival: false,
-      tags: ['pave', 'sparkle', 'popular'],
-    },
-    {
-      ...engagementRingBase,
-      sku: 'JB-ENG-003',
-      slug: 'lumi-halo',
-      category: 'halo',
-      title: 'Lumi Halo',
-      description: 'A crown of light surrounds your center stone, doubling its presence.',
-      basePrice: 3600,
-      isFeatured: true,
-      isNewArrival: false,
-      tags: ['halo', 'glamour'],
-    },
-    {
-      ...engagementRingBase,
-      sku: 'JB-ENG-004',
-      slug: 'orla-three-stone',
-      category: 'three_stone',
-      title: 'Orla Three Stone',
-      description: 'Past, present, and future. Three stones, one story.',
-      basePrice: 4200,
-      isFeatured: true,
-      isNewArrival: false,
-      tags: ['three-stone', 'meaningful'],
-    },
-    {
-      ...engagementRingBase,
-      sku: 'JB-ENG-005',
-      slug: 'coeur-hidden-halo',
-      category: 'hidden_halo',
-      title: 'Coeur Hidden Halo',
-      description: 'The secret is what makes it special.',
-      basePrice: 3900,
-      isFeatured: false,
-      isNewArrival: false,
-      tags: ['hidden-halo', 'unique'],
-    },
-    {
-      ...engagementRingBase,
-      sku: 'JB-ENG-006',
-      slug: 'etoile-channel-set',
-      category: 'channel_set',
-      title: 'Etoile Channel Set',
-      description: 'Diamonds nestled in a sleek channel of gold. Modern, architectural, forever.',
-      basePrice: 3100,
-      isFeatured: false,
-      isNewArrival: false,
-      tags: ['channel-set', 'modern'],
-    },
-    {
-      ...engagementRingBase,
-      sku: 'JB-ENG-007',
-      slug: 'astra-side-stone',
-      category: 'side_stone',
-      title: 'Astra Side Stone',
-      description: 'Flanked by brilliant side stones, your center diamond commands attention.',
-      basePrice: 2950,
-      isFeatured: false,
-      isNewArrival: false,
-      tags: ['side-stone', 'classic'],
-    },
-    {
-      ...engagementRingBase,
-      sku: 'JB-ENG-008',
-      slug: 'soleil-custom',
-      category: 'custom',
-      title: 'Soleil Custom',
-      description: 'Your vision, realized. Start with Soleil and make it entirely your own.',
-      basePrice: 5000,
-      isFeatured: false,
-      isNewArrival: false,
-      tags: ['custom', 'bespoke'],
-    },
-    // WEDDING RINGS
-    {
-      ...engagementRingBase,
-      sku: 'JB-WED-001',
-      slug: 'continuum-classic',
-      productType: 'wedding_ring',
-      category: 'classic',
-      title: 'Continuum Classic Band',
-      description: 'Simple. Pure. Eternal.',
-      basePrice: 1200,
-      isFeatured: false,
-      isNewArrival: false,
-      availableCarats: [6, 9],
-      tags: ['classic', 'wedding'],
-    },
-    {
-      ...engagementRingBase,
-      sku: 'JB-WED-002',
-      slug: 'stella-diamond-band',
-      productType: 'wedding_ring',
-      category: 'diamond',
-      title: 'Stella Diamond Band',
-      description: 'A full circle of light. Every step you take, it sparkles.',
-      basePrice: 1800,
-      isFeatured: true,
-      isNewArrival: false,
-      tags: ['diamond-band', 'wedding'],
-    },
-    {
-      ...engagementRingBase,
-      sku: 'JB-WED-003',
-      slug: 'ligne-eternity',
-      productType: 'wedding_ring',
-      category: 'eternity',
-      title: 'Ligne Eternity Band',
-      description: 'Diamonds without end. For love without end.',
-      basePrice: 2400,
-      isFeatured: false,
-      isNewArrival: false,
-      tags: ['eternity', 'wedding'],
-    },
-    // NECKLACES
-    {
-      ...engagementRingBase,
-      sku: 'JB-NECK-001',
-      slug: 'solene-pendant',
-      productType: 'necklace',
-      category: 'pendant',
-      title: 'Solène Pendant',
-      description: 'A single diamond, suspended in light. Worn close to the heart.',
-      basePrice: 980,
-      isFeatured: true,
-      isNewArrival: false,
-      tags: ['pendant', 'necklace'],
-    },
-    {
-      ...engagementRingBase,
-      sku: 'JB-NECK-002',
-      slug: 'constellation-tennis-necklace',
-      productType: 'necklace',
-      category: 'tennis',
-      title: 'Constellation Tennis Necklace',
-      description: 'An unbroken line of diamonds. Like a constellation worn around your neck.',
-      basePrice: 2800,
-      isFeatured: true,
-      isNewArrival: false,
-      tags: ['tennis', 'necklace'],
-    },
-    // BRACELETS
-    {
-      ...engagementRingBase,
-      sku: 'JB-BRAC-001',
-      slug: 'continuum-tennis-bracelet',
-      productType: 'bracelet',
-      category: 'tennis',
-      title: 'Continuum Tennis Bracelet',
-      description: 'The classic tennis bracelet, elevated.',
-      basePrice: 2200,
-      isFeatured: true,
-      isNewArrival: false,
-      tags: ['tennis', 'bracelet'],
-    },
-    {
-      ...engagementRingBase,
-      sku: 'JB-BRAC-002',
-      slug: 'stella-bangle',
-      productType: 'bracelet',
-      category: 'bangle',
-      title: 'Stella Bangle',
-      description: 'A solid arc of gold, kissed with diamonds.',
-      basePrice: 1600,
-      isFeatured: false,
-      isNewArrival: false,
-      tags: ['bangle', 'bracelet'],
-    },
-    // EARRINGS
-    {
-      ...engagementRingBase,
-      sku: 'JB-EAR-001',
-      slug: 'solis-studs',
-      productType: 'earring',
-      category: 'stud',
-      title: 'Solis Studs',
-      description: 'Two perfect diamonds. The most versatile pieces you will ever own.',
-      basePrice: 1200,
-      isFeatured: true,
-      isNewArrival: false,
-      tags: ['studs', 'earrings'],
-    },
+  const allProducts = [
+    ...engagementRings,
+    ...weddingRings,
+    ...necklaces,
+    ...bracelets,
+    ...earrings,
   ]
 
-  const { error } = await supabase.from('Product').insert(products)
-  if (error) {
-    console.error('Error seeding products:', error)
-    throw error
+  for (const [index, product] of allProducts.entries()) {
+    const data = productData(product, index)
+    await prisma.product.upsert({
+      where: { sku: product.sku },
+      update: data,
+      create: data,
+    })
   }
-  console.log(`✓ Seeded ${products.length} products`)
+
+  console.log(`Seeded ${allProducts.length} products.`)
 }
 
 async function seedDiamonds() {
   console.log('Seeding diamonds...')
 
-  const diamonds = [
-    { sku: 'JB-DIA-001', shape: 'Round', carat: 1.0, color: 'D', clarity: 'IF', cut: 'Excellent', price: 8500, certificateNumber: 'IGI-2026-001001', certificateType: 'IGI', isLabGrown: true, isAvailable: true },
-    { sku: 'JB-DIA-002', shape: 'Round', carat: 0.8, color: 'E', clarity: 'VVS1', cut: 'Excellent', price: 5200, certificateNumber: 'IGI-2026-001002', certificateType: 'IGI', isLabGrown: true, isAvailable: true },
-    { sku: 'JB-DIA-003', shape: 'Round', carat: 1.5, color: 'F', clarity: 'VVS2', cut: 'Excellent', price: 11000, certificateNumber: 'IGI-2026-001003', certificateType: 'IGI', isLabGrown: true, isAvailable: true },
-    { sku: 'JB-DIA-004', shape: 'Round', carat: 0.5, color: 'G', clarity: 'VS1', cut: 'Very Good', price: 2800, certificateNumber: 'IGI-2026-001004', certificateType: 'IGI', isLabGrown: true, isAvailable: true },
-    { sku: 'JB-DIA-005', shape: 'Round', carat: 2.0, color: 'H', clarity: 'VS2', cut: 'Very Good', price: 9800, certificateNumber: 'IGI-2026-001005', certificateType: 'IGI', isLabGrown: true, isAvailable: true },
-    { sku: 'JB-DIA-006', shape: 'Oval', carat: 1.2, color: 'D', clarity: 'VVS1', cut: 'Excellent', price: 9200, certificateNumber: 'IGI-2026-001006', certificateType: 'IGI', isLabGrown: true, isAvailable: true },
-    { sku: 'JB-DIA-007', shape: 'Oval', carat: 0.9, color: 'E', clarity: 'VS1', cut: 'Excellent', price: 5800, certificateNumber: 'IGI-2026-001007', certificateType: 'IGI', isLabGrown: true, isAvailable: true },
-    { sku: 'JB-DIA-008', shape: 'Oval', carat: 1.8, color: 'G', clarity: 'VS2', cut: 'Very Good', price: 8400, certificateNumber: 'IGI-2026-001008', certificateType: 'IGI', isLabGrown: true, isAvailable: true },
-    { sku: 'JB-DIA-009', shape: 'Cushion', carat: 1.1, color: 'F', clarity: 'VVS2', cut: 'Excellent', price: 7600, certificateNumber: 'IGI-2026-001009', certificateType: 'IGI', isLabGrown: true, isAvailable: true },
-    { sku: 'JB-DIA-010', shape: 'Cushion', carat: 0.7, color: 'H', clarity: 'VS1', cut: 'Very Good', price: 3200, certificateNumber: 'IGI-2026-001010', certificateType: 'IGI', isLabGrown: true, isAvailable: true },
-    { sku: 'JB-DIA-011', shape: 'Princess', carat: 1.0, color: 'D', clarity: 'IF', cut: 'Excellent', price: 8800, certificateNumber: 'IGI-2026-001011', certificateType: 'IGI', isLabGrown: true, isAvailable: true },
-    { sku: 'JB-DIA-012', shape: 'Princess', carat: 1.3, color: 'E', clarity: 'VVS1', cut: 'Excellent', price: 10200, certificateNumber: 'IGI-2026-001012', certificateType: 'IGI', isLabGrown: true, isAvailable: true },
-    { sku: 'JB-DIA-013', shape: 'Emerald', carat: 1.5, color: 'F', clarity: 'VVS2', cut: 'Excellent', price: 11500, certificateNumber: 'IGI-2026-001013', certificateType: 'IGI', isLabGrown: true, isAvailable: true },
-    { sku: 'JB-DIA-014', shape: 'Pear', carat: 0.8, color: 'G', clarity: 'VS1', cut: 'Very Good', price: 4200, certificateNumber: 'IGI-2026-001014', certificateType: 'IGI', isLabGrown: true, isAvailable: true },
-    { sku: 'JB-DIA-015', shape: 'Marquise', carat: 1.2, color: 'H', clarity: 'VS2', cut: 'Very Good', price: 6800, certificateNumber: 'IGI-2026-001015', certificateType: 'IGI', isLabGrown: true, isAvailable: true },
-  ]
+  for (const [index, diamond] of diamonds.entries()) {
+    const [shape, carat, color, clarity, cut, price] = diamond
+    const sku = `JB-DIA-${String(index + 1).padStart(3, '0')}`
 
-  const { error } = await supabase.from('Diamond').insert(diamonds)
-  if (error) {
-    console.error('Error seeding diamonds:', error)
-    throw error
+    await prisma.diamond.upsert({
+      where: { sku },
+      update: {
+        shape,
+        carat,
+        color,
+        clarity,
+        cut,
+        price,
+        isAvailable: true,
+        isLabGrown: true,
+      },
+      create: {
+        sku,
+        shape,
+        carat,
+        color,
+        clarity,
+        cut,
+        polish: index % 3 === 0 ? 'Excellent' : 'Very Good',
+        symmetry: index % 2 === 0 ? 'Excellent' : 'Very Good',
+        fluorescence: index % 4 === 0 ? 'None' : 'Faint',
+        certificateNumber: `IGI-2026-${String(482000 + index).padStart(6, '0')}`,
+        certificateType: 'IGI',
+        certificateUrl: `https://certificates.justbecause.local/IGI-2026-${String(482000 + index).padStart(6, '0')}`,
+        price,
+        isAvailable: true,
+        isLabGrown: true,
+        videoUrl: null,
+        imageUrl: productImages[index % productImages.length],
+        measurements: `${(5.1 + index * 0.2).toFixed(1)} x ${(5.0 + index * 0.2).toFixed(1)} x ${(3.1 + index * 0.12).toFixed(1)} mm`,
+        depthPercent: 60 + (index % 5),
+        tablePercent: 55 + (index % 6),
+      },
+    })
   }
-  console.log(`✓ Seeded ${diamonds.length} diamonds`)
+
+  console.log(`Seeded ${diamonds.length} diamonds.`)
+}
+
+async function seedReviews() {
+  console.log('Seeding reviews...')
+
+  for (const review of reviews) {
+    const product = await prisma.product.findUnique({
+      where: { slug: review.productSlug },
+    })
+
+    if (!product) {
+      throw new Error(`Product not found for review: ${review.productSlug}`)
+    }
+
+    await prisma.review.create({
+      data: {
+        productId: product.id,
+        customerName: review.customerName,
+        customerEmail: null,
+        rating: review.rating,
+        title: review.title,
+        comment: review.comment,
+        isVerified: true,
+        isApproved: true,
+        isHidden: false,
+      },
+    })
+  }
+
+  console.log(`Seeded ${reviews.length} reviews.`)
 }
 
 async function seedDiscountCodes() {
   console.log('Seeding discount codes...')
 
-  const now = new Date()
-  const codes = [
+  const discountCodes = [
     {
       code: 'WELCOME30',
       type: 'percentage',
@@ -348,7 +615,7 @@ async function seedDiscountCodes() {
       minOrderAmt: 0,
       maxUses: 1000,
       isActive: true,
-      expiresAt: new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000),
+      expiresAt: addMonths(3),
     },
     {
       code: 'JUSTBECAUSE',
@@ -357,7 +624,7 @@ async function seedDiscountCodes() {
       minOrderAmt: 3000,
       maxUses: 500,
       isActive: true,
-      expiresAt: new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000),
+      expiresAt: addMonths(6),
     },
     {
       code: 'LABGROWN15',
@@ -366,140 +633,53 @@ async function seedDiscountCodes() {
       minOrderAmt: 1000,
       maxUses: 2000,
       isActive: true,
-      expiresAt: new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000),
+      expiresAt: addMonths(2),
     },
   ]
 
-  const { error } = await supabase.from('DiscountCode').insert(codes)
-  if (error) {
-    console.error('Error seeding discount codes:', error)
-    throw error
+  for (const code of discountCodes) {
+    await prisma.discountCode.upsert({
+      where: { code: code.code },
+      update: code,
+      create: code,
+    })
   }
-  console.log(`✓ Seeded ${codes.length} discount codes`)
+
+  console.log(`Seeded ${discountCodes.length} discount codes.`)
 }
 
 async function seedAdminUser() {
   console.log('Seeding admin user...')
-
-  const { error } = await supabase.from('AdminUser').insert([
-    {
+  await prisma.adminUser.upsert({
+    where: { email: 'admin@justbecause.com' },
+    update: {
+      name: 'Ujjwal Bana',
+      role: 'super_admin',
+    },
+    create: {
       email: 'admin@justbecause.com',
       name: 'Ujjwal Bana',
       role: 'super_admin',
     },
-  ])
-  if (error) {
-    console.error('Error seeding admin:', error)
-    throw error
-  }
-  console.log('✓ Seeded admin user')
-}
-
-async function seedReviews() {
-  console.log('Seeding reviews...')
-
-  const { data: products } = await supabase
-    .from('Product')
-    .select('id, slug')
-
-  if (!products || products.length === 0) {
-    console.log('No products found, skipping reviews')
-    return
-  }
-
-  const productMap = Object.fromEntries(
-    products.map((p: { slug: string; id: string }) => [p.slug, p.id])
-  )
-
-  const reviews = [
-    {
-      productId: productMap['solis-solitaire'],
-      customerName: 'Priya M.',
-      rating: 5,
-      title: 'Just because it was Tuesday',
-      comment: 'I bought this for myself on a Tuesday. No occasion. Just because. Best decision of the year.',
-      isVerified: true,
-      isApproved: true,
-    },
-    {
-      productId: productMap['solis-solitaire'],
-      customerName: 'Sarah K.',
-      rating: 5,
-      title: 'Better than my old one',
-      comment: 'The packaging alone made me cry. The diamond outshines my old mined one and it cost half.',
-      isVerified: true,
-      isApproved: true,
-    },
-    {
-      productId: productMap['lumi-halo'],
-      customerName: 'Aaron L.',
-      rating: 5,
-      title: 'She said yes',
-      comment: 'Customer service walked me through every step. Felt less like e-commerce, more like a friend.',
-      isVerified: true,
-      isApproved: true,
-    },
-    {
-      productId: productMap['vela-pave'],
-      customerName: 'Ananya R.',
-      rating: 4,
-      title: 'Stunning piece',
-      comment: 'The pavé setting catches light from every angle. I get compliments every single day.',
-      isVerified: true,
-      isApproved: true,
-    },
-    {
-      productId: productMap['constellation-tennis-necklace'],
-      customerName: 'Meera S.',
-      rating: 5,
-      title: 'A dream necklace',
-      comment: 'I have wanted a tennis necklace for years. This one is beyond what I imagined.',
-      isVerified: true,
-      isApproved: true,
-    },
-    {
-      productId: productMap['continuum-tennis-bracelet'],
-      customerName: 'Lisa W.',
-      rating: 5,
-      title: 'Classic and perfect',
-      comment: 'Exactly what a tennis bracelet should be. Timeless, elegant, and guilt-free.',
-      isVerified: true,
-      isApproved: true,
-    },
-    {
-      productId: productMap['solis-studs'],
-      customerName: 'Kavya P.',
-      rating: 4,
-      title: 'My everyday diamonds',
-      comment: 'Been wearing these every day for 3 months. Still perfect.',
-      isVerified: true,
-      isApproved: true,
-    },
-  ].filter((r) => r.productId)
-
-  const { error } = await supabase.from('Review').insert(reviews)
-  if (error) {
-    console.error('Error seeding reviews:', error)
-    throw error
-  }
-  console.log(`✓ Seeded ${reviews.length} reviews`)
+  })
+  console.log('Seeded admin user.')
 }
 
 async function main() {
-  console.log('Starting seed...')
-  console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
-
   await clearData()
   await seedProducts()
   await seedDiamonds()
+  await seedReviews()
   await seedDiscountCodes()
   await seedAdminUser()
-  await seedReviews()
-
-  console.log('✅ Seed complete!')
+  console.log('Database seed complete.')
 }
 
-main().catch((err) => {
-  console.error('Fatal seed error:', err)
-  process.exit(1)
-})
+main()
+  .catch((error: unknown) => {
+    console.error('Seed failed:', error)
+    process.exit(1)
+  })
+  .finally(async () => {
+    await prisma.$disconnect()
+  })
