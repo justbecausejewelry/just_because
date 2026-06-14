@@ -2,32 +2,44 @@
 
 import { FormEvent, Suspense, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { ArrowRight, Check, Eye, EyeOff, Sparkles } from 'lucide-react'
-import { supabaseAuth } from '@/lib/auth'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, Sparkles } from 'lucide-react'
 
 function getStrength(password: string) {
   if (password.length === 0) {
     return { label: '', level: 0 }
   }
 
-  if (password.length < 6) {
-    return { label: 'Too short', level: 1 }
-  }
-
   if (password.length < 8) {
-    return { label: 'Weak', level: 2 }
+    return { label: 'Too short', level: 1 }
   }
 
   if (/[A-Z]/.test(password) && /[0-9]/.test(password)) {
     return { label: 'Strong', level: 4 }
   }
 
-  return { label: 'Good', level: 3 }
+  if (/[A-Z0-9]/.test(password)) {
+    return { label: 'Good', level: 3 }
+  }
+
+  return { label: 'Weak', level: 2 }
+}
+
+async function readApiError(response: Response, fallback: string) {
+  const body: unknown = await response.json().catch(() => null)
+  if (typeof body === 'object' && body !== null && 'error' in body) {
+    const message = (body as { error?: unknown }).error
+    if (typeof message === 'string' && message.trim()) return message
+  }
+
+  return fallback
 }
 
 function ResetPasswordContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const [email, setEmail] = useState('')
+  const [code, setCode] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -38,23 +50,18 @@ function ResetPasswordContent() {
   const strength = useMemo(() => getStrength(password), [password])
 
   useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabaseAuth.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        setError('')
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
+    const emailParam = searchParams.get('email')
+    if (emailParam) {
+      setEmail(emailParam)
+    }
+  }, [searchParams])
 
   useEffect(() => {
     if (!done) return
 
     const timer = window.setTimeout(() => {
-      router.push('/account')
-    }, 2000)
+      router.push('/login?passwordUpdated=1')
+    }, 1800)
 
     return () => window.clearTimeout(timer)
   }, [done, router])
@@ -62,28 +69,44 @@ function ResetPasswordContent() {
   const handleReset = async (event?: FormEvent<HTMLFormElement>) => {
     event?.preventDefault()
 
-    if (!password) {
-      setError('Please enter a password')
+    const normalizedEmail = email.trim().toLowerCase()
+    const normalizedCode = code.replace(/\D/g, '')
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      setError('Enter the email address for your account.')
       return
     }
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters')
+    if (normalizedCode.length !== 4) {
+      setError('Enter the 4-digit code sent to your email.')
+      return
+    }
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.')
       return
     }
 
     if (password !== confirm) {
-      setError('Passwords do not match')
+      setError('Passwords do not match.')
       return
     }
 
     setLoading(true)
     setError('')
 
-    const { error: updateError } = await supabaseAuth.auth.updateUser({ password })
+    const resetResponse = await fetch('/api/auth/password-reset/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: normalizedEmail,
+        code: normalizedCode,
+        password,
+      }),
+    })
 
-    if (updateError) {
-      setError(updateError.message)
+    if (!resetResponse.ok) {
+      setError(await readApiError(resetResponse, 'Unable to reset your password. Please try again.'))
       setLoading(false)
       return
     }
@@ -107,7 +130,7 @@ function ResetPasswordContent() {
 
         .reset-page-card {
           width: 100%;
-          max-width: 420px;
+          max-width: 440px;
         }
 
         .reset-panel {
@@ -240,7 +263,7 @@ function ResetPasswordContent() {
                     lineHeight: 1.1,
                   }}
                 >
-                  Set new password
+                  Reset password
                 </h1>
                 <p
                   style={{
@@ -250,7 +273,7 @@ function ResetPasswordContent() {
                     lineHeight: 1.6,
                   }}
                 >
-                  Choose a strong password for your Just Because account.
+                  Enter the 4-digit code from your email and choose a new password.
                 </p>
 
                 {error && (
@@ -269,6 +292,62 @@ function ResetPasswordContent() {
                     {error}
                   </div>
                 )}
+
+                <div style={{ marginBottom: '16px' }}>
+                  <label
+                    htmlFor="reset-email"
+                    style={{
+                      display: 'block',
+                      fontSize: '9px',
+                      letterSpacing: '0.25em',
+                      color: '#1A1014',
+                      marginBottom: '8px',
+                    }}
+                  >
+                    EMAIL ADDRESS
+                  </label>
+                  <input
+                    id="reset-email"
+                    className="reset-input"
+                    type="email"
+                    value={email}
+                    onChange={(event) => {
+                      setEmail(event.target.value)
+                      setError('')
+                    }}
+                    placeholder="your@email.com"
+                    autoComplete="email"
+                  />
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <label
+                    htmlFor="reset-code"
+                    style={{
+                      display: 'block',
+                      fontSize: '9px',
+                      letterSpacing: '0.25em',
+                      color: '#1A1014',
+                      marginBottom: '8px',
+                    }}
+                  >
+                    4-DIGIT CODE
+                  </label>
+                  <input
+                    id="reset-code"
+                    className="reset-input"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    value={code}
+                    onChange={(event) => {
+                      setCode(event.target.value.replace(/\D/g, '').slice(0, 4))
+                      setError('')
+                    }}
+                    placeholder="0000"
+                    maxLength={4}
+                  />
+                </div>
 
                 <div style={{ marginBottom: '16px' }}>
                   <label
@@ -293,7 +372,7 @@ function ResetPasswordContent() {
                         setPassword(event.target.value)
                         setError('')
                       }}
-                      placeholder="Min. 6 characters"
+                      placeholder="Min. 8 characters"
                       autoComplete="new-password"
                       style={{ paddingRight: '48px' }}
                     />
@@ -403,6 +482,24 @@ function ResetPasswordContent() {
                     </>
                   )}
                 </button>
+
+                <div style={{ textAlign: 'center', marginTop: '18px' }}>
+                  <Link
+                    href="/forgot-password"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontSize: '13px',
+                      color: '#B8A090',
+                      textDecoration: 'none',
+                      fontFamily: 'var(--font-inter)',
+                    }}
+                  >
+                    <ArrowLeft size={13} strokeWidth={1.5} />
+                    Request a new code
+                  </Link>
+                </div>
               </form>
             ) : (
               <div style={{ textAlign: 'center' }}>
@@ -439,7 +536,7 @@ function ResetPasswordContent() {
                     lineHeight: 1.7,
                   }}
                 >
-                  Redirecting you to your account...
+                  Redirecting you to sign in...
                 </p>
               </div>
             )}

@@ -36,9 +36,18 @@ type ProductRow = {
   description?: string | null
   productType?: string | null
   category?: string | null
+  images?: string[] | null
+  metalImages?: unknown
   availableMetals?: string[] | null
   availableShapes?: string[] | null
   metalPricing?: Record<string, MetalPricingEntry> | null
+}
+
+const BROKEN_UNSPLASH_IMAGE_ID = 'photo-1573408301185'
+const PRODUCT_IMAGE_FALLBACK = '/images/hero-ring.jpg'
+const PRODUCT_TYPE_CATEGORY_MAP: Record<string, string> = {
+  engagement_ring: 'engagement_ring',
+  wedding_ring: 'wedding_ring',
 }
 
 function normalizeToken(value: string) {
@@ -60,6 +69,32 @@ function productMatchesMetal(product: ProductRow, metal: string) {
     const normalized = normalizeToken(item)
     return normalized === selected || normalized.includes(selected) || selected.includes(normalized)
   })
+}
+
+function replaceBrokenImageValue(value: unknown): unknown {
+  if (typeof value === 'string') {
+    return value.includes(BROKEN_UNSPLASH_IMAGE_ID) ? PRODUCT_IMAGE_FALLBACK : value
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(replaceBrokenImageValue)
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, nestedValue]) => [key, replaceBrokenImageValue(nestedValue)])
+    )
+  }
+
+  return value
+}
+
+function sanitizeProductImages(product: ProductRow): ProductRow {
+  return {
+    ...product,
+    images: replaceBrokenImageValue(product.images) as string[] | null | undefined,
+    metalImages: replaceBrokenImageValue(product.metalImages),
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -90,15 +125,12 @@ export async function GET(request: NextRequest) {
     query = query.or(dbTypes.map((dbType) => `productType.eq.${dbType}`).join(','))
   }
 
-  if (category && !type) {
+  if (category) {
     const cleanCategory = normalizeToken(category)
-    const singularCategory = cleanCategory.replace(/s$/, '')
-    const dbTypes = TYPE_MAP[cleanCategory] || TYPE_MAP[singularCategory]
-    if (dbTypes) {
-      query = query.or(dbTypes.map((dbType) => `productType.eq.${dbType}`).join(','))
-    } else {
-      query = query.eq('category', cleanCategory)
-    }
+    const productTypeCategory = PRODUCT_TYPE_CATEGORY_MAP[cleanCategory]
+    query = productTypeCategory
+      ? query.eq('productType', productTypeCategory)
+      : query.eq('category', cleanCategory)
   }
 
   if (minPrice) {
@@ -154,7 +186,7 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.json({
-    products: products.slice(offset, offset + limit),
+    products: products.slice(offset, offset + limit).map(sanitizeProductImages),
     totalCount: products.length,
   })
 }

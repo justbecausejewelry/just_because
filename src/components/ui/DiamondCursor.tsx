@@ -1,16 +1,31 @@
 "use client"
 import { useEffect, useState, useRef } from 'react'
 
+type Sparkle = {
+  id: number
+  x: number
+  y: number
+  size: number
+  opacity: number
+  color: string
+}
+
+function isFinitePoint(x: number, y: number) {
+  return Number.isFinite(x) && Number.isFinite(y)
+}
+
+function isFiniteSparkle(sparkle: Sparkle) {
+  return isFinitePoint(sparkle.x, sparkle.y) && Number.isFinite(sparkle.size)
+}
+
 export default function DiamondCursor() {
   const [position, setPosition] = useState({ x: -200, y: -200 })
   const [followerPos, setFollowerPos] = useState({ x: -200, y: -200 })
   const [isHovering, setIsHovering] = useState(false)
   const [isClicking, setIsClicking] = useState(false)
   const [isVisible, setIsVisible] = useState(false)
-  const [sparkles, setSparkles] = useState<Array<{
-    id: number, x: number, y: number,
-    size: number, opacity: number, color: string
-  }>>([])
+  const [sparkles, setSparkles] = useState<Sparkle[]>([])
+  const positionRef = useRef({ x: -200, y: -200 })
   const followerRef = useRef({ x: -200, y: -200 })
   const rafRef = useRef<number | null>(null)
   const sparkleIdRef = useRef(0)
@@ -20,7 +35,11 @@ export default function DiamondCursor() {
     if ('ontouchstart' in window) return
 
     const handleMove = (e: MouseEvent) => {
-      setPosition({ x: e.clientX, y: e.clientY })
+      if (!isFinitePoint(e.clientX, e.clientY)) return
+
+      const nextPosition = { x: e.clientX, y: e.clientY }
+      positionRef.current = nextPosition
+      setPosition(nextPosition)
       setIsVisible(true)
 
       // Random sparkle trail
@@ -29,11 +48,16 @@ export default function DiamondCursor() {
           '#C9A961', '#EDD9AF', '#ffffff',
           '#B8D4F8', '#E8C4D0', '#F0E6FF',
         ]
+        const sparkleX = e.clientX + (Math.random() - 0.5) * 24
+        const sparkleY = e.clientY + (Math.random() - 0.5) * 24
+        const sparkleSize = Math.random() * 5 + 2
+        if (!isFinitePoint(sparkleX, sparkleY) || !Number.isFinite(sparkleSize)) return
+
         const newSparkle = {
           id: sparkleIdRef.current++,
-          x: e.clientX + (Math.random() - 0.5) * 24,
-          y: e.clientY + (Math.random() - 0.5) * 24,
-          size: Math.random() * 5 + 2,
+          x: sparkleX,
+          y: sparkleY,
+          size: sparkleSize,
           opacity: 1,
           color: colors[Math.floor(Math.random() * colors.length)],
         }
@@ -63,17 +87,21 @@ export default function DiamondCursor() {
     const handleDown = () => setIsClicking(true)
     const handleUp = () => {
       setIsClicking(false)
+      if (!isFinitePoint(positionRef.current.x, positionRef.current.y)) return
+
       // Burst of sparkles on click
       const burst = Array.from({ length: 8 }, (_, i) => ({
         id: sparkleIdRef.current++,
-        x: position.x + Math.cos((i / 8) * Math.PI * 2) * 20,
-        y: position.y + Math.sin((i / 8) * Math.PI * 2) * 20,
+        x: positionRef.current.x + Math.cos((i / 8) * Math.PI * 2) * 20,
+        y: positionRef.current.y + Math.sin((i / 8) * Math.PI * 2) * 20,
         size: Math.random() * 6 + 3,
         opacity: 1,
         color: ['#C9A961', '#EDD9AF', '#ffffff', '#B8D4F8'][
           Math.floor(Math.random() * 4)
         ],
-      }))
+      })).filter(isFiniteSparkle)
+      if (!burst.length) return
+
       setSparkles(prev => [...prev, ...burst])
       setTimeout(() => {
         setSparkles(prev =>
@@ -135,7 +163,7 @@ export default function DiamondCursor() {
       `}</style>
 
       {/* Sparkle particles */}
-      {sparkles.map(sparkle => (
+      {sparkles.filter(isFiniteSparkle).map(sparkle => (
         <div
           key={sparkle.id}
           style={{

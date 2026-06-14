@@ -21,14 +21,3 @@ export async function getUser() {
   } = await supabaseAuth.auth.getUser()
   return user
 }
-
-export async function signUp(email: string, password: string, name: string) {
-  const { data, error } = await supabaseAuth.auth.signUp({
-    email,
-    password,
-    options: {
-      data: { name },
-    },
-  })
-  return { data, error }
-}

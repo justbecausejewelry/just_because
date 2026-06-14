@@ -66,15 +66,21 @@ type Product = {
   createdAt?: string
 }
 
-const productTypes = [
-  { label: 'All', value: 'all' },
-  { label: 'Rings', value: 'ring' },
-  { label: 'Engagement Rings', value: 'engagement_ring' },
-  { label: 'Wedding Rings', value: 'wedding_ring' },
-  { label: 'Necklaces', value: 'necklace' },
-  { label: 'Bracelets', value: 'bracelet' },
-  { label: 'Earrings', value: 'earring' },
-  { label: 'Pendants', value: 'pendant' },
+type ProductTypeFilter = {
+  label: string
+  type: string
+  category?: string
+}
+
+const productTypeFilters: ProductTypeFilter[] = [
+  { label: 'All', type: 'all' },
+  { label: 'Rings', type: 'ring' },
+  { label: 'Engagement Rings', type: 'ring', category: 'engagement_ring' },
+  { label: 'Wedding Rings', type: 'ring', category: 'wedding_ring' },
+  { label: 'Necklaces', type: 'necklace' },
+  { label: 'Bracelets', type: 'bracelet' },
+  { label: 'Earrings', type: 'earring' },
+  { label: 'Pendants', type: 'pendant' },
 ]
 
 const metals = ['White Gold', 'Yellow Gold', 'Rose Gold', 'Platinum']
@@ -148,13 +154,25 @@ function getFilterLabel(value: string) {
   return labels[normalized] || prettify(normalized)
 }
 
-function isTypeActive(activeType: string, buttonValue: string) {
-  if (!activeType || activeType === 'all') return buttonValue === 'all'
-  if (normalizeType(activeType) === normalizeType(buttonValue)) return true
+function getCategoryFilterLabel(value: string) {
+  const labels: Record<string, string> = {
+    engagement_ring: 'Engagement Rings',
+    wedding_ring: 'Wedding Rings',
+  }
 
-  const activeDbTypes = getTypeDbValues(activeType)
-  const buttonDbTypes = getTypeDbValues(buttonValue)
-  return activeDbTypes.some((type) => buttonDbTypes.includes(type))
+  return labels[normalizeToken(value)] || prettify(value)
+}
+
+function isProductTypeFilterActive(activeType: string, activeCategory: string, filter: ProductTypeFilter) {
+  const normalizedType = normalizeType(activeType)
+  const normalizedCategory = normalizeToken(activeCategory)
+
+  if (filter.type === 'all') return (!normalizedType || normalizedType === 'all') && !normalizedCategory
+  if (filter.category) {
+    return normalizedType === normalizeType(filter.type) && normalizedCategory === normalizeToken(filter.category)
+  }
+
+  return normalizedType === normalizeType(filter.type)
 }
 
 function ProductPlaceholder({ size = 52 }: { size?: number }) {
@@ -364,8 +382,7 @@ function ProductsContent() {
   const router = useRouter()
   const typeParam = searchParams.get('type') || ''
   const categoryParam = searchParams.get('category') || ''
-  const rawType = typeParam || categoryParam || ''
-  const activeType = normalizeType(rawType) || 'all'
+  const activeType = normalizeType(typeParam) || 'all'
   const shape = searchParams.get('shape') || ''
   const selectedMetal = searchParams.get('metal') || ''
   const minPrice = searchParams.get('minPrice') || ''
@@ -384,7 +401,7 @@ function ProductsContent() {
     try {
       const params = new URLSearchParams({ limit: '120', sort })
       if (typeParam) params.set('type', typeParam)
-      if (categoryParam && !typeParam) params.set('category', categoryParam)
+      if (categoryParam) params.set('category', categoryParam)
       if (shape) params.set('shape', shape)
       if (selectedMetal) params.set('metal', selectedMetal)
       if (minPrice) params.set('minPrice', minPrice)
@@ -427,11 +444,11 @@ function ProductsContent() {
   }, [])
 
   const visibleProductTypes = useMemo(() => {
-    if (!availableTypes.length) return productTypes
+    if (!availableTypes.length) return productTypeFilters
 
-    return productTypes.filter((type) => {
-      if (type.value === 'all') return true
-      const mappedTypes = getTypeDbValues(type.value)
+    return productTypeFilters.filter((filter) => {
+      if (filter.type === 'all') return true
+      const mappedTypes = getTypeDbValues(filter.category || filter.type)
       return availableTypes.some((availableType) => mappedTypes.includes(availableType))
     })
   }, [availableTypes])
@@ -444,8 +461,33 @@ function ProductsContent() {
       params.delete(key)
     }
 
-    if (key === 'type') params.delete('category')
-    if (key === 'category') params.delete('type')
+    const query = params.toString()
+    router.push(query ? `/products?${query}` : '/products')
+  }, [router, searchParams])
+
+  const updateProductTypeFilter = useCallback((filter: ProductTypeFilter) => {
+    const params = new URLSearchParams(searchParams.toString())
+
+    if (filter.type === 'all') {
+      params.delete('type')
+      params.delete('category')
+    } else {
+      params.set('type', filter.type)
+      if (filter.category) {
+        params.set('category', filter.category)
+      } else {
+        params.delete('category')
+      }
+    }
+
+    const query = params.toString()
+    router.push(query ? `/products?${query}` : '/products')
+  }, [router, searchParams])
+
+  const clearProductTypeFilters = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('type')
+    params.delete('category')
 
     const query = params.toString()
     router.push(query ? `/products?${query}` : '/products')
@@ -456,7 +498,8 @@ function ProductsContent() {
   }, [router])
 
   const activePills = [
-    activeType !== 'all' ? { label: getFilterLabel(activeType), onRemove: () => updateFilter(typeParam ? 'type' : 'category', '') } : null,
+    activeType !== 'all' ? { label: getFilterLabel(activeType), onRemove: clearProductTypeFilters } : null,
+    categoryParam ? { label: getCategoryFilterLabel(categoryParam), onRemove: () => updateFilter('category', '') } : null,
     shape ? { label: `${prettify(shape)} Cut`, onRemove: () => updateFilter('shape', '') } : null,
     selectedMetal ? { label: prettify(selectedMetal), onRemove: () => updateFilter('metal', '') } : null,
     minPrice ? { label: `Min ${formatPrice(Number(minPrice))}`, onRemove: () => updateFilter('minPrice', '') } : null,
@@ -560,10 +603,10 @@ function ProductsContent() {
             <div className="flex flex-wrap gap-2">
               {visibleProductTypes.map((type) => (
                 <button
-                  key={type.value}
-                  onClick={() => updateFilter('type', type.value)}
+                  key={`${type.type}-${type.category || 'parent'}`}
+                  onClick={() => updateProductTypeFilter(type)}
                   className="product-filter-pill"
-                  style={{ backgroundColor: isTypeActive(activeType, type.value) ? '#1A1014' : 'transparent', border: '0.5px solid #EDD9AF', borderRadius: '999px', color: isTypeActive(activeType, type.value) ? '#FBF5F0' : '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '11px', padding: '8px 12px' }}
+                  style={{ backgroundColor: isProductTypeFilterActive(activeType, categoryParam, type) ? '#1A1014' : 'transparent', border: '0.5px solid #EDD9AF', borderRadius: '999px', color: isProductTypeFilterActive(activeType, categoryParam, type) ? '#FBF5F0' : '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '11px', padding: '8px 12px' }}
                 >
                   {type.label}
                 </button>

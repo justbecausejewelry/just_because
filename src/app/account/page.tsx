@@ -233,18 +233,33 @@ export default function AccountPage() {
       }
     }
 
+    const verifyCurrentSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (cancelled) return
+
+      if (session?.user) {
+        hydrateAccount(session.user)
+        return
+      }
+
+      if (!storedSession?.user) {
+        setPageLoading(false)
+        router.push('/login?redirect=/account')
+      }
+    }
+
+    void verifyCurrentSession()
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (cancelled) return
 
       if (event === 'SIGNED_OUT') {
+        setPageLoading(false)
         router.push('/login?redirect=/account')
         return
       }
 
       if (!session?.user) {
-        if (!storedSession?.user) {
-          router.push('/login?redirect=/account')
-        }
         return
       }
 

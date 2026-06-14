@@ -109,6 +109,7 @@ export function Categories() {
                   src={category.image}
                   alt={category.alt}
                   fill
+                  sizes="(max-width: 768px) 50vw, 25vw"
                   style={{ objectFit: 'cover', objectPosition: 'center' }}
                 />
               </div>

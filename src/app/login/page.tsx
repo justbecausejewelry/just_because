@@ -1,5 +1,5 @@
 "use client"
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -15,21 +15,74 @@ export default function LoginPage() {
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const emailParam = params.get('email')
+    if (emailParam) setEmail(emailParam)
+    if (params.get('verified') === '1') {
+      setNotice('Email verified. Please sign in to continue.')
+    }
+    if (params.get('passwordUpdated') === '1') {
+      setNotice('Password updated. Please sign in to continue.')
+    }
+  }, [])
 
   const handleSignIn = async () => {
-    if (!email || !password) {
+    const normalizedEmail = email.trim().toLowerCase()
+
+    if (!normalizedEmail || !password) {
       setError('Please fill in all fields')
       return
     }
     setLoading(true)
     setError('')
-    const { data, error: signInError } = await supabaseAuth.auth.signInWithPassword({ email, password })
+    setNotice('')
+    const { data, error: signInError } = await supabaseAuth.auth.signInWithPassword({
+      email: normalizedEmail,
+      password,
+    })
     if (signInError) {
+      const message = signInError.message.toLowerCase()
+      if (message.includes('email not confirmed') || message.includes('not confirmed')) {
+        setError('Please verify your email before signing in.')
+        setLoading(false)
+        router.push(`/signup?verifyEmail=${encodeURIComponent(normalizedEmail)}`)
+        return
+      }
+
       setError('Invalid email or password')
       setLoading(false)
     } else {
+      if (!data.user) {
+        setError('Invalid email or password')
+        setLoading(false)
+        return
+      }
+
+      const { data: profile, error: profileError } = await supabaseAuth
+        .from('UserProfile')
+        .select('email_verified')
+        .eq('userId', data.user.id)
+        .maybeSingle()
+
+      if (profileError) {
+        setError(profileError.message)
+        setLoading(false)
+        return
+      }
+
+      if (!profile || (profile as { email_verified?: boolean | null }).email_verified !== true) {
+        await supabaseAuth.auth.signOut()
+        setError('Please verify your email before signing in.')
+        setLoading(false)
+        router.push(`/signup?verifyEmail=${encodeURIComponent(normalizedEmail)}`)
+        return
+      }
+
       const guestCart = getCart()
-      if (data.user && guestCart.length > 0) {
+      if (guestCart.length > 0) {
         await mergeGuestCart(data.user.id, guestCart)
         clearCart()
       }
@@ -356,6 +409,18 @@ export default function LoginPage() {
                 color: '#A85C6A',
                 fontFamily: 'Inter, sans-serif',
               }}>{error}</div>
+            )}
+
+            {notice && (
+              <div style={{
+                background: '#FDF8F2',
+                border: '1px solid #7A8F72',
+                padding: '12px 16px',
+                marginBottom: '20px',
+                fontSize: '13px',
+                color: '#7A8F72',
+                fontFamily: 'Inter, sans-serif',
+              }}>{notice}</div>
             )}
 
             <div style={{ marginBottom: '18px' }}>

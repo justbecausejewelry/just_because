@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { LockKeyhole } from 'lucide-react'
 import { supabaseAuth } from '@/lib/auth'
 
@@ -24,15 +25,18 @@ const inputStyle = {
   width: '100%',
 }
 
-function splitName(fullName: string) {
-  const parts = fullName.trim().split(/\s+/).filter(Boolean)
-  return {
-    firstName: parts[0] || '',
-    lastName: parts.slice(1).join(' '),
+async function readApiError(response: Response, fallback: string) {
+  const body: unknown = await response.json().catch(() => null)
+  if (typeof body === 'object' && body !== null && 'error' in body) {
+    const message = (body as { error?: unknown }).error
+    if (typeof message === 'string' && message.trim()) return message
   }
+
+  return fallback
 }
 
 export function CheckoutAuthWall({ email, name, phone = '', onSuccess }: Props) {
+  const router = useRouter()
   const [mode, setMode] = useState<AuthMode>('choice')
   const [formEmail, setFormEmail] = useState(email)
   const [formName, setFormName] = useState(name)
@@ -57,14 +61,49 @@ export function CheckoutAuthWall({ email, name, phone = '', onSuccess }: Props) 
     setLoading(true)
     setError('')
 
-    const { error: signInError } = await supabaseAuth.auth.signInWithPassword({
-      email: formEmail.trim(),
+    const cleanEmail = formEmail.trim().toLowerCase()
+    const { data, error: signInError } = await supabaseAuth.auth.signInWithPassword({
+      email: cleanEmail,
       password,
     })
 
     if (signInError) {
+      const message = signInError.message.toLowerCase()
+      if (message.includes('email not confirmed') || message.includes('not confirmed')) {
+        setError('Please verify your email before continuing to payment.')
+        router.push(`/signup?verifyEmail=${encodeURIComponent(cleanEmail)}`)
+        setLoading(false)
+        return
+      }
+
       setError('Incorrect email or password. Try again or create a new account.')
     } else {
+      if (!data.user) {
+        setError('Incorrect email or password. Try again or create a new account.')
+        setLoading(false)
+        return
+      }
+
+      const { data: profile, error: profileError } = await supabaseAuth
+        .from('UserProfile')
+        .select('email_verified')
+        .eq('userId', data.user.id)
+        .maybeSingle()
+
+      if (profileError) {
+        setError(profileError.message)
+        setLoading(false)
+        return
+      }
+
+      if (!profile || (profile as { email_verified?: boolean | null }).email_verified !== true) {
+        await supabaseAuth.auth.signOut()
+        setError('Please verify your email before continuing to payment.')
+        router.push(`/signup?verifyEmail=${encodeURIComponent(cleanEmail)}`)
+        setLoading(false)
+        return
+      }
+
       onSuccess()
     }
 
@@ -72,7 +111,7 @@ export function CheckoutAuthWall({ email, name, phone = '', onSuccess }: Props) 
   }
 
   async function handleCreateAccount() {
-    const cleanEmail = formEmail.trim()
+    const cleanEmail = formEmail.trim().toLowerCase()
     const cleanName = formName.trim()
     const cleanPhone = formPhone.trim()
 
@@ -104,69 +143,29 @@ export function CheckoutAuthWall({ email, name, phone = '', onSuccess }: Props) 
     setLoading(true)
     setError('')
 
-    const { firstName, lastName } = splitName(cleanName)
-    const { data, error: signUpError } = await supabaseAuth.auth.signUp({
-      email: cleanEmail,
-      password,
-      options: {
-        data: { full_name: cleanName, name: cleanName },
-        emailRedirectTo: `${window.location.origin}/account`,
-      },
-    })
-
-    if (signUpError) {
-      if (signUpError.message.toLowerCase().includes('already')) {
-        setError('This email already has an account. Please sign in instead.')
-        setMode('signin')
-      } else {
-        setError(signUpError.message)
-      }
-      setLoading(false)
-      return
-    }
-
-    if (!data.user) {
-      setError('Unable to create account. Please try again.')
-      setLoading(false)
-      return
-    }
-
-    const { error: profileError } = await supabaseAuth.from('UserProfile').upsert({
-      userId: data.user.id,
-      email: cleanEmail,
-      firstName,
-      lastName,
-      phone: cleanPhone,
-      signupSource: 'checkout',
-      signup_source: 'checkout',
-      updatedAt: new Date().toISOString(),
-    }, { onConflict: 'userId' })
-
-    if (profileError) {
-      setError(profileError.message)
-      setLoading(false)
-      return
-    }
-
-    const {
-      data: { user },
-    } = await supabaseAuth.auth.getUser()
-
-    if (!user) {
-      const { error: signInError } = await supabaseAuth.auth.signInWithPassword({
+    const signupResponse = await fetch('/api/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         email: cleanEmail,
         password,
-      })
+        name: cleanName,
+        phone: cleanPhone,
+        signupSource: 'checkout',
+      }),
+    })
 
-      if (signInError) {
-        setError('Account created. Please check your email or sign in to continue.')
+    if (!signupResponse.ok) {
+      const message = await readApiError(signupResponse, 'Unable to create account. Please try again.')
+      if (message.toLowerCase().includes('already')) {
         setMode('signin')
-        setLoading(false)
-        return
       }
+      setError(message)
+      setLoading(false)
+      return
     }
 
-    onSuccess()
+    router.push(`/signup?verifyEmail=${encodeURIComponent(cleanEmail)}`)
     setLoading(false)
   }
 

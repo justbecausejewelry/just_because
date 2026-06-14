@@ -9,6 +9,7 @@ export type UserProfile = {
   phone?: string | null
   signupSource?: string | null
   signup_source?: string | null
+  email_verified?: boolean | null
   ringSize?: string | null
   birthday?: string | null
   anniversary?: string | null
@@ -35,6 +36,7 @@ export async function getOrCreateProfile(userId: string, email: string, name?: s
       lastName: nameParts.slice(1).join(' ') || '',
       signupSource: 'direct',
       signup_source: 'direct',
+      email_verified: false,
     })
     .select()
     .single()

@@ -317,6 +317,13 @@ export function Navbar() {
     setSearchQuery('')
   }
 
+  const navigateToAccount = () => {
+    setActiveMenu(null)
+    setSearchOpen(false)
+    setMobileOpen(false)
+    router.push('/account')
+  }
+
   const activeEntry = activeMenu ? megaMenuData[activeMenu] : null
 
   return (
@@ -515,9 +522,15 @@ export function Navbar() {
               <span style={{ fontSize: '13px', letterSpacing: '0.08em', fontFamily: 'var(--font-jost)', fontWeight: 500 }}>SEARCH</span>
             </button>
 
-            <Link href="/account" className="desktop-nav-icon" style={{ alignItems: 'center', color: '#1A1014', textDecoration: 'none' }} aria-label="Account">
+            <button
+              type="button"
+              onClick={navigateToAccount}
+              className="desktop-nav-icon"
+              style={{ alignItems: 'center', background: 'none', border: 'none', color: '#1A1014', cursor: 'pointer', padding: '4px' }}
+              aria-label="Account"
+            >
               <User size={18} color="#1A1014" />
-            </Link>
+            </button>
 
             {isAdmin && (
               <Link href="/admin" className="desktop-nav-icon" style={{ alignItems: 'center', color: '#C9A961', fontFamily: 'var(--font-jost)', fontSize: '13px', fontWeight: 500, letterSpacing: '0.08em', textDecoration: 'none' }}>
@@ -771,10 +784,10 @@ export function Navbar() {
               gap: '12px',
             }}
           >
-            <Link href="/account" onClick={() => setMobileOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'rgba(251,245,240,0.7)', fontSize: '14px', textDecoration: 'none', fontFamily: 'var(--font-jost)' }}>
+            <button type="button" onClick={navigateToAccount} style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'rgba(251,245,240,0.7)', fontSize: '14px', textDecoration: 'none', fontFamily: 'var(--font-jost)', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }}>
               <User size={18} />
               Account
-            </Link>
+            </button>
             <Link href="/wishlist" onClick={() => setMobileOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'rgba(251,245,240,0.7)', fontSize: '14px', textDecoration: 'none', fontFamily: 'var(--font-jost)' }}>
               <Heart size={18} />
               Wishlist
