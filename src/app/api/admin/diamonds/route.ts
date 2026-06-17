@@ -1,11 +1,6 @@
-import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { getDiamondImage } from '@/lib/diamondImages'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { requireAdmin } from '@/lib/server/security'
 
 type DiamondPayload = {
   id?: string
@@ -83,8 +78,11 @@ function normalizePayload(body: Record<string, unknown>) {
 }
 
 export async function GET(request: NextRequest) {
+  const auth = await requireAdmin(request)
+  if ('error' in auth) return auth.error
+
   const includeAll = request.nextUrl.searchParams.get('all') === 'true'
-  let query = supabase
+  let query = auth.admin
     .from('Diamond')
     .select('*')
     .order('createdAt', { ascending: false })
@@ -103,6 +101,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAdmin(request)
+  if ('error' in auth) return auth.error
+
   try {
     const body = (await request.json()) as Record<string, unknown>
     const payload = {
@@ -111,7 +112,7 @@ export async function POST(request: NextRequest) {
       isLabGrown: true,
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await auth.admin
       .from('Diamond')
       .insert(payload)
       .select('*')
@@ -128,6 +129,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const auth = await requireAdmin(request)
+  if ('error' in auth) return auth.error
+
   try {
     const body = (await request.json()) as Record<string, unknown>
     const id = typeof body.id === 'string' ? body.id : ''
@@ -136,7 +140,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Diamond id is required' }, { status: 400 })
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await auth.admin
       .from('Diamond')
       .update(normalizePayload(body))
       .eq('id', id)
@@ -154,13 +158,16 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const auth = await requireAdmin(request)
+  if ('error' in auth) return auth.error
+
   const id = request.nextUrl.searchParams.get('id')
 
   if (!id) {
     return NextResponse.json({ error: 'Diamond id is required' }, { status: 400 })
   }
 
-  const { error } = await supabase
+  const { error } = await auth.admin
     .from('Diamond')
     .delete()
     .eq('id', id)

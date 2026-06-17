@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import { Upload, X } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/context/ToastContext'
+import { useFormPersistence } from '@/hooks/useFormPersistence'
+import { supabaseAuth } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 
 type PricingMap = Record<string, { enabled: boolean; modifier: number }>
@@ -55,6 +57,12 @@ type ProductFormData = {
   sortOrder: number
   seoTitle: string
   seoDescription: string
+}
+
+type ProductFormDraft = {
+  form: ProductFormData
+  activeTab: number
+  activeMetalTab: MetalTab
 }
 
 type IncomingProduct = Partial<{
@@ -179,6 +187,11 @@ function slugify(value: string) {
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value || 0)
+}
+
+async function getAdminToken() {
+  const { data } = await supabaseAuth.auth.getSession()
+  return data.session?.access_token || null
 }
 
 function isRingProduct(productType: string) {
@@ -379,7 +392,14 @@ function MetalImageUpload({
       body.append('file', file)
       body.append('slug', `${slug || 'draft'}/${metal}`)
 
-      const response = await fetch('/api/admin/upload', { method: 'POST', body })
+      const token = await getAdminToken()
+      if (!token) throw new Error('Admin session expired. Please sign in again.')
+
+      const response = await fetch('/api/admin/upload', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body,
+      })
       const payload = (await response.json()) as { publicUrl?: string; error?: string }
 
       if (!response.ok || !payload.publicUrl) {
@@ -495,6 +515,18 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
   const [activeMetalTab, setActiveMetalTab] = useState<MetalTab>('default')
   const [isSaving, setIsSaving] = useState(false)
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([])
+  const persistenceKey = `admin_product_form_${mode}_${product?.id || 'new'}_v1`
+  const formDraft = useMemo<ProductFormDraft>(() => ({
+    form,
+    activeTab,
+    activeMetalTab,
+  }), [activeMetalTab, activeTab, form])
+  const clearPersistedProductForm = useFormPersistence(persistenceKey, formDraft, (updater) => {
+    const next = typeof updater === 'function' ? updater(formDraft) : updater
+    setForm((current) => ({ ...current, ...next.form }))
+    setActiveTab(next.activeTab)
+    setActiveMetalTab(next.activeMetalTab)
+  })
 
   useEffect(() => {
     if (product) {
@@ -578,7 +610,16 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
       const body = new FormData()
       body.append('file', file)
       body.append('slug', form.slug || slugify(form.title) || 'draft')
-      const response = await fetch('/api/admin/upload', { method: 'POST', body })
+      const token = await getAdminToken()
+      if (!token) {
+        setStatus('Admin session expired. Please sign in again.')
+        return
+      }
+      const response = await fetch('/api/admin/upload', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body,
+      })
       const payload = (await response.json()) as { publicUrl?: string; error?: string }
       const publicUrl = payload.publicUrl
       if (publicUrl) {
@@ -663,9 +704,14 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
         updatedAt: new Date().toISOString(),
       }
       const url = mode === 'new' ? '/api/admin/products' : `/api/admin/products/${form.id}`
+      const token = await getAdminToken()
+      if (!token) {
+        throw new Error('Admin session expired. Please sign in again.')
+      }
+
       const response = await fetch(url, {
         method: mode === 'new' ? 'POST' : 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
       })
       const data = (await response.json()) as { product?: ProductFormData; error?: string; omittedColumns?: string[] }
@@ -684,6 +730,7 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
           : `Draft saved - Not visible to customers${skippedColumns}`,
         'success'
       )
+      clearPersistedProductForm()
 
       if (publish) {
         window.setTimeout(() => {

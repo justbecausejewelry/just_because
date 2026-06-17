@@ -1,4 +1,5 @@
 import { getCarrierLabel } from '@/lib/tracking'
+import { resend, resendFromEmail } from '@/lib/email/resend'
 
 type EmailItem = {
   productTitle?: string | null
@@ -157,38 +158,37 @@ export function deliveryEmailHtml({ customerName, orderNumber, items }: Delivery
   `)
 }
 
-async function postEmail(payload: { to: string; subject: string; html: string }, siteUrl?: string) {
-  console.log('Prototype email notification', payload)
+async function sendTransactionalEmail(payload: { to: string; subject: string; html: string }) {
+  const result = await resend.emails.send({
+    from: resendFromEmail,
+    to: payload.to,
+    subject: payload.subject,
+    html: payload.html,
+  })
 
-  const resolvedSiteUrl = siteUrl || process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL
-  if (!resolvedSiteUrl) return
-
-  try {
-    const response = await fetch(`${resolvedSiteUrl}/api/send-email`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-    if (!response.ok) {
-      console.log('Prototype email endpoint returned', response.status)
-    }
-  } catch (error) {
-    console.log('Prototype email log:', payload, error)
+  if (result.error) {
+    throw new Error(result.error.message)
   }
+
+  console.log('[resend] shipping email accepted:', {
+    id: result.data?.id,
+    to: payload.to,
+    subject: payload.subject,
+  })
 }
 
 export async function sendShippingEmail(props: ShippingEmailProps & { to: string; siteUrl?: string }) {
-  await postEmail({
+  await sendTransactionalEmail({
     to: props.to,
     subject: `Your Just Because order ${props.orderNumber} has shipped`,
     html: shippingEmailHtml(props),
-  }, props.siteUrl)
+  })
 }
 
 export async function sendDeliveryEmail(props: DeliveryEmailProps & { to: string; siteUrl?: string }) {
-  await postEmail({
+  await sendTransactionalEmail({
     to: props.to,
     subject: `Your Just Because order ${props.orderNumber} has been delivered`,
     html: deliveryEmailHtml(props),
-  }, props.siteUrl)
+  })
 }

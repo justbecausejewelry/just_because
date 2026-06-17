@@ -136,7 +136,7 @@ export default function LoginPage() {
           border-color: #1A1014;
         }
         .login-input::placeholder {
-          color: #B8A090;
+          color: var(--color-muted-text);
         }
 
         @keyframes fadeIn {
@@ -201,6 +201,7 @@ export default function LoginPage() {
             src="/images/login-hero.jpg"
             alt="Just Because"
             fill
+            sizes="(max-width: 900px) 100vw, 45vw"
             style={{ objectFit: 'cover', objectPosition: 'center 40%' }}
             priority
             quality={95}
@@ -471,7 +472,7 @@ export default function LoginPage() {
                     right: '14px', top: '50%',
                     transform: 'translateY(-50%)',
                     background: 'none', border: 'none',
-                    cursor: 'pointer', color: '#B8A090', padding: '4px',
+                    cursor: 'pointer', color: 'var(--color-muted-text)', padding: '4px',
                   }}
                 >
                   {showPw ? <EyeOff size={16} /> : <Eye size={16} />}

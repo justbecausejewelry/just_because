@@ -4,8 +4,9 @@ import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { Check, ExternalLink, Package, ShoppingBag } from 'lucide-react'
+import { Check, Download, ExternalLink, Package, Printer, ShoppingBag } from 'lucide-react'
 import type { User } from '@supabase/supabase-js'
+import { getMetalLabel } from '@/config/productOptions'
 import { supabaseAuth } from '@/lib/auth'
 import { getCarrierLabel, normalizeOrderStatus, orderStatusLabel, orderStatusStyle, type OrderStatus } from '@/lib/tracking'
 
@@ -71,6 +72,12 @@ type Order = {
   OrderItem?: OrderItem[]
 }
 
+type OrderDetailResponse = {
+  order?: Order
+  events?: OrderEvent[]
+  error?: string
+}
+
 type TimelineStep = {
   status: OrderStatus
   label: string
@@ -83,7 +90,7 @@ type TimelineStep = {
   expected?: string | null
 }
 
-const statusOrder: OrderStatus[] = ['received', 'confirmed', 'processing', 'shipped', 'delivered']
+const statusOrder: OrderStatus[] = ['confirmed', 'processing', 'shipped', 'delivered', 'completed']
 
 function formatPrice(value = 0) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value)
@@ -111,7 +118,7 @@ function productTitle(item: OrderItem) {
 
 function productDetails(item: OrderItem) {
   return [
-    item.selectedMetal,
+    getMetalLabel(item.selectedMetal),
     item.selectedCarat ? `${item.selectedCarat}ct` : null,
     item.selectedShape,
     item.selectedColor,
@@ -123,9 +130,8 @@ function productDetails(item: OrderItem) {
 
 function normalizedProgressStatus(status?: string | null): OrderStatus {
   const normalized = normalizeOrderStatus(status)
-  if (normalized === 'in_production') return 'processing'
-  if (normalized === 'pending') return 'received'
-  if (normalized === 'cancelled' || normalized === 'refunded') return 'received'
+  if (normalized === 'pending') return 'confirmed'
+  if (normalized === 'cancelled' || normalized === 'refunded') return 'confirmed'
   return normalized
 }
 
@@ -135,7 +141,7 @@ function buildTimeline(order: Order, events: OrderEvent[]): TimelineStep[] {
   const eventByStatus = new Map<string, OrderEvent>()
 
   events.forEach((event) => {
-    const key = event.status === 'in_production' ? 'processing' : event.status
+    const key = normalizeOrderStatus(event.status)
     eventByStatus.set(key, event)
   })
 
@@ -143,7 +149,7 @@ function buildTimeline(order: Order, events: OrderEvent[]): TimelineStep[] {
     const event = eventByStatus.get(status)
     const completed = currentIndex >= index
     const fallbackDate =
-      status === 'received' ? order.createdAt :
+      status === 'confirmed' ? order.createdAt :
       status === 'shipped' ? order.shippedAt :
       status === 'delivered' ? order.deliveredAt :
       completed ? order.updatedAt || order.createdAt : null
@@ -169,6 +175,7 @@ export default function AccountOrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null)
   const [events, setEvents] = useState<OrderEvent[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -186,44 +193,35 @@ export default function AccountOrderDetailPage() {
 
       try {
         setIsLoading(true)
-        const { data, error: orderError } = await supabaseAuth
-          .from('Order')
-          .select('*, OrderItem(*)')
-          .eq('id', orderId)
-          .eq('customerEmail', user.email)
-          .maybeSingle()
+        const { data: sessionData } = await supabaseAuth.auth.getSession()
+        const token = sessionData.session?.access_token
+
+        if (!token) {
+          router.replace(`/login?redirect=/account/orders/${orderId}`)
+          return
+        }
+
+        const response = await fetch(`/api/account/orders/${orderId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const payload = await response.json().catch(() => ({})) as OrderDetailResponse
 
         if (cancelled) return
 
-        if (orderError) {
-          setError(orderError.message)
+        if (!response.ok) {
+          setError(payload.error || 'Order not found.')
           setOrder(null)
           return
         }
 
-        if (!data) {
+        if (!payload.order) {
           setError('Order not found.')
           setOrder(null)
           return
         }
 
-        const typedOrder = data as Order
-        setOrder(typedOrder)
-
-        const { data: eventData, error: eventsError } = await supabaseAuth
-          .from('order_events')
-          .select('*')
-          .eq('order_id', typedOrder.id)
-          .order('created_at', { ascending: true })
-
-        if (!cancelled) {
-          if (eventsError) {
-            console.error('Order events load error:', eventsError)
-            setEvents([])
-          } else {
-            setEvents((eventData || []) as OrderEvent[])
-          }
-        }
+        setOrder(payload.order)
+        setEvents(payload.events || [])
       } finally {
         if (!cancelled) {
           setIsLoading(false)
@@ -259,9 +257,49 @@ export default function AccountOrderDetailPage() {
 
   const timeline = useMemo(() => order ? buildTimeline(order, events) : [], [events, order])
 
+  const handleDownloadInvoice = async () => {
+    try {
+      setIsDownloadingInvoice(true)
+      const { data } = await supabaseAuth.auth.getSession()
+      const token = data.session?.access_token
+
+      if (!token) {
+        router.replace(`/login?redirect=/account/orders/${orderId}`)
+        return
+      }
+
+      const response = await fetch(`/account/orders/${orderId}/invoice`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      if (!response.ok) {
+        throw new Error('Unable to download invoice.')
+      }
+
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `JustBecause-Order-${(order?.orderNumber || orderId).replace(/[^A-Za-z0-9_-]/g, '')}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+    } catch (downloadError) {
+      const message = downloadError instanceof Error ? downloadError.message : 'Unable to download invoice.'
+      setError(message)
+    } finally {
+      setIsDownloadingInvoice(false)
+    }
+  }
+
+  const handlePrint = () => {
+    window.print()
+  }
+
   if (isLoading) {
     return (
-      <main style={{ minHeight: '100vh', background: '#FBF5F0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#B8A090', fontFamily: 'var(--font-playfair)', fontSize: '20px' }}>
+      <main style={{ minHeight: '100vh', background: '#FBF5F0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-muted-text)', fontFamily: 'var(--font-playfair)', fontSize: '20px' }}>
         Loading order...
       </main>
     )
@@ -274,7 +312,7 @@ export default function AccountOrderDetailPage() {
         <section style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', marginTop: '28px', padding: '42px 24px', textAlign: 'center' }}>
           <ShoppingBag size={48} color="#C9A961" strokeWidth={1.2} style={{ margin: '0 auto 16px' }} />
           <h1 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '26px', fontWeight: 400, margin: 0 }}>Order unavailable</h1>
-          <p style={{ color: '#B8A090', fontSize: '13px', margin: '10px 0 0' }}>{error || 'We could not find this order for your account.'}</p>
+          <p style={{ color: 'var(--color-muted-text)', fontSize: '13px', margin: '10px 0 0' }}>{error || 'We could not find this order for your account.'}</p>
         </section>
       </main>
     )
@@ -284,18 +322,58 @@ export default function AccountOrderDetailPage() {
   const statusStyle = orderStatusStyle(order.status)
 
   return (
-    <main style={{ minHeight: '100vh', background: '#FBF5F0', maxWidth: '1040px', margin: '0 auto', padding: '56px 24px 72px' }}>
-      <Link href="/account/orders" style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '12px', letterSpacing: '0.08em' }}>{'<-'} Back to orders</Link>
+    <main className="order-print-root" style={{ minHeight: '100vh', background: '#FBF5F0', maxWidth: '1040px', margin: '0 auto', padding: '56px 24px 72px' }}>
+      <style>{`
+        @media print {
+          nav, footer, .print-hidden { display: none !important; }
+          body { background: #FBF5F0 !important; }
+          .order-print-root {
+            max-width: none !important;
+            min-height: auto !important;
+            padding: 0 !important;
+          }
+          .order-print-root section,
+          .order-print-root aside {
+            break-inside: avoid;
+            box-shadow: none !important;
+          }
+        }
+      `}</style>
+      <Link className="print-hidden" href="/account/orders" style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '12px', letterSpacing: '0.08em' }}>{'<-'} Back to orders</Link>
 
       <header className="grid grid-cols-1 gap-5 lg:grid-cols-[1.4fr_0.8fr]" style={{ marginTop: '24px', marginBottom: '24px' }}>
         <section style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', padding: '28px' }}>
           <p style={{ color: '#C9A961', fontSize: '10px', letterSpacing: '0.3em', margin: '0 0 10px', textTransform: 'uppercase' }}>Order Detail</p>
-          <h1 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '38px', fontWeight: 400, margin: 0 }}>{order.orderNumber}</h1>
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <h1 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '38px', fontWeight: 400, margin: 0 }}>{order.orderNumber}</h1>
+            <div className="print-hidden flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => void handleDownloadInvoice()}
+                disabled={isDownloadingInvoice}
+                style={{ alignItems: 'center', background: '#1A1014', border: '0.5px solid #1A1014', color: '#FBF5F0', cursor: isDownloadingInvoice ? 'wait' : 'pointer', display: 'inline-flex', gap: '8px', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.16em', padding: '11px 14px', textTransform: 'uppercase' }}
+              >
+                <Download size={14} />
+                {isDownloadingInvoice ? 'Preparing...' : 'Download Invoice'}
+              </button>
+              <button
+                type="button"
+                onClick={handlePrint}
+                style={{ alignItems: 'center', background: 'transparent', border: '0.5px solid #EDD9AF', color: '#1A1014', cursor: 'pointer', display: 'inline-flex', gap: '8px', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.16em', padding: '11px 14px', textTransform: 'uppercase' }}
+              >
+                <Printer size={14} />
+                Print
+              </button>
+            </div>
+          </div>
+          {error ? (
+            <p className="print-hidden" style={{ color: '#A85C6A', fontFamily: 'var(--font-inter)', fontSize: '12px', margin: '14px 0 0' }}>{error}</p>
+          ) : null}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3" style={{ marginTop: '22px' }}>
             <HeaderStat label="Date Placed" value={formatDate(order.createdAt)} />
             <HeaderStat label="Total" value={formatPrice(order.total || 0)} />
             <div>
-              <p style={{ color: '#B8A090', fontSize: '10px', letterSpacing: '0.18em', margin: '0 0 7px', textTransform: 'uppercase' }}>Status</p>
+              <p style={{ color: 'var(--color-muted-text)', fontSize: '10px', letterSpacing: '0.18em', margin: '0 0 7px', textTransform: 'uppercase' }}>Status</p>
               <span style={{ ...statusStyle, border: '0.5px solid #EDD9AF', borderRadius: '4px', color: statusStyle.color, display: 'inline-block', fontSize: '10px', letterSpacing: '0.12em', padding: '7px 10px', textTransform: 'uppercase' }}>
                 {orderStatusLabel(order.status)}
               </span>
@@ -308,8 +386,8 @@ export default function AccountOrderDetailPage() {
           {order.trackingNumber ? (
             <>
               <p style={{ color: '#FBF5F0', fontFamily: 'var(--font-playfair)', fontSize: '22px', margin: 0 }}>{getCarrierLabel(order.carrier)}</p>
-              <p style={{ color: '#B8A090', fontSize: '13px', margin: '8px 0 0' }}>{order.trackingNumber}</p>
-              <p style={{ color: '#B8A090', fontSize: '12px', margin: '14px 0 0' }}>Estimated delivery: {formatDate(order.estimatedDelivery)}</p>
+              <p style={{ color: 'var(--color-muted-text)', fontSize: '13px', margin: '8px 0 0' }}>{order.trackingNumber}</p>
+              <p style={{ color: 'var(--color-muted-text)', fontSize: '12px', margin: '14px 0 0' }}>Estimated delivery: {formatDate(order.estimatedDelivery)}</p>
               {order.trackingUrl ? (
                 <a href={order.trackingUrl} target="_blank" rel="noreferrer" className="btn-primary" style={{ alignItems: 'center', display: 'inline-flex', gap: '8px', marginTop: '18px' }}>
                   Track Package
@@ -318,7 +396,7 @@ export default function AccountOrderDetailPage() {
               ) : null}
             </>
           ) : (
-            <p style={{ color: '#B8A090', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>Tracking will appear here as soon as your order ships.</p>
+            <p style={{ color: 'var(--color-muted-text)', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>Tracking will appear here as soon as your order ships.</p>
           )}
         </section>
       </header>
@@ -330,20 +408,20 @@ export default function AccountOrderDetailPage() {
             {timeline.map((step, index) => (
               <div key={step.status} style={{ display: 'grid', gridTemplateColumns: '36px 1fr', gap: '16px', minHeight: '86px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <div style={{ width: '32px', height: '32px', borderRadius: '4px', background: step.completed ? '#1A1014' : '#EDD9AF', color: step.completed ? '#FBF5F0' : '#B8A090', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '4px', background: step.completed ? '#1A1014' : '#EDD9AF', color: step.completed ? '#FBF5F0' : 'var(--color-muted-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     {step.completed ? <Check size={16} /> : index + 1}
                   </div>
                   {index < timeline.length - 1 && <div style={{ flex: 1, width: '0.5px', background: '#EDD9AF' }} />}
                 </div>
                 <div>
-                  <p style={{ color: step.completed ? '#1A1014' : '#B8A090', fontWeight: 500, margin: 0 }}>{step.label}</p>
-                  <p style={{ color: '#B8A090', fontSize: '13px', margin: '5px 0 0' }}>
+                  <p style={{ color: step.completed ? '#1A1014' : 'var(--color-muted-text)', fontWeight: 500, margin: 0 }}>{step.label}</p>
+                  <p style={{ color: 'var(--color-muted-text)', fontSize: '13px', margin: '5px 0 0' }}>
                     {step.completed ? formatDateTime(step.date) : step.expected ? `Expected ${formatDate(step.expected)}` : 'Pending'}
                   </p>
-                  {step.message ? <p style={{ color: '#B8A090', fontSize: '13px', lineHeight: 1.5, margin: '7px 0 0' }}>{step.message}</p> : null}
+                  {step.message ? <p style={{ color: 'var(--color-muted-text)', fontSize: '13px', lineHeight: 1.5, margin: '7px 0 0' }}>{step.message}</p> : null}
                   {step.trackingNumber ? (
                     <div style={{ background: '#FBF5F0', border: '0.5px solid #EDD9AF', marginTop: '10px', padding: '12px' }}>
-                      <p style={{ color: '#B8A090', fontSize: '12px', margin: 0 }}>{getCarrierLabel(step.carrier)}</p>
+                      <p style={{ color: 'var(--color-muted-text)', fontSize: '12px', margin: 0 }}>{getCarrierLabel(step.carrier)}</p>
                       <p style={{ color: '#1A1014', fontWeight: 500, margin: '4px 0 0' }}>{step.trackingNumber}</p>
                       {step.trackingUrl ? (
                         <a href={step.trackingUrl} target="_blank" rel="noreferrer" style={{ color: '#C9A961', fontSize: '13px', marginTop: '8px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
@@ -373,7 +451,7 @@ export default function AccountOrderDetailPage() {
                 </div>
                 <div>
                   <p style={{ color: '#1A1014', fontSize: '13px', margin: 0 }}>{productTitle(item)}</p>
-                  <p style={{ color: '#B8A090', fontSize: '11px', lineHeight: 1.5, margin: '4px 0' }}>{productDetails(item)}</p>
+                  <p style={{ color: 'var(--color-muted-text)', fontSize: '11px', lineHeight: 1.5, margin: '4px 0' }}>{productDetails(item)}</p>
                   <p style={{ color: '#1A1014', fontSize: '12px', margin: 0 }}>{item.quantity || 1} x {formatPrice(item.unitPrice || 0)}</p>
                 </div>
               </div>
@@ -389,7 +467,7 @@ export default function AccountOrderDetailPage() {
               ['Tax', order.taxAmount || 0],
               ['Total', order.total || 0],
             ].map(([label, value]) => (
-              <div key={label as string} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', color: label === 'Total' ? '#1A1014' : '#B8A090', fontFamily: label === 'Total' ? 'var(--font-playfair)' : 'var(--font-inter)', fontSize: label === 'Total' ? '18px' : '13px' }}>
+              <div key={label as string} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', color: label === 'Total' ? '#1A1014' : 'var(--color-muted-text)', fontFamily: label === 'Total' ? 'var(--font-playfair)' : 'var(--font-inter)', fontSize: label === 'Total' ? '18px' : '13px' }}>
                 <span>{label}</span>
                 <span>{formatPrice(value as number)}</span>
               </div>
@@ -406,7 +484,7 @@ export default function AccountOrderDetailPage() {
 function HeaderStat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p style={{ color: '#B8A090', fontSize: '10px', letterSpacing: '0.18em', margin: '0 0 7px', textTransform: 'uppercase' }}>{label}</p>
+      <p style={{ color: 'var(--color-muted-text)', fontSize: '10px', letterSpacing: '0.18em', margin: '0 0 7px', textTransform: 'uppercase' }}>{label}</p>
       <p style={{ color: '#1A1014', fontSize: '14px', margin: 0 }}>{value}</p>
     </div>
   )
@@ -416,7 +494,7 @@ function ShippingAddressBlock({ address, fallbackName }: { address?: ShippingAdd
   return (
     <section style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', padding: '24px' }}>
       <h2 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '24px', fontWeight: 400, margin: '0 0 18px' }}>Shipping Address</h2>
-      <div style={{ color: '#B8A090', fontSize: '13px', lineHeight: 1.7 }}>
+      <div style={{ color: 'var(--color-muted-text)', fontSize: '13px', lineHeight: 1.7 }}>
         <div style={{ color: '#1A1014' }}>{[address?.firstName, address?.lastName].filter(Boolean).join(' ') || fallbackName}</div>
         <div>{address?.addressLine1 || 'No address line recorded'}</div>
         {address?.addressLine2 ? <div>{address.addressLine2}</div> : null}

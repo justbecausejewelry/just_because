@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { normalizeMetalSelection, normalizeToken } from '@/config/productOptions'
 
 type ModifierMap = Record<string, { enabled?: boolean; modifier?: number }>
 
@@ -30,7 +31,14 @@ function getModifier(pricing: unknown, key?: string | number) {
     return 0
   }
 
-  const value = (pricing as ModifierMap)[String(key)]
+  const modifiers = pricing as ModifierMap
+  const lookupKey = String(key)
+  const normalizedKey = normalizeMetalSelection(lookupKey) || normalizeToken(lookupKey)
+  const matchedKey = Object.keys(modifiers).find((candidate) => {
+    const normalizedCandidate = normalizeMetalSelection(candidate) || normalizeToken(candidate)
+    return candidate === lookupKey || normalizedCandidate === normalizedKey
+  })
+  const value = matchedKey ? modifiers[matchedKey] : undefined
   if (!value?.enabled) {
     return 0
   }

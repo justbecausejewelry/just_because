@@ -104,9 +104,9 @@ function WishlistCard({
           <p style={{ margin: 0 }}>
             <span
               style={{
-                color: '#B8A090',
+                color: 'var(--color-muted-text)',
                 fontFamily: 'var(--font-inter)',
-                fontSize: '10px',
+                fontSize: '12px',
                 marginRight: '6px',
               }}
             >
@@ -146,9 +146,9 @@ function WishlistCard({
         <button
           onClick={() => onRemove(item.productSlug)}
           style={{
-            color: '#B8A090',
+            color: 'var(--color-muted-text)',
             fontFamily: 'var(--font-inter)',
-            fontSize: '11px',
+            fontSize: '12px',
             marginTop: '12px',
             textAlign: 'center',
             width: '100%',
@@ -176,7 +176,7 @@ export default function WishlistPage() {
         <Link
           href="/"
           style={{
-            color: '#B8A090',
+            color: 'var(--color-muted-text)',
             fontFamily: 'var(--font-inter)',
             fontSize: '11px',
             letterSpacing: '0.08em',
@@ -212,7 +212,7 @@ export default function WishlistPage() {
           >
             Your Wishlist
           </h1>
-          <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '14px', marginTop: '10px' }}>
+          <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '15px', marginTop: '10px' }}>
             {itemCount} saved {itemCount === 1 ? 'piece' : 'pieces'}
           </p>
         </div>
@@ -247,7 +247,7 @@ export default function WishlistPage() {
           >
             Your wishlist is empty
           </h2>
-          <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '14px', marginBottom: '28px' }}>
+          <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '16px', lineHeight: 1.625, marginBottom: '28px' }}>
             Save pieces you love for later.
           </p>
           <Link

@@ -145,8 +145,8 @@ export function Reviews() {
         </div>
         <div
           style={{
-            fontSize: '14px',
-            color: '#B8A090',
+            fontSize: '15px',
+            color: 'var(--color-muted-text)',
             fontFamily: 'var(--font-jost)',
           }}
         >
@@ -281,7 +281,7 @@ export function Reviews() {
                   style={{
                     fontSize: '14px',
                     letterSpacing: '0.1em',
-                    color: '#B8A090',
+                    color: 'var(--color-muted-text)',
                     marginTop: '3px',
                     fontFamily: 'var(--font-jost)',
                   }}
@@ -356,8 +356,8 @@ export function Reviews() {
                 </div>
                 <div
                   style={{
-                    fontSize: '11px',
-                    color: '#B8A090',
+                    fontSize: '13px',
+                    color: 'var(--color-muted-text)',
                     fontFamily: 'var(--font-inter)',
                   }}
                 >

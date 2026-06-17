@@ -136,7 +136,7 @@ export function Categories() {
               <p
                 className="mt-1 text-[10px]"
                 style={{
-                  color: category.dark ? '#C9A961' : '#5C4F47',
+                  color: category.dark ? '#C9A961' : 'var(--color-muted-text)',
                   fontFamily: 'var(--font-inter)',
                 }}
               >

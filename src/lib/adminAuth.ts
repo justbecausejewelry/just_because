@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 
 const CACHE_KEY = 'jb_admin'
@@ -161,25 +160,6 @@ export function clearAdminCache() {
     } catch {
       // Storage can be unavailable in private modes.
     }
-  }
-}
-
-export async function checkIsAdminServer(email: string): Promise<boolean> {
-  try {
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-
-    const { data } = await supabaseAdmin
-      .from('AdminUser')
-      .select('id')
-      .eq('email', email.toLowerCase())
-      .maybeSingle()
-
-    return Boolean(data)
-  } catch {
-    return false
   }
 }
 

@@ -1,13 +1,11 @@
-import { createClient } from '@supabase/supabase-js'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/server/security'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+export async function GET(request: NextRequest) {
+  const auth = await requireAdmin(request)
+  if ('error' in auth) return auth.error
 
-export async function GET() {
-  const { data, error } = await supabase
+  const { data, error } = await auth.admin
     .from('Order')
     .select('*, items:OrderItem(id)')
     .order('createdAt', { ascending: false })

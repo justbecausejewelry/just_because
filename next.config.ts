@@ -9,15 +9,15 @@ const nextConfig: NextConfig = {
     const csp = [
       "default-src 'self'",
       "base-uri 'self'",
-      "font-src 'self' data:",
+      "font-src 'self' data: https://fonts.gstatic.com",
       "form-action 'self'",
       "frame-ancestors 'none'",
       "frame-src 'self' https://js.stripe.com https://checkout.stripe.com",
       "img-src 'self' data: blob: https://images.unsplash.com https://img.youtube.com https://*.supabase.co",
       "object-src 'none'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
-      `connect-src 'self' https://${supabaseHost} wss://${supabaseHost} https://api.stripe.com`,
-      "style-src 'self' 'unsafe-inline'",
+      `connect-src 'self' https://${supabaseHost} wss://${supabaseHost} https://api.stripe.com https://api.resend.com`,
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       'upgrade-insecure-requests',
     ].join('; ')
 

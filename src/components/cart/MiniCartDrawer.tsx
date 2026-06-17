@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Gem, Trash2, X } from 'lucide-react'
 import { useCart } from '@/context/CartContext'
+import { getMetalLabel } from '@/config/productOptions'
 
 function formatPrice(value: number) {
   return new Intl.NumberFormat('en-US', {
@@ -35,6 +36,10 @@ export function MiniCartDrawer({
   const open = isOpen ?? isMiniCartOpen
   const close = onClose ?? closeCart
   const [isMobile, setIsMobile] = useState(false)
+  const labeledItems = items.map((item) => ({
+    ...item,
+    selectedMetal: getMetalLabel(item.selectedMetal),
+  }))
 
   useEffect(() => {
     const update = () => setIsMobile(window.innerWidth <= 768)
@@ -152,9 +157,9 @@ export function MiniCartDrawer({
                   </p>
                   <p
                     style={{
-                      color: '#B8A090',
+                      color: 'var(--color-muted-text)',
                       fontFamily: 'var(--font-inter)',
-                      fontSize: '13px',
+                      fontSize: '15px',
                       marginBottom: '20px',
                     }}
                   >
@@ -175,7 +180,7 @@ export function MiniCartDrawer({
                   </button>
                 </div>
               ) : (
-                items.map((item) => (
+                labeledItems.map((item) => (
                   <div
                     key={item.id}
                     style={{
@@ -222,9 +227,9 @@ export function MiniCartDrawer({
                       </p>
                       <p
                         style={{
-                          color: '#B8A090',
+                          color: 'var(--color-muted-text)',
                           fontFamily: 'var(--font-inter)',
-                          fontSize: '10px',
+                          fontSize: '12px',
                           marginBottom: '2px',
                         }}
                       >
@@ -233,9 +238,9 @@ export function MiniCartDrawer({
                       {item.engraving && (
                         <p
                           style={{
-                            color: '#B8A090',
+                            color: 'var(--color-muted-text)',
                             fontFamily: 'var(--font-inter)',
-                            fontSize: '10px',
+                            fontSize: '12px',
                             fontStyle: 'italic',
                           }}
                         >
@@ -251,7 +256,7 @@ export function MiniCartDrawer({
                         <p style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '14px' }}>{formatPrice(item.unitPrice * item.quantity)}</p>
                       </div>
                     </div>
-                    <button onClick={() => removeItem(item.id)} style={{ color: '#B8A090', alignSelf: 'start' }}>
+                    <button onClick={() => removeItem(item.id)} style={{ color: 'var(--color-muted-text)', alignSelf: 'start' }}>
                       <Trash2 size={15} />
                     </button>
                   </div>
@@ -268,10 +273,10 @@ export function MiniCartDrawer({
                 }}
               >
                 <div className="flex items-end justify-between">
-                  <span style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>Subtotal</span>
+                  <span style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '13px' }}>Subtotal</span>
                   <span style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '24px' }}>{formatPrice(subtotal)}</span>
                 </div>
-                <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', textAlign: 'center', margin: '8px 0 16px' }}>Free shipping on all orders</p>
+                <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '13px', textAlign: 'center', margin: '8px 0 16px' }}>Free shipping on all orders</p>
                 <button onClick={() => navigate('/cart')} style={{ width: '100%', height: '48px', background: 'transparent', border: '1px solid #1A1014', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.18em', marginBottom: '10px' }}>VIEW FULL CART</button>
                 <button onClick={() => navigate('/checkout')} style={{ width: '100%', height: '52px', background: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.2em' }}>PROCEED TO CHECKOUT →</button>
               </footer>

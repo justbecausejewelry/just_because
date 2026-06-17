@@ -8,6 +8,7 @@ import { motion } from 'framer-motion'
 import { Gem, SlidersHorizontal, X } from 'lucide-react'
 import { useToast } from '@/context/ToastContext'
 import { useWishlist } from '@/context/WishlistContext'
+import { METALS, getMetalLabel, normalizeMetalSelection } from '@/config/productOptions'
 import {
   Select,
   SelectContent,
@@ -83,13 +84,7 @@ const productTypeFilters: ProductTypeFilter[] = [
   { label: 'Pendants', type: 'pendant' },
 ]
 
-const metals = ['White Gold', 'Yellow Gold', 'Rose Gold', 'Platinum']
-const metalSwatches: Record<string, string> = {
-  'White Gold': '#E8E8E8',
-  'Yellow Gold': '#C9A961',
-  'Rose Gold': '#E8B5A8',
-  Platinum: '#D0D0D0',
-}
+const metalSwatches = Object.fromEntries(METALS.map((metal) => [metal.value, metal.hex]))
 
 const sortOptions = [
   { label: 'Featured', value: 'featured' },
@@ -309,12 +304,19 @@ function ProductCard({ product }: { product: Product }) {
               {product.title}
             </h2>
             <div style={{ display: 'flex', flexShrink: 0, gap: '6px', height: '16px', marginBottom: '12px' }}>
-              {product.availableMetals?.slice(0, 4).map((metal) => (
-                <span key={metal} title={metal} style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: metalSwatches[metal] || '#EDD9AF', border: '0.5px solid #EDD9AF' }} />
-              ))}
+              {product.availableMetals?.slice(0, 4).map((metal) => {
+                const normalizedMetal = normalizeMetalSelection(metal)
+                return (
+                  <span
+                    key={metal}
+                    title={getMetalLabel(metal)}
+                    style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: normalizedMetal ? metalSwatches[normalizedMetal] || '#EDD9AF' : '#EDD9AF', border: '0.5px solid #EDD9AF' }}
+                  />
+                )
+              })}
             </div>
             <p style={{ alignItems: 'center', display: 'flex', flexShrink: 0, gap: '6px', height: '32px', margin: 0, marginBottom: '16px' }}>
-              <span style={{ color: '#B8A090', fontFamily: 'var(--font-jost)', fontSize: '12px', marginRight: '6px' }}>From</span>
+              <span style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-jost)', fontSize: '13px', marginRight: '6px' }}>From</span>
               <span style={{ color: '#1A1014', fontFamily: 'var(--font-jost)', fontSize: '17px', fontWeight: 500 }}>{formatPrice(product.basePrice)}</span>
             </p>
             <div style={{ flex: 1 }} />
@@ -384,7 +386,7 @@ function ProductsContent() {
   const categoryParam = searchParams.get('category') || ''
   const activeType = normalizeType(typeParam) || 'all'
   const shape = searchParams.get('shape') || ''
-  const selectedMetal = searchParams.get('metal') || ''
+  const selectedMetal = normalizeMetalSelection(searchParams.get('metal')) || ''
   const minPrice = searchParams.get('minPrice') || ''
   const maxPrice = searchParams.get('maxPrice') || ''
   const sort = normalizeSort(searchParams.get('sort') || 'featured')
@@ -501,7 +503,7 @@ function ProductsContent() {
     activeType !== 'all' ? { label: getFilterLabel(activeType), onRemove: clearProductTypeFilters } : null,
     categoryParam ? { label: getCategoryFilterLabel(categoryParam), onRemove: () => updateFilter('category', '') } : null,
     shape ? { label: `${prettify(shape)} Cut`, onRemove: () => updateFilter('shape', '') } : null,
-    selectedMetal ? { label: prettify(selectedMetal), onRemove: () => updateFilter('metal', '') } : null,
+    selectedMetal ? { label: getMetalLabel(selectedMetal), onRemove: () => updateFilter('metal', '') } : null,
     minPrice ? { label: `Min ${formatPrice(Number(minPrice))}`, onRemove: () => updateFilter('minPrice', '') } : null,
     maxPrice ? { label: `Max ${formatPrice(Number(maxPrice))}`, onRemove: () => updateFilter('maxPrice', '') } : null,
   ].filter((pill): pill is { label: string; onRemove: () => void } => Boolean(pill))
@@ -527,7 +529,7 @@ function ProductsContent() {
       `}</style>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '16px 80px', borderBottom: '0.5px solid #EDD9AF' }}>
-        <Link href="/" style={{ fontSize: '11px', color: '#B8A090', textDecoration: 'none', fontFamily: 'var(--font-inter)', letterSpacing: '0.08em' }}>Home</Link>
+        <Link href="/" style={{ fontSize: '11px', color: 'var(--color-muted-text)', textDecoration: 'none', fontFamily: 'var(--font-inter)', letterSpacing: '0.08em' }}>Home</Link>
         <span style={{ color: '#EDD9AF' }}>›</span>
         <span style={{ fontSize: '11px', color: '#1A1014', fontFamily: 'var(--font-inter)', letterSpacing: '0.08em' }}>Collection</span>
       </div>
@@ -562,14 +564,14 @@ function ProductsContent() {
               <X size={12} />
             </button>
           )) : (
-            <span style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>
+            <span style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '14px' }}>
               No active filters
             </span>
           )}
         </div>
 
         <div className="flex items-center gap-4">
-          <span className="products-count" style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>{products.length} pieces</span>
+          <span className="products-count" style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '14px' }}>{products.length} pieces</span>
           <Select value={sort} onValueChange={(value) => updateFilter('sort', value)}>
             <SelectTrigger style={{ backgroundColor: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '2px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '12px', minWidth: '180px' }}>
               <SelectValue placeholder="Sort" />
@@ -617,15 +619,15 @@ function ProductsContent() {
           <div style={{ marginBottom: '30px' }}>
             <p style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.16em', marginBottom: '12px' }}>METAL</p>
             <div className="flex flex-wrap gap-2">
-              {metals.map((metal) => (
+              {METALS.map((metal) => (
                 <button
-                  key={metal}
-                  onClick={() => updateFilter('metal', normalizeToken(selectedMetal) === normalizeToken(metal) ? '' : metal)}
+                  key={metal.value}
+                  onClick={() => updateFilter('metal', selectedMetal === metal.value ? '' : metal.value)}
                   className="product-filter-pill flex items-center gap-2"
-                  style={{ backgroundColor: normalizeToken(selectedMetal) === normalizeToken(metal) ? '#1A1014' : 'transparent', border: '0.5px solid #EDD9AF', borderRadius: '999px', color: normalizeToken(selectedMetal) === normalizeToken(metal) ? '#FBF5F0' : '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '11px', padding: '8px 12px' }}
+                  style={{ backgroundColor: selectedMetal === metal.value ? '#1A1014' : 'transparent', border: '0.5px solid #EDD9AF', borderRadius: '999px', color: selectedMetal === metal.value ? '#FBF5F0' : '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '11px', padding: '8px 12px' }}
                 >
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: metalSwatches[metal], border: '0.5px solid #EDD9AF' }} />
-                  {metal}
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: metal.hex, border: '0.5px solid #EDD9AF' }} />
+                  {metal.label}
                 </button>
               ))}
             </div>
@@ -672,7 +674,7 @@ function ProductsContent() {
             <div className="flex flex-col items-center justify-center gap-4 py-24 text-center" style={{ backgroundColor: '#FDF8F2', border: '0.5px solid #EDD9AF' }}>
               <Gem color="#C9A961" size={54} strokeWidth={1.1} />
               <h2 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '24px', fontWeight: 400, margin: 0 }}>Something lost its sparkle</h2>
-              <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '14px', margin: 0 }}>{error}</p>
+              <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '15px', lineHeight: 1.625, margin: 0 }}>{error}</p>
               <button onClick={loadProducts} style={{ backgroundColor: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.18em', padding: '12px 18px' }}>RETRY</button>
             </div>
           ) : isLoading ? (
@@ -687,7 +689,7 @@ function ProductsContent() {
             <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
               <Gem color="#C9A961" size={72} strokeWidth={1.1} />
               <h2 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '24px', fontWeight: 400, margin: 0 }}>No pieces found</h2>
-              <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '14px', margin: 0 }}>Try adjusting your filters.</p>
+              <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '15px', lineHeight: 1.625, margin: 0 }}>Try adjusting your filters.</p>
               <button onClick={clearFilters} style={{ backgroundColor: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.18em', padding: '12px 18px' }}>CLEAR FILTERS</button>
             </div>
           )}

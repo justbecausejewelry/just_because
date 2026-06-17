@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from 'next'
-import { Cormorant_Garamond, Jost, Italianno } from 'next/font/google'
+import { Cormorant_Garamond, Italianno, Jost } from 'next/font/google'
+import { PageViewTracker } from '@/components/analytics/PageViewTracker'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { AppShell } from '@/components/layout/AppShell'
+import DiamondCursor from '@/components/ui/DiamondCursor'
 import { CartProvider } from '@/context/CartContext'
 import { ToastProvider } from '@/context/ToastContext'
 import { WishlistProvider } from '@/context/WishlistContext'
-import { PageViewTracker } from '@/components/analytics/PageViewTracker'
-import DiamondCursor from '@/components/ui/DiamondCursor'
 import './globals.css'
 
 const cormorant = Cormorant_Garamond({
@@ -31,8 +32,24 @@ const italianno = Italianno({
 })
 
 export const metadata: Metadata = {
-  title: 'Just Because · Lab-Grown Diamonds',
+  metadataBase: new URL('https://justbecausejewelry.com'),
+  title: 'Just Because - Lab-Grown Diamond Jewelry',
   description: "Lab-grown diamonds and 18k recycled gold, crafted for every moment that doesn't ask for an occasion.",
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    title: 'Just Because - Lab-Grown Diamond Jewelry',
+    description: "Lab-grown diamonds and 18k recycled gold, crafted for every moment that doesn't ask for an occasion.",
+    url: 'https://justbecausejewelry.com',
+    siteName: 'Just Because Jewelry',
+    images: ['/apple-touch-icon.png'],
+    type: 'website',
+  },
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/apple-touch-icon.png',
+  },
 }
 
 export const viewport: Viewport = {
@@ -57,7 +74,9 @@ export default function RootLayout({
           <WishlistProvider>
             <ToastProvider>
               <PageViewTracker />
-              <AppShell>{children}</AppShell>
+              <ErrorBoundary>
+                <AppShell>{children}</AppShell>
+              </ErrorBoundary>
             </ToastProvider>
           </WishlistProvider>
         </CartProvider>

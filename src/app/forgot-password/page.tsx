@@ -92,7 +92,7 @@ export default function ForgotPasswordPage() {
         }
 
         .password-input::placeholder {
-          color: #B8A090;
+          color: var(--color-muted-text);
         }
 
         .password-primary-button {
@@ -222,7 +222,7 @@ export default function ForgotPasswordPage() {
                 <p
                   style={{
                     fontSize: '13px',
-                    color: '#B8A090',
+                    color: 'var(--color-muted-text)',
                     marginBottom: '28px',
                     lineHeight: 1.6,
                   }}
@@ -289,7 +289,7 @@ export default function ForgotPasswordPage() {
                       alignItems: 'center',
                       gap: '8px',
                       fontSize: '13px',
-                      color: '#B8A090',
+                      color: 'var(--color-muted-text)',
                       textDecoration: 'none',
                       fontFamily: 'var(--font-inter)',
                     }}
@@ -332,7 +332,7 @@ export default function ForgotPasswordPage() {
                 <p
                   style={{
                     fontSize: '13px',
-                    color: '#B8A090',
+                    color: 'var(--color-muted-text)',
                     lineHeight: 1.7,
                     marginBottom: '8px',
                   }}
@@ -353,7 +353,7 @@ export default function ForgotPasswordPage() {
                 <p
                   style={{
                     fontSize: '12px',
-                    color: '#B8A090',
+                    color: 'var(--color-muted-text)',
                     lineHeight: 1.6,
                     marginBottom: '28px',
                   }}
@@ -393,7 +393,7 @@ export default function ForgotPasswordPage() {
                     alignItems: 'center',
                     gap: '8px',
                     fontSize: '13px',
-                    color: '#B8A090',
+                    color: 'var(--color-muted-text)',
                     textDecoration: 'none',
                     textAlign: 'center',
                   }}

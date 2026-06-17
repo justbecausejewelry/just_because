@@ -97,7 +97,7 @@ export function Footer() {
             </span>
             </div>
           </Link>
-          <p className="mx-auto mt-3 max-w-[260px] leading-[1.7] md:mx-0" style={{ color: 'rgba(251,245,240,0.6)', fontFamily: 'var(--font-cormorant)', fontSize: '16px', fontStyle: 'italic' }}>
+          <p className="footer-tagline mx-auto mt-3 max-w-[260px] md:mx-0" style={{ color: 'rgba(253,248,242,0.72)', fontFamily: 'var(--font-cormorant)', fontSize: '16px', fontStyle: 'italic', lineHeight: 1.6 }}>
             Lab-grown diamonds and recycled gold, crafted for every moment that
             does not need a name.
           </p>

@@ -1,5 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/server/security'
 
 type ProfileRow = {
   id?: string
@@ -19,15 +19,13 @@ type OrderRow = {
   total?: number | null
 }
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+export async function GET(request: NextRequest) {
+  const auth = await requireAdmin(request)
+  if ('error' in auth) return auth.error
 
-export async function GET() {
   const [{ data: profiles, error: profilesError }, { data: orders, error: ordersError }] = await Promise.all([
-    supabase.from('UserProfile').select('*').order('createdAt', { ascending: false }),
-    supabase.from('Order').select('customerEmail,total'),
+    auth.admin.from('UserProfile').select('*').order('createdAt', { ascending: false }),
+    auth.admin.from('Order').select('customerEmail,total'),
   ])
 
   if (profilesError) {

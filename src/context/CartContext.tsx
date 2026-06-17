@@ -17,6 +17,7 @@ import {
   updateCartQuantity as updateGuestCartQuantity,
   type CartItem as GuestCartItem,
 } from '@/lib/cart'
+import { LOOSE_DIAMOND_VALUE, normalizeMetalSelection } from '@/config/productOptions'
 
 export interface CartItem {
   id: string
@@ -33,6 +34,8 @@ export interface CartItem {
   engraving?: string
   quantity: number
   unitPrice: number
+  priceAtAdd?: number
+  addedAt?: string
   priceBreakdown: {
     base: number
     metal: number
@@ -59,6 +62,7 @@ type CartRow = {
   quantity: number
   unitPrice: number
   priceBreakdown?: CartItem['priceBreakdown'] | null
+  createdAt?: string | null
 }
 
 interface CartContextType {
@@ -89,13 +93,15 @@ function defaultBreakdown(): CartItem['priceBreakdown'] {
 }
 
 function mapCartRow(row: CartRow): CartItem {
+  const selectedMetal = normalizeMetalSelection(row.selectedMetal) || row.selectedMetal
+
   return {
     id: row.id,
     productId: row.productId,
     productSlug: row.productSlug,
     productTitle: row.productTitle,
     productImage: row.productImage || '',
-    selectedMetal: row.selectedMetal,
+    selectedMetal,
     selectedCarat: row.selectedCarat,
     selectedShape: row.selectedShape,
     selectedColor: row.selectedColor || undefined,
@@ -104,18 +110,23 @@ function mapCartRow(row: CartRow): CartItem {
     engraving: row.engraving || undefined,
     quantity: row.quantity,
     unitPrice: row.unitPrice,
+    priceAtAdd: row.unitPrice,
+    addedAt: row.createdAt || undefined,
     priceBreakdown: row.priceBreakdown || defaultBreakdown(),
   }
 }
 
 function guestToCartItem(item: GuestCartItem): CartItem {
+  const lockedPrice = item.priceAtAdd ?? item.unitPrice ?? item.price
+  const selectedMetal = normalizeMetalSelection(item.selectedMetal) || (item.type === 'diamond' ? LOOSE_DIAMOND_VALUE : 'white_gold')
+
   return {
     id: item.id,
     productId: item.productId || item.id,
     productSlug: item.productSlug || item.id,
     productTitle: item.productTitle || item.name,
     productImage: item.productImage || item.imageUrl,
-    selectedMetal: item.selectedMetal || (item.type === 'diamond' ? 'Loose diamond' : 'White Gold'),
+    selectedMetal,
     selectedCarat: item.selectedCarat ?? item.carat ?? 0,
     selectedShape: item.selectedShape || item.shape || 'Round',
     selectedColor: item.selectedColor,
@@ -123,13 +134,16 @@ function guestToCartItem(item: GuestCartItem): CartItem {
     ringSize: item.ringSize,
     engraving: item.engraving,
     quantity: item.quantity,
-    unitPrice: item.unitPrice ?? item.price,
+    unitPrice: lockedPrice,
+    priceAtAdd: lockedPrice,
+    addedAt: item.addedAt,
     priceBreakdown: item.priceBreakdown || defaultBreakdown(),
   }
 }
 
 function cartItemToGuestItem(item: Omit<CartItem, 'id'>, id: string): GuestCartItem {
-  const isDiamond = item.selectedMetal === 'Loose diamond'
+  const selectedMetal = normalizeMetalSelection(item.selectedMetal) || item.selectedMetal
+  const isDiamond = selectedMetal === LOOSE_DIAMOND_VALUE
 
   return {
     id,
@@ -144,7 +158,7 @@ function cartItemToGuestItem(item: Omit<CartItem, 'id'>, id: string): GuestCartI
     productSlug: item.productSlug,
     productTitle: item.productTitle,
     productImage: item.productImage,
-    selectedMetal: item.selectedMetal,
+    selectedMetal,
     selectedCarat: item.selectedCarat,
     selectedShape: item.selectedShape,
     selectedColor: item.selectedColor,
@@ -152,6 +166,8 @@ function cartItemToGuestItem(item: Omit<CartItem, 'id'>, id: string): GuestCartI
     ringSize: item.ringSize,
     engraving: item.engraving,
     unitPrice: item.unitPrice,
+    priceAtAdd: item.priceAtAdd ?? item.unitPrice,
+    addedAt: item.addedAt ?? new Date().toISOString(),
     priceBreakdown: item.priceBreakdown,
   }
 }
@@ -221,9 +237,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [userId])
 
   const addItem = async (item: Omit<CartItem, 'id'>) => {
+    const lockedPrice = item.priceAtAdd ?? item.unitPrice
+    if (!Number.isFinite(lockedPrice)) return
+
+    const selectedMetal = normalizeMetalSelection(item.selectedMetal) || item.selectedMetal
+    const itemWithLockedPrice = {
+      ...item,
+      selectedMetal,
+      unitPrice: lockedPrice,
+      priceAtAdd: lockedPrice,
+      addedAt: item.addedAt ?? new Date().toISOString(),
+    }
+
     if (!userId) {
-      const guestId = `${item.productId}-${item.selectedMetal}-${item.selectedCarat}-${item.selectedShape}-${item.selectedColor || ''}-${item.selectedClarity || ''}-${item.ringSize || ''}-${item.engraving || ''}`
-      addGuestCartItem(cartItemToGuestItem(item, guestId))
+      const guestId = `${itemWithLockedPrice.productId}-${itemWithLockedPrice.selectedMetal}-${itemWithLockedPrice.selectedCarat}-${itemWithLockedPrice.selectedShape}-${itemWithLockedPrice.selectedColor || ''}-${itemWithLockedPrice.selectedClarity || ''}-${itemWithLockedPrice.ringSize || ''}-${itemWithLockedPrice.engraving || ''}`
+      addGuestCartItem(cartItemToGuestItem(itemWithLockedPrice, guestId))
       setItems(getGuestCart().map(guestToCartItem))
       setIsMiniCartOpen(true)
       window.setTimeout(() => setIsMiniCartOpen(false), 3000)
@@ -234,26 +262,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
       .from('UserCart')
       .insert({
         userId,
-        productId: item.productId,
-        productSlug: item.productSlug,
-        productTitle: item.productTitle,
-        productImage: item.productImage,
-        selectedMetal: item.selectedMetal,
-        selectedCarat: item.selectedCarat,
-        selectedShape: item.selectedShape,
-        selectedColor: item.selectedColor,
-        selectedClarity: item.selectedClarity,
-        ringSize: item.ringSize,
-        engraving: item.engraving,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        priceBreakdown: item.priceBreakdown,
+        productId: itemWithLockedPrice.productId,
+        productSlug: itemWithLockedPrice.productSlug,
+        productTitle: itemWithLockedPrice.productTitle,
+        productImage: itemWithLockedPrice.productImage,
+        selectedMetal: itemWithLockedPrice.selectedMetal,
+        selectedCarat: itemWithLockedPrice.selectedCarat,
+        selectedShape: itemWithLockedPrice.selectedShape,
+        selectedColor: itemWithLockedPrice.selectedColor,
+        selectedClarity: itemWithLockedPrice.selectedClarity,
+        ringSize: itemWithLockedPrice.ringSize,
+        engraving: itemWithLockedPrice.engraving,
+        quantity: itemWithLockedPrice.quantity,
+        unitPrice: itemWithLockedPrice.unitPrice,
+        priceBreakdown: itemWithLockedPrice.priceBreakdown,
       })
       .select()
       .single()
 
     if (!error && data) {
-      const savedItem = { ...item, id: (data as CartRow).id }
+      const savedItem = { ...itemWithLockedPrice, id: (data as CartRow).id }
       setItems((prev) => [...prev, savedItem])
       void trackCartEvent('added', cartItemToGuestItem(savedItem, savedItem.id), userId)
       setIsMiniCartOpen(true)

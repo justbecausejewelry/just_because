@@ -21,7 +21,7 @@ function statusStyle(status: Conversation['status']) {
     return { background: '#E8C4D0', color: '#6B2D44', border: '0.5px solid #E8C4D0' }
   }
   if (status === 'resolved') {
-    return { background: '#FDF8F2', color: '#B8A090', border: '0.5px solid #EDD9AF' }
+    return { background: '#FDF8F2', color: 'var(--color-muted-text)', border: '0.5px solid #EDD9AF' }
   }
   return { background: 'transparent', color: '#C9A961', border: '0.5px solid #C9A961' }
 }
@@ -38,15 +38,18 @@ export default function MessagesPage() {
   useEffect(() => {
     const load = async () => {
       const {
-        data: { user },
-      } = await supabaseAuth.auth.getUser()
+        data: { session },
+      } = await supabaseAuth.auth.getSession()
+      const user = session?.user
 
-      if (!user) {
+      if (!user || !session?.access_token) {
         router.replace('/login?redirect=/account/messages')
         return
       }
 
-      const response = await fetch(`/api/conversations?customerId=${encodeURIComponent(user.id)}`)
+      const response = await fetch('/api/conversations', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
       const payload = (await response.json()) as { conversations?: Conversation[] }
       setConversations(payload.conversations || [])
       setIsLoading(false)
@@ -59,7 +62,7 @@ export default function MessagesPage() {
     <main style={{ background: '#FBF5F0', minHeight: '100vh', padding: '60px 24px' }}>
       <section style={{ maxWidth: '900px', margin: '0 auto' }}>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '28px' }}>
-          <Link href="/" style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.08em' }}>Home</Link>
+          <Link href="/" style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.08em' }}>Home</Link>
           <span style={{ color: '#EDD9AF' }}>/</span>
           <span style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.08em' }}>Messages</span>
         </div>
@@ -78,7 +81,7 @@ export default function MessagesPage() {
           <div style={{ textAlign: 'center', padding: '80px 20px', background: '#FDF8F2', border: '0.5px solid #EDD9AF' }}>
             <Gem size={58} color="#C9A961" strokeWidth={1} style={{ margin: '0 auto 18px' }} />
             <h2 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '24px', fontWeight: 400, margin: 0 }}>No messages yet</h2>
-            <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '14px', margin: '8px 0 24px' }}>Have a question? We would love to help.</p>
+            <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '14px', margin: '8px 0 24px' }}>Have a question? We would love to help.</p>
             <Link className="btn-primary" href="/account/messages/new">SEND A MESSAGE</Link>
           </div>
         ) : (
@@ -113,10 +116,10 @@ export default function MessagesPage() {
                         </span>
                       </div>
                     )}
-                    <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', margin: '6px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px', margin: '6px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       Conversation with the Just Because team
                     </p>
-                    <time style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px' }}>{formatDate(conversation.updatedAt || conversation.createdAt || new Date().toISOString())}</time>
+                    <time style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '11px' }}>{formatDate(conversation.updatedAt || conversation.createdAt || new Date().toISOString())}</time>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
                     <span style={{ ...statusStyle(conversation.status), borderRadius: '999px', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.12em', padding: '5px 10px', textTransform: 'uppercase' }}>{conversation.status}</span>

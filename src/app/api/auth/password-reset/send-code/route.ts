@@ -1,13 +1,19 @@
 import { randomInt } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { z } from 'zod'
 import { OTP_WINDOW_MINUTES, sendBrandedOtpEmail } from '@/lib/otpEmail'
+import { checkRateLimit, rateLimitResponse } from '@/lib/server/rateLimit'
 
 export const runtime = 'nodejs'
 
 type SendPasswordResetCodeBody = {
   email?: unknown
 }
+
+const passwordResetSendSchema = z.object({
+  email: z.string().trim().email('Enter a valid email address').max(254),
+})
 
 type ProfileRow = {
   userId?: string | null
@@ -45,14 +51,19 @@ export async function POST(request: Request) {
   }
 
   const body: unknown = await request.json().catch(() => null)
-  if (!isRecord(body)) {
-    return NextResponse.json({ error: 'Invalid password reset payload' }, { status: 400 })
+  const parsed = passwordResetSendSchema.safeParse(isRecord(body) ? body : {})
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0]
+    return NextResponse.json({ error: issue?.message || 'Invalid password reset payload' }, { status: 400 })
   }
+  const email = normalizeEmail(parsed.data.email)
 
-  const email = normalizeEmail(body.email)
-  if (!isEmail(email)) {
-    return NextResponse.json({ error: 'Enter a valid email address' }, { status: 400 })
-  }
+  const limit = checkRateLimit({
+    key: `password-reset:${email}`,
+    limit: 3,
+    windowMs: 60 * 60 * 1000,
+  })
+  if (!limit.ok) return rateLimitResponse(limit.resetAt)
 
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
     auth: {

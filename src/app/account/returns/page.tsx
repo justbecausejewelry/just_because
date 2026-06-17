@@ -30,8 +30,8 @@ function statusStyle(status: string) {
   const normalized = normalizeReturnStatus(status)
   if (normalized === 'approved' || normalized === 'refunded') return { background: 'rgba(122,143,114,0.14)', color: '#3F5F38' }
   if (normalized === 'rejected') return { background: '#FCF0F4', color: '#A85C6A' }
-  if (normalized === 'item_received') return { background: 'rgba(184,160,144,0.16)', color: '#6B5B4E' }
-  if (normalized === 'closed') return { background: '#F5E8ED', color: '#B8A090' }
+  if (normalized === 'item_received') return { background: 'rgba(184,160,144,0.16)', color: 'var(--color-muted-text)' }
+  if (normalized === 'closed') return { background: '#F5E8ED', color: 'var(--color-muted-text)' }
   return { background: '#EDD9AF', color: '#6B4A10' }
 }
 
@@ -97,7 +97,7 @@ export default function AccountReturnsPage() {
 
   if (loading) {
     return (
-      <main style={{ alignItems: 'center', background: '#FBF5F0', color: '#B8A090', display: 'flex', fontFamily: 'var(--font-playfair)', fontSize: '20px', justifyContent: 'center', minHeight: '100vh' }}>
+      <main style={{ alignItems: 'center', background: '#FBF5F0', color: 'var(--color-muted-text)', display: 'flex', fontFamily: 'var(--font-playfair)', fontSize: '20px', justifyContent: 'center', minHeight: '100vh' }}>
         Loading returns...
       </main>
     )
@@ -121,7 +121,7 @@ export default function AccountReturnsPage() {
         <section style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', padding: '56px 24px', textAlign: 'center' }}>
           <RotateCcw size={52} color="#C9A961" strokeWidth={1.2} style={{ margin: '0 auto 18px' }} />
           <h2 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '24px', fontWeight: 400, margin: 0 }}>No return requests yet</h2>
-          <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '14px', margin: '10px 0 24px' }}>Need to return something?</p>
+          <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '14px', margin: '10px 0 24px' }}>Need to return something?</p>
           <Link href="/account/orders" className="btn-primary">GO TO MY ORDERS</Link>
         </section>
       ) : (
@@ -134,7 +134,7 @@ export default function AccountReturnsPage() {
                   <div>
                     <h2 style={{ color: '#C9A961', fontFamily: 'var(--font-playfair)', fontSize: '18px', fontWeight: 400, margin: 0 }}>{item.orderNumber || 'Order pending'}</h2>
                     <p style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', margin: '8px 0 0' }}>{item.itemName}</p>
-                    <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', margin: '5px 0 0' }}>{returnReasonLabel(item.reason)} - submitted {formatDate(item.createdAt)}</p>
+                    <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px', margin: '5px 0 0' }}>{returnReasonLabel(item.reason)} - submitted {formatDate(item.createdAt)}</p>
                     {item.authorizationNumber ? (
                       <p style={{ color: '#6B4A10', fontFamily: 'var(--font-inter)', fontSize: '12px', margin: '10px 0 0' }}>Authorization: {item.authorizationNumber}</p>
                     ) : null}

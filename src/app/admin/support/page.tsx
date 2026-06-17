@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
+import { supabaseAuth } from '@/lib/auth'
 
 type ConversationStatus = 'open' | 'replied' | 'resolved'
 
@@ -23,6 +24,11 @@ type Conversation = {
 type ConversationFilter = 'all' | 'general' | 'product' | ConversationStatus
 
 const tabs: ConversationFilter[] = ['all', 'general', 'product', 'open', 'replied', 'resolved']
+
+async function getAdminToken() {
+  const { data } = await supabaseAuth.auth.getSession()
+  return data.session?.access_token || null
+}
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(value))
@@ -49,7 +55,16 @@ export default function AdminSupportPage() {
       } else {
         params.set('status', filter)
       }
-      const response = await fetch(`/api/admin/conversations?${params.toString()}`)
+      const token = await getAdminToken()
+      if (!token) {
+        setConversations([])
+        setIsLoading(false)
+        return
+      }
+
+      const response = await fetch(`/api/admin/conversations?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
       const payload = (await response.json()) as { conversations?: Conversation[] }
       setConversations(payload.conversations || [])
       setIsLoading(false)

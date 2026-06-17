@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { z } from 'zod'
+import { checkRateLimit, rateLimitResponse } from '@/lib/server/rateLimit'
 
 export const runtime = 'nodejs'
 
@@ -7,6 +9,11 @@ type VerifyOtpBody = {
   email?: unknown
   code?: unknown
 }
+
+const verifyOtpSchema = z.object({
+  email: z.string().trim().email('Enter a valid email address.').max(254),
+  code: z.string().trim().regex(/^\d{4}$/, 'Enter the 4-digit code sent to your email.'),
+})
 
 type OtpRow = {
   id: string
@@ -40,16 +47,20 @@ export async function POST(request: Request) {
   }
 
   const body: unknown = await request.json().catch(() => null)
-  if (!isRecord(body)) {
-    return NextResponse.json({ error: 'Invalid verification payload' }, { status: 400 })
+  const parsed = verifyOtpSchema.safeParse(isRecord(body) ? body : {})
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0]
+    return NextResponse.json({ error: issue?.message || 'Invalid verification payload' }, { status: 400 })
   }
+  const email = normalizeEmail(parsed.data.email)
+  const code = normalizeCode(parsed.data.code)
 
-  const email = normalizeEmail(body.email)
-  const code = normalizeCode(body.code)
-
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !/^\d{4}$/.test(code)) {
-    return NextResponse.json({ error: 'Enter the 4-digit code sent to your email.' }, { status: 400 })
-  }
+  const limit = checkRateLimit({
+    key: `verify-otp:${email}`,
+    limit: 10,
+    windowMs: 60 * 60 * 1000,
+  })
+  if (!limit.ok) return rateLimitResponse(limit.resetAt)
 
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
     auth: {

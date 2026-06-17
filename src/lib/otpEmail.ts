@@ -1,3 +1,5 @@
+import { resend, resendFromEmail } from '@/lib/email/resend'
+
 export const OTP_WINDOW_MINUTES = 10
 
 type SendBrandedOtpEmailOptions = {
@@ -74,31 +76,21 @@ function brandedOtpEmailHtml({
 }
 
 export async function sendBrandedOtpEmail(options: SendBrandedOtpEmailOptions) {
-  const resendApiKey = process.env.RESEND_API_KEY
-  if (!resendApiKey) {
-    return { ok: false, error: 'RESEND_API_KEY is not configured' }
-  }
-
-  const from = process.env.RESEND_FROM_EMAIL || 'Just Because <hello@justbecausejewelry.com>'
-  const response = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${resendApiKey}`,
-      'Content-Type': 'application/json',
-      'User-Agent': 'just-because/1.0',
-    },
-    body: JSON.stringify({
-      from,
-      to: options.to,
-      subject: options.subject,
-      html: brandedOtpEmailHtml(options),
-    }),
+  const { data, error } = await resend.emails.send({
+    from: resendFromEmail,
+    to: options.to,
+    subject: options.subject,
+    html: brandedOtpEmailHtml(options),
   })
 
-  if (response.ok) {
+  if (!error) {
+    console.log('[resend] otp email accepted:', {
+      to: options.to,
+      subject: options.subject,
+      id: data?.id || 'unknown',
+    })
     return { ok: true, error: '' }
   }
 
-  const body = await response.text().catch(() => '')
-  return { ok: false, error: body || 'Unable to send verification email' }
+  return { ok: false, error: error.message || 'Unable to send verification email' }
 }

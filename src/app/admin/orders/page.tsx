@@ -3,6 +3,8 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Check, Download, ExternalLink, Eye, MessageSquare, PackageCheck, Search, Truck, X } from 'lucide-react'
+import { getMetalLabel } from '@/config/productOptions'
+import { supabaseAuth } from '@/lib/auth'
 import {
   CARRIERS,
   getCarrierLabel,
@@ -81,7 +83,7 @@ type Order = {
 
 const filters: Array<{ label: string; value: 'all' | OrderStatus }> = [
   { label: 'All', value: 'all' },
-  { label: 'Received', value: 'received' },
+  { label: 'Pending', value: 'pending' },
   { label: 'Confirmed', value: 'confirmed' },
   { label: 'Processing', value: 'processing' },
   { label: 'Shipped', value: 'shipped' },
@@ -130,7 +132,7 @@ function itemTitle(item: OrderItem) {
 
 function itemDetails(item: OrderItem) {
   return [
-    item.selectedMetal,
+    getMetalLabel(item.selectedMetal),
     item.selectedCarat ? `${item.selectedCarat}ct` : null,
     item.selectedShape,
     item.selectedColor,
@@ -156,8 +158,13 @@ function orderTotal(order: Order) {
   return order.total || order.subtotal || 0
 }
 
+async function getAdminToken() {
+  const { data } = await supabaseAuth.auth.getSession()
+  return data.session?.access_token || null
+}
+
 function isProcessingStatus(status: OrderStatus) {
-  return status === 'processing' || status === 'in_production'
+  return status === 'processing'
 }
 
 function timelineEvents(order: Order): OrderEvent[] {
@@ -166,14 +173,14 @@ function timelineEvents(order: Order): OrderEvent[] {
   const status = normalizeOrderStatus(order.status)
   const events: OrderEvent[] = [
     {
-      id: `${order.id}-received`,
-      status: 'received',
+      id: `${order.id}-confirmed`,
+      status: 'confirmed',
       message: 'Order placed.',
       created_at: order.createdAt,
     },
   ]
 
-  if (['confirmed', 'processing', 'in_production', 'shipped', 'delivered'].includes(status)) {
+  if (['processing', 'shipped', 'delivered', 'completed'].includes(status)) {
     events.push({
       id: `${order.id}-confirmed`,
       status: 'confirmed',
@@ -182,7 +189,7 @@ function timelineEvents(order: Order): OrderEvent[] {
     })
   }
 
-  if (['processing', 'in_production', 'shipped', 'delivered'].includes(status)) {
+  if (['processing', 'shipped', 'delivered', 'completed'].includes(status)) {
     events.push({
       id: `${order.id}-processing`,
       status: 'processing',
@@ -191,7 +198,7 @@ function timelineEvents(order: Order): OrderEvent[] {
     })
   }
 
-  if (['shipped', 'delivered'].includes(status)) {
+  if (['shipped', 'delivered', 'completed'].includes(status)) {
     events.push({
       id: `${order.id}-shipped`,
       status: 'shipped',
@@ -232,7 +239,16 @@ export default function AdminOrdersPage() {
     setLoading(true)
 
     try {
-      const response = await fetch('/api/admin/orders')
+      const token = await getAdminToken()
+      if (!token) {
+        setError('Admin session expired. Please sign in again.')
+        setOrders([])
+        return
+      }
+
+      const response = await fetch('/api/admin/orders', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
       const payload = (await response.json()) as {
         orders?: Order[]
         error?: string
@@ -264,7 +280,7 @@ export default function AdminOrdersPage() {
 
     return orders.filter((order) => {
       const status = normalizeOrderStatus(order.status)
-      const matchesStatus = filter === 'all' || status === filter || (filter === 'processing' && status === 'in_production')
+      const matchesStatus = filter === 'all' || status === filter
       const haystack = [
         order.orderNumber,
         order.customerName,
@@ -284,8 +300,8 @@ export default function AdminOrdersPage() {
     const revenue = orders.reduce((sum, order) => sum + orderTotal(order), 0)
     return {
       total: orders.length,
-      pending: orders.filter((order) => ['received', 'pending'].includes(normalizeOrderStatus(order.status))).length,
-      processing: orders.filter((order) => ['confirmed', 'processing', 'in_production'].includes(normalizeOrderStatus(order.status))).length,
+      pending: orders.filter((order) => normalizeOrderStatus(order.status) === 'pending').length,
+      processing: orders.filter((order) => ['confirmed', 'processing'].includes(normalizeOrderStatus(order.status))).length,
       shipped: orders.filter((order) => normalizeOrderStatus(order.status) === 'shipped').length,
       revenue,
     }
@@ -296,9 +312,15 @@ export default function AdminOrdersPage() {
     setError(null)
 
     try {
+      const token = await getAdminToken()
+      if (!token) {
+        setError('Admin session expired. Please sign in again.')
+        return
+      }
+
       const response = await fetch('/api/admin/orders', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ orderId, status }),
       })
       const payload = (await response.json()) as { error?: string }
@@ -336,9 +358,15 @@ export default function AdminOrdersPage() {
     setError(null)
 
     try {
+      const token = await getAdminToken()
+      if (!token) {
+        setError('Admin session expired. Please sign in again.')
+        return
+      }
+
       const response = await fetch('/api/admin/orders', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           orderId: order.id,
           status: 'shipped',
@@ -355,7 +383,7 @@ export default function AdminOrdersPage() {
         return
       }
 
-      setNotice('Order marked as shipped. Prototype email sent to customer.')
+      setNotice('Order marked as shipped. Shipping email sent to customer.')
       setShippingOrder(null)
       await fetchOrders()
     } finally {
@@ -579,7 +607,7 @@ function OrderActionButtons({
     padding: '8px 10px',
   }
 
-  if (status === 'received' || status === 'pending') {
+  if (status === 'pending') {
     return (
       <button disabled={saving} onClick={onConfirm} style={{ ...baseStyle, background: '#1A1014', color: '#FBF5F0' }}>
         <Check size={13} />

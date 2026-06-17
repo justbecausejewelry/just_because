@@ -1,0 +1,286 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+import {
+  LOOSE_DIAMOND_VALUE,
+  metalMatches,
+  normalizeDiamondClarity,
+  normalizeDiamondColor,
+  normalizeDiamondShape,
+  normalizeMetalSelection,
+  normalizeToken,
+  optionMatches,
+} from '@/config/productOptions'
+
+type ModifierMap = Record<string, { enabled?: boolean; modifier?: number }>
+
+export type CheckoutLineInput = {
+  productId: string
+  productSlug?: string
+  productTitle?: string
+  productImage?: string
+  selectedMetal?: string
+  selectedCarat?: number
+  selectedShape?: string
+  selectedColor?: string
+  selectedClarity?: string
+  ringSize?: string
+  engraving?: string
+  quantity: number
+}
+
+export type ComputedLine = {
+  productId: string | null
+  productTitle: string
+  productImage: string | null
+  selectedMetal?: string
+  selectedCarat?: number
+  selectedShape?: string
+  selectedColor?: string
+  selectedClarity?: string
+  ringSize?: string
+  engraving?: string
+  quantity: number
+  unitPrice: number
+  totalPrice: number
+  priceBreakdown: {
+    base: number
+    metal: number
+    carat: number
+    shape: number
+    color: number
+    clarity: number
+  }
+}
+
+type ProductRow = {
+  id: string
+  title?: string | null
+  images?: string[] | null
+  basePrice?: number | null
+  pricePerCarat?: number | null
+  defaultCarat?: number | null
+  metalPricing?: unknown
+  caratPricing?: unknown
+  shapePricing?: unknown
+  colorPricing?: unknown
+  clarityPricing?: unknown
+  availableMetals?: string[] | null
+  availableCarats?: number[] | null
+  availableShapes?: string[] | null
+  availableColors?: string[] | null
+  availableClarities?: string[] | null
+  availableSizes?: string[] | null
+}
+
+type DiamondRow = {
+  id: string
+  shape?: string | null
+  carat?: number | null
+  color?: string | null
+  clarity?: string | null
+  price?: number | null
+  imageUrl?: string | null
+  isAvailable?: boolean | null
+}
+
+type DiscountRow = {
+  code: string
+  type?: string | null
+  value?: number | null
+  minOrderAmt?: number | null
+  maxUses?: number | null
+  usedCount?: number | null
+  isActive?: boolean | null
+  expiresAt?: string | null
+}
+
+export class CheckoutValidationError extends Error {
+  code: string
+  field: string
+
+  constructor(code: string, field: string, message: string) {
+    super(message)
+    this.name = 'CheckoutValidationError'
+    this.code = code
+    this.field = field
+  }
+}
+
+function getModifier(pricing: unknown, key?: string | number) {
+  if (key === undefined || key === null || typeof pricing !== 'object' || pricing === null) {
+    return 0
+  }
+
+  const map = pricing as ModifierMap
+  const stringKey = String(key)
+  const normalizedMetal = normalizeMetalSelection(stringKey)
+  const normalizedToken = normalizeToken(stringKey)
+  const matchedKey = Object.keys(map).find((candidate) => (
+    candidate === stringKey ||
+    (normalizedMetal && normalizeMetalSelection(candidate) === normalizedMetal) ||
+    (normalizedToken && normalizeToken(candidate) === normalizedToken)
+  ))
+  const value = matchedKey ? map[matchedKey] : undefined
+  if (!value?.enabled) return 0
+  return typeof value.modifier === 'number' && Number.isFinite(value.modifier) ? value.modifier : 0
+}
+
+function includesValue(values: string[] | number[] | null | undefined, value: string | number | undefined, matcher?: (left: string, right: string) => boolean) {
+  if (value === undefined || value === null || !values?.length) return true
+  const selected = String(value)
+  if (values.map(String).includes(selected)) return true
+  if (!matcher) return false
+  return values.map(String).some((candidate) => matcher(candidate, selected))
+}
+
+function assertAllowed(condition: boolean, code: string, field: string, message: string) {
+  if (!condition) throw new CheckoutValidationError(code, field, message)
+}
+
+function productImage(product: ProductRow) {
+  return Array.isArray(product.images) ? product.images[0] || null : null
+}
+
+function itemField(index: number, field: string) {
+  return `cart_items[${index}].${field}`
+}
+
+async function computeProductLine(admin: SupabaseClient, item: CheckoutLineInput, index: number): Promise<ComputedLine> {
+  const { data, error } = await admin
+    .from('Product')
+    .select('id,title,images,basePrice,pricePerCarat,defaultCarat,metalPricing,caratPricing,shapePricing,colorPricing,clarityPricing,availableMetals,availableCarats,availableShapes,availableColors,availableClarities,availableSizes')
+    .eq('id', item.productId)
+    .maybeSingle()
+
+  if (error || !data) throw new Error('Product not found')
+
+  const product = data as ProductRow
+  const selectedMetal = normalizeMetalSelection(item.selectedMetal)
+  const selectedShape = normalizeDiamondShape(item.selectedShape) || item.selectedShape
+  const selectedColor = normalizeDiamondColor(item.selectedColor) || item.selectedColor
+  const selectedClarity = normalizeDiamondClarity(item.selectedClarity) || item.selectedClarity
+
+  assertAllowed(Boolean(selectedMetal), 'INVALID_METAL', itemField(index, 'selectedMetal'), 'Selected metal is not available')
+  assertAllowed(includesValue(product.availableMetals, selectedMetal, metalMatches), 'INVALID_METAL', itemField(index, 'selectedMetal'), 'Selected metal is not available')
+  assertAllowed(!product.availableCarats?.length || item.selectedCarat !== undefined, 'INVALID_CARAT', itemField(index, 'selectedCarat'), 'Please select a carat for this product')
+  assertAllowed(includesValue(product.availableCarats, item.selectedCarat), 'INVALID_CARAT', itemField(index, 'selectedCarat'), `${item.selectedCarat}ct is not available for this product`)
+  assertAllowed(includesValue(product.availableShapes, selectedShape, optionMatches), 'INVALID_SHAPE', itemField(index, 'selectedShape'), 'Selected shape is not available')
+  assertAllowed(includesValue(product.availableColors, selectedColor, (left, right) => left.toUpperCase() === right.toUpperCase()), 'INVALID_COLOR', itemField(index, 'selectedColor'), 'Selected color is not available')
+  assertAllowed(includesValue(product.availableClarities, selectedClarity, (left, right) => left.toUpperCase() === right.toUpperCase()), 'INVALID_CLARITY', itemField(index, 'selectedClarity'), 'Selected clarity is not available')
+  assertAllowed(includesValue(product.availableSizes, item.ringSize), 'INVALID_SIZE', itemField(index, 'ringSize'), 'Selected size is not available')
+
+  const base = Number(product.basePrice || 0)
+  const configuredCaratModifier = getModifier(product.caratPricing, item.selectedCarat)
+  const caratDelta = item.selectedCarat && !configuredCaratModifier
+    ? Math.max(0, item.selectedCarat - Number(product.defaultCarat || 0)) * Number(product.pricePerCarat || 300)
+    : configuredCaratModifier
+
+  const breakdown = {
+    base,
+    metal: getModifier(product.metalPricing, selectedMetal),
+    carat: caratDelta,
+    shape: getModifier(product.shapePricing, selectedShape),
+    color: getModifier(product.colorPricing, selectedColor),
+    clarity: getModifier(product.clarityPricing, selectedClarity),
+  }
+  const unitPrice = Math.round(Object.values(breakdown).reduce((sum, value) => sum + value, 0))
+
+  return {
+    productId: product.id,
+    productTitle: product.title || item.productTitle || 'Just Because piece',
+    productImage: productImage(product) || item.productImage || null,
+    selectedMetal,
+    selectedCarat: item.selectedCarat,
+    selectedShape,
+    selectedColor,
+    selectedClarity,
+    ringSize: item.ringSize,
+    engraving: item.engraving,
+    quantity: item.quantity,
+    unitPrice,
+    totalPrice: unitPrice * item.quantity,
+    priceBreakdown: breakdown,
+  }
+}
+
+async function computeDiamondLine(admin: SupabaseClient, item: CheckoutLineInput, index: number): Promise<ComputedLine> {
+  const { data, error } = await admin
+    .from('Diamond')
+    .select('id,shape,carat,color,clarity,price,imageUrl,isAvailable')
+    .eq('id', item.productId)
+    .maybeSingle()
+
+  if (error || !data) throw new Error('Diamond not found')
+  const diamond = data as DiamondRow
+  assertAllowed(diamond.isAvailable !== false, 'DIAMOND_UNAVAILABLE', itemField(index, 'productId'), 'Diamond is no longer available')
+
+  const unitPrice = Math.round(Number(diamond.price || 0))
+  return {
+    productId: null,
+    productTitle: item.productTitle || `${diamond.carat || item.selectedCarat || ''}ct ${diamond.shape || item.selectedShape || ''} Diamond`.trim(),
+    productImage: diamond.imageUrl || item.productImage || null,
+    selectedMetal: LOOSE_DIAMOND_VALUE,
+    selectedCarat: Number(diamond.carat || item.selectedCarat || 0),
+    selectedShape: diamond.shape || item.selectedShape,
+    selectedColor: diamond.color || item.selectedColor,
+    selectedClarity: diamond.clarity || item.selectedClarity,
+    ringSize: item.ringSize,
+    engraving: item.engraving,
+    quantity: item.quantity,
+    unitPrice,
+    totalPrice: unitPrice * item.quantity,
+    priceBreakdown: {
+      base: unitPrice,
+      metal: 0,
+      carat: 0,
+      shape: 0,
+      color: 0,
+      clarity: 0,
+    },
+  }
+}
+
+export async function computeCheckoutLines(admin: SupabaseClient, items: CheckoutLineInput[]) {
+  const lines = await Promise.all(
+    items.map((item, index) =>
+      normalizeMetalSelection(item.selectedMetal) === LOOSE_DIAMOND_VALUE
+        ? computeDiamondLine(admin, item, index)
+        : computeProductLine(admin, item, index)
+    )
+  )
+  const subtotal = lines.reduce((sum, line) => sum + line.totalPrice, 0)
+  return { lines, subtotal }
+}
+
+export async function computeDiscount(admin: SupabaseClient, code: string | undefined, subtotal: number) {
+  const normalizedCode = code?.trim().toUpperCase()
+  if (!normalizedCode) return { code: null, amount: 0 }
+
+  const { data, error } = await admin
+    .from('DiscountCode')
+    .select('code,type,value,minOrderAmt,maxUses,usedCount,isActive,expiresAt')
+    .eq('code', normalizedCode)
+    .eq('isActive', true)
+    .maybeSingle()
+
+  if (error || !data) throw new Error('Invalid discount code')
+
+  const discount = data as DiscountRow
+  if (discount.expiresAt && new Date(discount.expiresAt).getTime() < Date.now()) {
+    throw new Error('Discount code has expired')
+  }
+  if (subtotal < Number(discount.minOrderAmt || 0)) {
+    throw new Error('Minimum order amount not met')
+  }
+  if (discount.maxUses !== null && discount.maxUses !== undefined && Number(discount.usedCount || 0) >= discount.maxUses) {
+    throw new Error('Discount code usage limit reached')
+  }
+
+  const rawAmount = discount.type === 'percentage'
+    ? Math.round((subtotal * Number(discount.value || 0)) / 100)
+    : Number(discount.value || 0)
+
+  return {
+    code: discount.code,
+    amount: Math.max(0, Math.min(Math.round(rawAmount), subtotal)),
+  }
+}

@@ -9,13 +9,15 @@ type DiamondVisualizerProps = {
   carat?: number
   initialShape?: string
   initialCarat?: number
+  availableCarats?: number[]
+  diamondSelected?: boolean
   onCaratChange?: (carat: number) => void
   onShapeChange?: (shape: string) => void
   showShapeSelector?: boolean
 }
 
 const SHAPES = ['Round', 'Oval', 'Cushion', 'Princess', 'Emerald', 'Radiant', 'Pear', 'Marquise', 'Heart', 'Asscher']
-const CARAT_MARKERS = [0.25, 0.5, 1, 1.5, 2, 3, 4, 5]
+const DEFAULT_CARAT_MARKERS = [0.25, 0.5, 1, 1.5, 2, 3, 4, 5]
 const CARAT_TO_MM: [number, number][] = [
   [0.2, 3.8],
   [0.25, 4.1],
@@ -44,6 +46,13 @@ const CARAT_TO_MM: [number, number][] = [
   [4, 10.4],
   [4.5, 10.7],
   [5, 11],
+  [6, 11.7],
+  [7, 12.3],
+  [8, 12.8],
+  [9, 13.3],
+  [10, 13.8],
+  [11, 14.2],
+  [12, 14.6],
 ]
 
 const SHAPE_COPY: Record<string, string> = {
@@ -60,7 +69,19 @@ const SHAPE_COPY: Record<string, string> = {
 }
 
 function normalizeCarat(carat: number) {
-  return Math.round(Math.max(0.25, Math.min(5, carat)) * 100) / 100
+  return Math.round(Math.max(0.2, Math.min(12, carat)) * 100) / 100
+}
+
+function normalizeCaratOptions(options: number[] | undefined) {
+  const source = options?.length ? options : DEFAULT_CARAT_MARKERS
+  return Array.from(
+    new Set(
+      source
+        .map((option) => Number(option))
+        .filter((option) => Number.isFinite(option) && option > 0)
+        .map(normalizeCarat)
+    )
+  ).sort((left, right) => left - right)
 }
 
 function getMMfromCarat(carat: number) {
@@ -88,9 +109,7 @@ function caratToPx(carat: number, containerWidthPx: number) {
   const diamondMM = getMMfromCarat(carat)
 
   // Calibrated from real hand photo measurements.
-  // Finger occupies ~5.2% of the clean hand plate width; 16.9mm reference finger.
-  // Visibility scale keeps carat-to-carat ratios true while keeping small stones visible.
-  const FINGER_WIDTH_FRACTION = 0.052
+  const FINGER_WIDTH_FRACTION = 0.082
   const FINGER_MM = 16.9
   const VISIBILITY_SCALE = 3.07
   const pxPerMM = (containerWidthPx * FINGER_WIDTH_FRACTION) / FINGER_MM
@@ -113,12 +132,15 @@ export default function DiamondVisualizer({
   carat,
   initialShape = 'Round',
   initialCarat = 1,
+  availableCarats,
+  diamondSelected = true,
   onCaratChange,
   onShapeChange,
   showShapeSelector = true,
 }: DiamondVisualizerProps) {
+  const caratOptions = normalizeCaratOptions(availableCarats)
   const resolvedShape = shape || initialShape || 'Round'
-  const resolvedCarat = carat ?? initialCarat ?? 1
+  const resolvedCarat = carat ?? initialCarat ?? caratOptions[0] ?? 1
   const [selectedShape, setSelectedShape] = useState(resolvedShape)
   const [selectedCarat, setSelectedCarat] = useState(normalizeCarat(resolvedCarat))
   const containerRef = useRef<HTMLDivElement>(null)
@@ -156,6 +178,10 @@ export default function DiamondVisualizer({
     onCaratChange?.(normalized)
   }
 
+  const sliderIndex = Math.max(
+    0,
+    caratOptions.findIndex((option) => option === selectedCarat)
+  )
   const mmSize = getMMfromCarat(selectedCarat).toFixed(1)
   const px = caratToPx(selectedCarat, containerWidth)
   const diamondImage = getDiamondImage(selectedShape)
@@ -230,53 +256,86 @@ export default function DiamondVisualizer({
           }}
         />
 
-        <div
-          style={{
-            height: `${px}px`,
-            left: '41.5%',
-            pointerEvents: 'none',
-            position: 'absolute',
-            top: '40%',
-            transform: 'translate(-50%, -50%)',
-            transition: 'width 250ms ease, height 250ms ease',
-            width: `${px}px`,
-          }}
-        >
-          <Image
-            src={diamondImage}
-            alt={`${selectedShape} diamond`}
-            fill
-            sizes={`${px}px`}
-            quality={90}
+        {diamondSelected ? (
+          <div
             style={{
-              objectFit: 'contain',
+              height: `${px}px`,
+              left: '41.5%',
+              pointerEvents: 'none',
+              position: 'absolute',
+              top: '32.5%',
+              transform: 'translate(-50%, -50%)',
+              transition: 'width 250ms ease, height 250ms ease',
+              width: `${px}px`,
             }}
-          />
-        </div>
+          >
+            <Image
+              src={diamondImage}
+              alt={`${selectedShape} diamond`}
+              fill
+              sizes={`${px}px`}
+              quality={90}
+              style={{
+                objectFit: 'contain',
+              }}
+            />
+          </div>
+        ) : (
+          <div
+            style={{
+              left: '41.5%',
+              pointerEvents: 'none',
+              position: 'absolute',
+              textAlign: 'center',
+              top: '32.5%',
+              transform: 'translate(-50%, -50%)',
+              width: '140px',
+            }}
+          >
+            <span
+              style={{
+                background: 'rgba(251,245,240,0.84)',
+                border: '0.5px solid rgba(201,169,97,0.45)',
+                color: '#C9A961',
+                display: 'inline-block',
+                fontFamily: 'var(--font-inter)',
+                fontSize: '11px',
+                letterSpacing: '0.08em',
+                lineHeight: 1.4,
+                padding: '6px 9px',
+                textTransform: 'uppercase',
+              }}
+            >
+              Select a carat to preview
+            </span>
+          </div>
+        )}
 
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '10px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            background: 'rgba(26,16,20,0.82)',
-            border: '0.5px solid rgba(201,169,97,0.4)',
-            display: 'flex',
-            gap: '16px',
-            alignItems: 'center',
-            padding: '5px 14px',
-            whiteSpace: 'nowrap',
-            borderRadius: '20px',
-          }}
-        >
-          <span style={{ color: '#C9A961', fontSize: '14px', fontWeight: 500 }}>
-            {selectedCarat.toFixed(2)} ct
-          </span>
-          <span style={{ color: 'rgba(251,245,240,0.75)', fontSize: '14px' }}>
-            &asymp; {mmSize} mm
-          </span>
-        </div>
+        {diamondSelected ? (
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '10px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              background: 'rgba(26,16,20,0.82)',
+              border: '0.5px solid rgba(201,169,97,0.4)',
+              display: 'flex',
+              gap: '16px',
+              alignItems: 'center',
+              padding: '5px 14px',
+              whiteSpace: 'nowrap',
+              borderRadius: '20px',
+            }}
+          >
+            <span style={{ color: '#C9A961', fontSize: '14px', fontWeight: 500 }}>
+              {selectedCarat.toFixed(2)} ct
+            </span>
+            <span style={{ color: 'rgba(251,245,240,0.75)', fontSize: '14px' }}>
+              &asymp; {mmSize} mm
+            </span>
+          </div>
+        ) : null}
       </div>
 
       <div style={{ display: 'grid', gap: '10px' }}>
@@ -285,18 +344,18 @@ export default function DiamondVisualizer({
             Carat Weight
           </span>
           <span style={{ color: '#C9A961', fontSize: '14px', fontWeight: 500 }}>
-            {selectedCarat.toFixed(2)} ct
+            {diamondSelected ? `${selectedCarat.toFixed(2)} ct` : 'Select'}
           </span>
         </div>
 
         <input
           aria-label="Diamond carat"
           type="range"
-          min="0.25"
-          max="5"
-          step="0.01"
-          value={selectedCarat}
-          onChange={(event) => handleCaratChange(Number(event.target.value))}
+          min="0"
+          max={Math.max(0, caratOptions.length - 1)}
+          step="1"
+          value={sliderIndex}
+          onChange={(event) => handleCaratChange(caratOptions[Number(event.target.value)] || caratOptions[0])}
           style={{
             accentColor: '#C9A961',
             cursor: 'pointer',
@@ -305,8 +364,8 @@ export default function DiamondVisualizer({
         />
 
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '4px', marginTop: '2px' }}>
-          {CARAT_MARKERS.map((option) => {
-            const selected = Math.abs(selectedCarat - option) < 0.1
+          {caratOptions.map((option) => {
+            const selected = diamondSelected && selectedCarat === option
             return (
               <button
                 key={option}
@@ -315,7 +374,7 @@ export default function DiamondVisualizer({
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  color: selected ? '#C9A961' : '#B8A090',
+                  color: selected ? '#C9A961' : 'var(--color-muted-text)',
                   cursor: 'pointer',
                   fontFamily: 'var(--font-jost)',
                   fontSize: '12px',
@@ -334,13 +393,13 @@ export default function DiamondVisualizer({
         style={{
           background: 'rgba(201,169,97,0.06)',
           border: '0.5px solid rgba(201,169,97,0.2)',
-          color: '#B8A090',
-          fontSize: '12px',
+          color: 'var(--color-muted-text)',
+          fontSize: '13px',
           lineHeight: 1.6,
           padding: '12px 16px',
         }}
       >
-        {getCaratContext(selectedCarat, selectedShape)}
+        {diamondSelected ? getCaratContext(selectedCarat, selectedShape) : 'Choose one of the available carat stops to see the stone on hand.'}
       </div>
 
       <style>{`

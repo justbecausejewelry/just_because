@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { DollarSign, Gem, Package, ShoppingBag } from 'lucide-react'
+import { supabaseAuth } from '@/lib/auth'
+import { normalizeOrderStatus, orderStatusLabel } from '@/lib/tracking'
 
 type Product = { id: string }
 type Diamond = { id: string }
@@ -27,10 +29,16 @@ function formatMoney(value: number) {
 }
 
 function statusStyle(status: string) {
-  if (status === 'received') return { backgroundColor: '#EDD9AF', color: '#6B4A10' }
-  if (status === 'in_production' || status === 'cad_design' || status === 'casting' || status === 'setting' || status === 'polishing') return { backgroundColor: '#E8C4D0', color: '#6B2D44' }
-  if (status === 'shipped') return { backgroundColor: '#DDE8D6', color: '#3F5D34' }
+  const normalized = normalizeOrderStatus(status)
+  if (normalized === 'confirmed') return { backgroundColor: '#EDD9AF', color: '#6B4A10' }
+  if (normalized === 'processing') return { backgroundColor: '#E8C4D0', color: '#6B2D44' }
+  if (normalized === 'shipped' || normalized === 'delivered' || normalized === 'completed') return { backgroundColor: '#DDE8D6', color: '#3F5D34' }
   return { backgroundColor: '#FDF8F2', color: '#B8A090' }
+}
+
+async function getAdminToken() {
+  const { data } = await supabaseAuth.auth.getSession()
+  return data.session?.access_token || null
 }
 
 export default function AdminDashboardPage() {
@@ -40,10 +48,13 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     const load = async () => {
+      const token = await getAdminToken()
+      if (!token) return
+      const adminHeaders = { Authorization: `Bearer ${token}` }
       const [productsResponse, diamondsResponse, ordersResponse] = await Promise.all([
-        fetch('/api/admin/products'),
+        fetch('/api/admin/products', { headers: adminHeaders }),
         fetch('/api/products?limit=1'),
-        fetch('/api/admin/stats').catch(() => null),
+        fetch('/api/admin/stats', { headers: adminHeaders }).catch(() => null),
       ])
       const productPayload = (await productsResponse.json()) as { products?: Product[] }
       setProducts(productPayload.products || [])
@@ -51,7 +62,7 @@ export default function AdminDashboardPage() {
       const apiProducts = await diamondsResponse.json()
       void apiProducts
 
-      const diamondResponse = await fetch('/api/admin/diamonds').catch(() => null)
+      const diamondResponse = await fetch('/api/admin/diamonds', { headers: adminHeaders }).catch(() => null)
       if (diamondResponse?.ok) {
         const payload = (await diamondResponse.json()) as { diamonds?: Diamond[] }
         setDiamonds(payload.diamonds || [])
@@ -111,7 +122,7 @@ export default function AdminDashboardPage() {
                   <td style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px' }}>{order.customerName}</td>
                   <td style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '13px' }}>{order.items?.length || 0}</td>
                   <td style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px' }}>{formatMoney(order.total)}</td>
-                  <td><span style={{ ...statusStyle(order.status), borderRadius: '999px', fontFamily: 'var(--font-inter)', fontSize: '10px', padding: '5px 10px' }}>{order.status}</span></td>
+                  <td><span style={{ ...statusStyle(order.status), borderRadius: '999px', fontFamily: 'var(--font-inter)', fontSize: '10px', padding: '5px 10px' }}>{orderStatusLabel(order.status)}</span></td>
                   <td style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>{new Date(order.createdAt).toLocaleDateString()}</td>
                 </tr>
               ))}

@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { supabaseAuth } from '@/lib/auth'
 import { useToast } from '@/context/ToastContext'
+import { useFormPersistence } from '@/hooks/useFormPersistence'
 
 const generalSubjects = [
   'Question about a product',
@@ -32,7 +33,7 @@ const productSubjects = [
 
 function LoadingMessage() {
   return (
-    <main style={{ minHeight: '100vh', background: '#FBF5F0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#B8A090', fontFamily: 'var(--font-playfair)', fontSize: '20px' }}>
+    <main style={{ minHeight: '100vh', background: '#FBF5F0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-muted-text)', fontFamily: 'var(--font-playfair)', fontSize: '20px' }}>
       Loading...
     </main>
   )
@@ -47,6 +48,13 @@ function NewMessageContent() {
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isChecking, setIsChecking] = useState(true)
+  const [userEmail, setUserEmail] = useState('')
+  const draftState = useMemo(() => ({ subject, message }), [message, subject])
+  const clearPersistedMessage = useFormPersistence('support_message_form_v1', draftState, (updater) => {
+    const next = typeof updater === 'function' ? updater(draftState) : updater
+    if (typeof next.subject === 'string') setSubject(next.subject)
+    if (typeof next.message === 'string') setMessage(next.message)
+  })
 
   const conversationType = searchParams.get('type') || 'general'
   const productId = searchParams.get('productId')
@@ -74,6 +82,7 @@ function NewMessageContent() {
         router.replace(`/login?redirect=${encodeURIComponent(currentPath)}`)
         return
       }
+      setUserEmail(user.email || '')
       setIsChecking(false)
     }
 
@@ -97,10 +106,11 @@ function NewMessageContent() {
     setIsSubmitting(true)
     try {
       const {
-        data: { user },
-      } = await supabaseAuth.auth.getUser()
+        data: { session },
+      } = await supabaseAuth.auth.getSession()
+      const user = session?.user
 
-      if (!user) {
+      if (!user || !session?.access_token) {
         const currentPath = `/account/messages/new?${searchParams.toString()}`
         router.replace(`/login?redirect=${encodeURIComponent(currentPath)}`)
         return
@@ -108,10 +118,11 @@ function NewMessageContent() {
 
       const response = await fetch('/api/conversations', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
-          customerId: user.id,
-          customerEmail: user.email,
           customerName: typeof user.user_metadata?.name === 'string' ? user.user_metadata.name : user.email,
           subject,
           message: trimmed,
@@ -129,6 +140,7 @@ function NewMessageContent() {
       }
 
       showToast(isProductChat ? 'Question sent! Our expert will reply soon *' : "Message sent! We'll reply soon *", 'success')
+      clearPersistedMessage()
       router.push('/account/messages')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to send message')
@@ -144,16 +156,16 @@ function NewMessageContent() {
   return (
     <main style={{ background: '#FBF5F0', minHeight: '100vh', maxWidth: '640px', margin: '0 auto', padding: '60px 24px' }}>
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '28px' }}>
-        <Link href="/" style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.08em' }}>Home</Link>
+        <Link href="/" style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.08em' }}>Home</Link>
         <span style={{ color: '#EDD9AF' }}>/</span>
-        <Link href="/account/messages" style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.08em' }}>My Account</Link>
+        <Link href="/account/messages" style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.08em' }}>My Account</Link>
         <span style={{ color: '#EDD9AF' }}>/</span>
         <span style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.08em' }}>New Message</span>
       </div>
 
       <p className="eyebrow-luxury" style={{ marginBottom: '10px' }}>SUPPORT</p>
       <h1 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '36px', fontWeight: 400, lineHeight: 1.1, margin: 0 }}>{heading}</h1>
-      <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '14px', lineHeight: 1.7, margin: '12px 0 32px' }}>
+      <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '14px', lineHeight: 1.7, margin: '12px 0 32px' }}>
         {subtext}
       </p>
 
@@ -182,7 +194,7 @@ function NewMessageContent() {
                 position: 'relative',
               }}
             >
-              <Image src={productImage} alt={productTitle || ''} fill style={{ objectFit: 'cover' }} />
+              <Image src={productImage} alt={productTitle || ''} fill sizes="64px" style={{ objectFit: 'cover' }} />
             </div>
           )}
           <div>
@@ -202,6 +214,11 @@ function NewMessageContent() {
       )}
 
       <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '20px' }}>
+        {userEmail && (
+          <div style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px', padding: '12px 14px' }}>
+            Sending as {userEmail} (logged in)
+          </div>
+        )}
         <label>
           <span className="eyebrow-luxury" style={{ display: 'block', marginBottom: '8px' }}>SUBJECT *</span>
           <select className="select-luxury" value={subject} onChange={(event) => setSubject(event.target.value)}>
@@ -223,7 +240,7 @@ function NewMessageContent() {
             onChange={(event) => setMessage(event.target.value)}
             style={{ resize: 'vertical' }}
           />
-          <span style={{ display: 'block', textAlign: 'right', color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', marginTop: '6px' }}>
+          <span style={{ display: 'block', textAlign: 'right', color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '11px', marginTop: '6px' }}>
             {message.length}/1000
           </span>
         </label>

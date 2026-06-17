@@ -1,112 +1,185 @@
-import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+import { sendAdminOrderNotificationEmail } from '@/lib/email/templates/adminOrderNotification'
+import { sendOrderConfirmationEmail } from '@/lib/email/templates/orderConfirmation'
+import { CheckoutValidationError, computeCheckoutLines, computeDiscount } from '@/lib/server/orderPricing'
+import { checkRateLimit, rateLimitResponse } from '@/lib/server/rateLimit'
+import { requireUser } from '@/lib/server/security'
+import { getAuthedUserOrGuest } from '@/lib/auth/getAuthedUserOrGuest'
 
-type OrderItemInput = {
-  productId?: string | null
-  productTitle?: string
-  productImage?: string
-  variantTitle?: string
-  selectedMetal?: string
-  selectedCarat?: number
-  selectedShape?: string
-  selectedColor?: string
-  selectedClarity?: string
-  ringSize?: string
-  engraving?: string
-  quantity: number
-  unitPrice: number
-  totalPrice?: number
-  priceBreakdown?: unknown
-}
+const lineItemSchema = z.object({
+  productId: z.string().min(1),
+  productSlug: z.string().max(180).optional(),
+  productTitle: z.string().max(180).optional(),
+  productImage: z.string().max(1000).optional(),
+  selectedMetal: z.string().max(80).optional(),
+  selectedCarat: z.coerce.number().finite().positive().max(50).optional(),
+  selectedShape: z.string().max(80).optional(),
+  selectedColor: z.string().max(80).optional(),
+  selectedClarity: z.string().max(80).optional(),
+  ringSize: z.string().max(20).optional(),
+  engraving: z.string().max(80).optional(),
+  quantity: z.coerce.number().int().positive().max(10),
+})
+
+const orderSchema = z.object({
+  customerName: z.string().trim().min(1).max(160),
+  customerEmail: z.string().trim().email().max(254),
+  customerPhone: z.string().trim().max(40).optional(),
+  shippingAddress: z.object({
+    firstName: z.string().trim().max(80).optional(),
+    lastName: z.string().trim().max(80).optional(),
+    addressLine1: z.string().trim().min(1).max(180),
+    addressLine2: z.string().trim().max(180).optional(),
+    city: z.string().trim().min(1).max(100),
+    state: z.string().trim().min(1).max(100),
+    zipCode: z.string().trim().min(1).max(30),
+    country: z.string().trim().min(1).max(80),
+    method: z.enum(['standard', 'express']).optional(),
+  }),
+  items: z.array(lineItemSchema).min(1).max(50),
+  discountCode: z.string().trim().max(80).optional(),
+})
 
 type CreatedOrder = {
   id: string
   orderNumber?: string | null
+  createdAt?: string | null
 }
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 export async function POST(request: NextRequest) {
-  const body = (await request.json()) as {
-    customerName: string
-    customerEmail: string
-    customerPhone?: string
-    shippingAddress?: unknown
-    items: OrderItemInput[]
-    subtotal: number
-    shippingAmount?: number
-    shippingCost?: number
-    taxAmount?: number
-    userId?: string | null
-    isGuest?: boolean
-    guestEmail?: string | null
-    guestName?: string | null
-    orderNumber?: string
-    status?: string
-    paymentMethod?: string
-    paymentStatus?: string
-    discount?: number
-    total: number
-    discountCode?: string
-    discountAmount?: number
+  const auth = await requireUser(request)
+  if ('error' in auth) return auth.error
+  const identity = await getAuthedUserOrGuest(request)
+  if (!identity.authed) {
+    return NextResponse.json({ error: 'Missing auth token' }, { status: 401 })
   }
 
-  if (!body.customerEmail || !body.items?.length) {
-    return NextResponse.json({ error: 'Missing customer or cart items.' }, { status: 400 })
+  const limit = checkRateLimit({
+    key: `checkout:${auth.user.id}`,
+    limit: 20,
+    windowMs: 60 * 60 * 1000,
+  })
+  if (!limit.ok) return rateLimitResponse(limit.resetAt)
+
+  const parsed = orderSchema.safeParse(await request.json().catch(() => null))
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0]
+    return NextResponse.json({
+      error: {
+        code: 'INVALID_CHECKOUT_PAYLOAD',
+        field: issue?.path.join('.') || 'checkout',
+        message: issue?.message || 'Invalid checkout payload',
+      },
+    }, { status: 400 })
   }
 
-  if (!body.userId) {
-    return NextResponse.json({ error: 'Sign in is required before payment.' }, { status: 401 })
+  const userEmail = identity.email
+  if (!userEmail || parsed.data.customerEmail.toLowerCase() !== userEmail) {
+    return NextResponse.json({
+      error: {
+        code: 'EMAIL_MISMATCH',
+        field: 'customerEmail',
+        message: 'Checkout email must match the signed-in account.',
+      },
+    }, { status: 400 })
   }
 
-  const orderNumber = body.orderNumber || `JB-${Date.now().toString().slice(-6)}`
-  const isGuest = false
-  const guestEmail = null
-  const guestName = null
+  const { data: profile, error: profileError } = await auth.admin
+    .from('UserProfile')
+    .select('email_verified')
+    .eq('userId', auth.user.id)
+    .maybeSingle()
 
-  const { data: order, error: orderError } = await supabase
+  if (profileError) {
+    console.error('[order-create] email verification profile query failed:', profileError)
+    return NextResponse.json({
+      error: {
+        code: 'PROFILE_LOOKUP_FAILED',
+        field: 'customerEmail',
+        message: 'Unable to verify your account before checkout.',
+      },
+    }, { status: 500 })
+  }
+
+  const verifiedProfile = profile as { email_verified?: boolean | null } | null
+  if (verifiedProfile?.email_verified !== true) {
+    return NextResponse.json({
+      error: {
+        code: 'EMAIL_NOT_VERIFIED',
+        field: 'customerEmail',
+        message: 'Please verify your email before placing an order.',
+      },
+    }, { status: 403 })
+  }
+
+  let computed
+  let discount
+  try {
+    computed = await computeCheckoutLines(auth.admin, parsed.data.items)
+    discount = await computeDiscount(auth.admin, parsed.data.discountCode, computed.subtotal)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to price checkout'
+    if (error instanceof CheckoutValidationError) {
+      return NextResponse.json({
+        error: {
+          code: error.code,
+          field: error.field,
+          message,
+        },
+      }, { status: 400 })
+    }
+    return NextResponse.json({
+      error: {
+        code: 'CHECKOUT_PRICING_FAILED',
+        field: 'cart_items',
+        message,
+      },
+    }, { status: 400 })
+  }
+
+  const shippingAmount = parsed.data.shippingAddress.method === 'express' ? 25 : 0
+  const taxableSubtotal = Math.max(0, computed.subtotal - discount.amount)
+  const taxAmount = Math.round(taxableSubtotal * 0.08)
+  const total = taxableSubtotal + shippingAmount + taxAmount
+  const orderNumber = `JB-${Date.now().toString().slice(-6)}`
+
+  const { data: order, error: orderError } = await auth.admin
     .from('Order')
     .insert({
       orderNumber,
-      customerName: body.customerName,
-      customerEmail: body.customerEmail,
-      customerPhone: body.customerPhone,
-      userId: body.userId || null,
-      isGuest,
-      guestEmail,
-      guestName,
-      is_guest: isGuest,
-      guest_email: guestEmail,
-      guest_name: guestName,
-      shippingAddress: body.shippingAddress,
-      subtotal: body.subtotal,
-      shippingAmount: body.shippingAmount || 0,
-      shippingCost: body.shippingCost ?? body.shippingAmount ?? 0,
-      taxAmount: body.taxAmount || 0,
-      discount: body.discount || 0,
-      discountAmount: body.discountAmount || 0,
-      total: body.total,
-      status: body.status || 'received',
-      paymentMethod: body.paymentMethod || 'pending',
-      paymentStatus: body.paymentStatus || 'pending',
-      internalNotes: body.discountCode ? `Discount code: ${body.discountCode}` : null,
+      customerName: parsed.data.customerName,
+      customerEmail: userEmail,
+      customerPhone: parsed.data.customerPhone || null,
+      userId: auth.user.id,
+      isGuest: false,
+      guestEmail: null,
+      guestName: null,
+      shippingAddress: parsed.data.shippingAddress,
+      subtotal: computed.subtotal,
+      shippingAmount,
+      taxAmount,
+      discountAmount: discount.amount,
+      total,
+      status: 'confirmed',
+      paymentMethod: 'pending',
+      paymentStatus: 'pending',
+      internalNotes: discount.code ? `Discount code: ${discount.code}` : null,
     })
     .select()
     .single()
 
   if (orderError) {
+    console.error('[order-create] order insert failed:', orderError)
     return NextResponse.json({ error: orderError.message }, { status: 500 })
   }
 
-  const orderItems = body.items.map((item) => ({
-    orderId: (order as CreatedOrder).id,
-    productId: item.selectedMetal === 'Loose diamond' ? null : item.productId || null,
+  const orderId = (order as CreatedOrder).id
+  const orderItems = computed.lines.map((item) => ({
+    orderId,
+    productId: item.productId,
     productTitle: item.productTitle,
     productImage: item.productImage,
-    variantTitle: item.variantTitle,
     selectedMetal: item.selectedMetal,
     selectedCarat: item.selectedCarat,
     selectedShape: item.selectedShape,
@@ -116,18 +189,91 @@ export async function POST(request: NextRequest) {
     engraving: item.engraving,
     quantity: item.quantity,
     unitPrice: item.unitPrice,
-    totalPrice: item.totalPrice ?? item.unitPrice * item.quantity,
+    totalPrice: item.totalPrice,
     priceBreakdown: item.priceBreakdown,
   }))
 
-  const { error: itemsError } = await supabase.from('OrderItem').insert(orderItems)
-
+  const { error: itemsError } = await auth.admin.from('OrderItem').insert(orderItems)
   if (itemsError) {
+    console.error('[order-create] order item insert failed:', itemsError)
     return NextResponse.json({ error: itemsError.message }, { status: 500 })
+  }
+
+  const emailPayload = {
+    order: {
+      id: orderId,
+      orderNumber: (order as CreatedOrder).orderNumber || orderNumber,
+      createdAt: (order as CreatedOrder).createdAt || new Date().toISOString(),
+      subtotal: computed.subtotal,
+      discountAmount: discount.amount,
+      shippingAmount,
+      taxAmount,
+      total,
+      paymentStatus: 'paid',
+      shippingAddress: parsed.data.shippingAddress,
+    },
+    customer: {
+      fullName: parsed.data.customerName,
+      email: userEmail,
+      firstName: parsed.data.shippingAddress.firstName,
+    },
+    items: computed.lines.map((item) => ({
+      title: item.productTitle,
+      selectedMetal: item.selectedMetal,
+      selectedCarat: item.selectedCarat,
+      selectedShape: item.selectedShape,
+      selectedColor: item.selectedColor,
+      selectedClarity: item.selectedClarity,
+      ringSize: item.ringSize,
+      engraving: item.engraving,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      totalPrice: item.totalPrice,
+      productImage: item.productImage,
+    })),
+  }
+
+  console.log('[order-create] sending customer order confirmation email:', {
+    orderId,
+    orderNumber: emailPayload.order.orderNumber,
+    to: userEmail,
+  })
+  try {
+    await sendOrderConfirmationEmail(emailPayload)
+    console.log('[order-create] customer order confirmation email sent:', {
+      orderId,
+      orderNumber: emailPayload.order.orderNumber,
+      to: userEmail,
+    })
+  } catch (error) {
+    console.error('[order-create] customer order confirmation email failed:', error)
+  }
+
+  console.log('[order-create] sending admin order notification email:', {
+    orderId,
+    orderNumber: emailPayload.order.orderNumber,
+    to: 'admin@justbecausejewelry.com',
+  })
+  try {
+    await sendAdminOrderNotificationEmail(emailPayload)
+    console.log('[order-create] admin order notification email sent:', {
+      orderId,
+      orderNumber: emailPayload.order.orderNumber,
+      to: 'admin@justbecausejewelry.com',
+    })
+  } catch (error) {
+    console.error('[order-create] admin order notification email failed:', error)
   }
 
   return NextResponse.json({
     order,
     orderNumber: (order as CreatedOrder).orderNumber || orderNumber,
+    totals: {
+      subtotal: computed.subtotal,
+      discountAmount: discount.amount,
+      shippingAmount,
+      taxAmount,
+      total,
+    },
   })
 }

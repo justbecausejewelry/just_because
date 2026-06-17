@@ -1,10 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { requireAdmin } from '@/lib/server/security'
 
 type SupabaseWriteResult = {
   data: unknown
@@ -52,8 +47,11 @@ async function writeWithSchemaRetry(
   return { ...result, omittedColumns }
 }
 
-export async function GET() {
-  const { data, error } = await supabase
+export async function GET(request: NextRequest) {
+  const auth = await requireAdmin(request)
+  if ('error' in auth) return auth.error
+
+  const { data, error } = await auth.admin
     .from('Product')
     .select('id, sku, title, slug, productType, category, basePrice, isActive, isFeatured, images')
     .order('createdAt', { ascending: false })
@@ -66,9 +64,12 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAdmin(request)
+  if ('error' in auth) return auth.error
+
   const body = (await request.json()) as Record<string, unknown>
   const { data, error, omittedColumns } = await writeWithSchemaRetry(body, async (saveData) =>
-    await supabase
+    await auth.admin
       .from('Product')
       .insert(saveData)
       .select('*')

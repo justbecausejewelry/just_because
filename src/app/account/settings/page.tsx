@@ -263,7 +263,7 @@ export default function AccountSettingsPage() {
 
   if (isLoading || !user) {
     return (
-      <main style={{ minHeight: '100vh', background: '#FBF5F0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#B8A090', fontFamily: 'var(--font-playfair)', fontSize: '20px' }}>
+      <main style={{ minHeight: '100vh', background: '#FBF5F0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-muted-text)', fontFamily: 'var(--font-playfair)', fontSize: '20px' }}>
         Loading settings...
       </main>
     )
@@ -272,9 +272,9 @@ export default function AccountSettingsPage() {
   return (
     <main style={{ minHeight: '100vh', background: '#FBF5F0', maxWidth: '700px', margin: '0 auto', padding: '60px 24px' }}>
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '28px' }}>
-        <Link href="/account" style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.08em' }}>Account</Link>
+        <Link href="/account" style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.08em' }}>Account</Link>
         <span style={{ color: '#EDD9AF' }}>/</span>
-        <Link href="/account/returns" style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.08em' }}>Returns</Link>
+        <Link href="/account/returns" style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.08em' }}>Returns</Link>
         <span style={{ color: '#EDD9AF' }}>/</span>
         <span style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.08em' }}>Settings</span>
       </div>
@@ -307,7 +307,7 @@ export default function AccountSettingsPage() {
             <div>
               <span style={{ color: '#C9A961', border: '0.5px solid #C9A961', borderRadius: '4px', fontFamily: 'var(--font-inter)', fontSize: '10px', padding: '3px 9px' }}>{address.label}</span>
               <p style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', margin: '10px 0 4px' }}>{address.firstName} {address.lastName}</p>
-              <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', lineHeight: 1.6, margin: 0 }}>
+              <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px', lineHeight: 1.6, margin: 0 }}>
                 {address.addressLine1}{address.addressLine2 ? `, ${address.addressLine2}` : ''}<br />
                 {address.city}, {address.state} {address.zipCode}<br />
                 {address.country}
@@ -315,7 +315,7 @@ export default function AccountSettingsPage() {
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
               {address.isDefault && <span style={{ color: '#6B4A10', background: '#EDD9AF', fontFamily: 'var(--font-inter)', fontSize: '10px', padding: '4px 8px' }}>Default</span>}
-              <button aria-label="Edit address" style={{ color: '#B8A090' }}><Pencil size={15} /></button>
+              <button aria-label="Edit address" style={{ color: 'var(--color-muted-text)' }}><Pencil size={15} /></button>
               <button aria-label="Delete address" onClick={() => void deleteAddress(address.id)} style={{ color: '#A85C6A' }}><Trash2 size={15} /></button>
             </div>
           </div>
@@ -341,7 +341,7 @@ export default function AccountSettingsPage() {
               <input className="input-luxury" placeholder="Country" value={addressForm.country} onChange={(event) => setAddressForm((prev) => ({ ...prev, country: event.target.value }))} required />
             </div>
             <input className="input-luxury" placeholder="Phone" value={addressForm.phone || ''} onChange={(event) => setAddressForm((prev) => ({ ...prev, phone: event.target.value }))} />
-            <label style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px' }}><input type="checkbox" checked={addressForm.isDefault} onChange={(event) => setAddressForm((prev) => ({ ...prev, isDefault: event.target.checked }))} style={{ accentColor: '#1A1014', marginRight: '8px' }} />Set as default address</label>
+            <label style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px' }}><input type="checkbox" checked={addressForm.isDefault} onChange={(event) => setAddressForm((prev) => ({ ...prev, isDefault: event.target.checked }))} style={{ accentColor: '#1A1014', marginRight: '8px' }} />Set as default address</label>
             <button className="btn-primary">SAVE ADDRESS</button>
           </form>
         )}
@@ -360,7 +360,7 @@ export default function AccountSettingsPage() {
 
       <section style={{ background: '#FCF0F4', border: '0.5px solid #A85C6A', borderRadius: '4px', padding: '28px' }}>
         <p style={{ color: '#A85C6A', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '14px' }}>DANGER ZONE</p>
-        <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', lineHeight: 1.7 }}>Type DELETE to confirm. We will sign you out and support will complete account deletion.</p>
+        <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px', lineHeight: 1.7 }}>Type DELETE to confirm. We will sign you out and support will complete account deletion.</p>
         <input className="input-luxury" value={deleteConfirm} onChange={(event) => setDeleteConfirm(event.target.value)} placeholder="DELETE" style={{ margin: '10px 0 14px', borderColor: '#A85C6A' }} />
         <button type="button" className="btn-outline" onClick={requestDelete} style={{ borderColor: '#A85C6A', color: '#A85C6A' }}>Delete my account</button>
       </section>

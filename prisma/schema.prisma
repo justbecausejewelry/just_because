@@ -117,11 +117,8 @@ model Order {
   guestEmail     String?
   guestName      String?
   isGuest        Boolean?    @default(false)
-  guest_email    String?
-  guest_name     String?
-  is_guest       Boolean?    @default(false)
-  status         String      @default("received")
-  // received | cad_design | casting | setting | polishing | shipped | delivered | cancelled
+  status         String      @default("pending")
+  // pending | confirmed | processing | shipped | delivered | completed | cancelled | refunded
 
   subtotal       Float
   taxAmount      Float       @default(0)

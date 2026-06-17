@@ -142,8 +142,8 @@ function StatItem({ stat, started }: { stat: Stat; started: boolean }) {
 
       <div
         style={{
-          fontSize: '11px',
-          color: '#B8A090',
+          fontSize: '13px',
+          color: 'var(--color-muted-text)',
           fontFamily: 'var(--font-inter)',
           letterSpacing: '0.05em',
         }}

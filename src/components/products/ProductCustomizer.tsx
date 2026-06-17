@@ -2,13 +2,23 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { METALS, getMetalLabel, metalMatches } from '@/config/productOptions'
+
+type PricingMap = Record<string, { enabled?: boolean; modifier?: number }>
 
 type ProductForCustomizer = {
   productType?: string | null
   category?: string | null
   basePrice?: number | null
   pricePerCarat?: number | null
+  availableMetals?: string[] | null
+  availableCarats?: number[] | null
+  availableSizes?: string[] | null
+  metalPricing?: PricingMap | null
+  caratPricing?: PricingMap | null
 }
+
+type MetalOption = (typeof METALS)[number]
 
 type CustomizerOptions = {
   showMetal: boolean
@@ -31,13 +41,6 @@ interface ProductCustomizerProps {
   }) => void
 }
 
-const METALS = [
-  { value: '14k_white_gold', label: '14k', fullLabel: '14K White Gold', color: '#E8E8E8', textColor: '#1A1014' },
-  { value: '14k_yellow_gold', label: '14k', fullLabel: '14K Yellow Gold', color: '#C9A961', textColor: '#1A1014' },
-  { value: '14k_rose_gold', label: '14k', fullLabel: '14K Rose Gold', color: '#D4956A', textColor: '#1A1014' },
-  { value: 'platinum', label: 'Pt', fullLabel: 'Platinum', color: '#C0C0C0', textColor: '#1A1014' },
-]
-
 const CARAT_OPTIONS = {
   earring: [0.25, 0.5, 0.75, 1, 1.5, 2, 2.5, 3, 4, 5, 6],
   stud: [0.25, 0.5, 0.75, 1, 1.5, 2, 2.5, 3, 4, 5, 6],
@@ -53,6 +56,23 @@ const RING_SIZES = [
   '6', '6.5', '7', '7.5', '8', '8.5',
   '9', '9.5', '10',
 ]
+
+function normalizeCaratOptions(options?: number[] | null) {
+  return Array.from(
+    new Set(
+      (options || [])
+        .map((option) => Number(option))
+        .filter((option) => Number.isFinite(option) && option > 0)
+    )
+  ).sort((left, right) => left - right)
+}
+
+function getModifier(pricing: PricingMap | null | undefined, key?: string | number) {
+  if (key === undefined || key === null || !pricing) return 0
+  const entry = pricing[String(key)]
+  if (!entry?.enabled) return 0
+  return typeof entry.modifier === 'number' ? entry.modifier : 0
+}
 
 function getOptionsForType(productType: string, category: string): CustomizerOptions {
   const type = (productType || '').toLowerCase()
@@ -112,7 +132,7 @@ export default function ProductCustomizer({
   product,
   onSelectionChange,
 }: ProductCustomizerProps) {
-  const [selectedMetal, setSelectedMetal] = useState(METALS[0])
+  const [selectedMetal, setSelectedMetal] = useState<MetalOption | null>(null)
   const [selectedSize, setSelectedSize] = useState<string | null>(null)
   const [selectedCarat, setSelectedCarat] = useState<number | null>(null)
   const [selectedLength, setSelectedLength] = useState<string | null>(null)
@@ -122,35 +142,56 @@ export default function ProductCustomizer({
     [product.productType, product.category]
   )
 
-  const caratList = useMemo(
-    () => (options.caratKey ? CARAT_OPTIONS[options.caratKey] : []),
-    [options.caratKey]
+  const metalList = useMemo(() => {
+    if (!product.availableMetals?.length) return [...METALS]
+    return METALS.filter((metal) => product.availableMetals?.some((option) => metalMatches(option, metal.value)))
+  }, [product.availableMetals])
+
+  const caratList = useMemo(() => {
+    const productCarats = normalizeCaratOptions(product.availableCarats)
+    if (productCarats.length) return productCarats
+    return options.caratKey ? CARAT_OPTIONS[options.caratKey] : []
+  }, [options.caratKey, product.availableCarats])
+
+  const sizeList = useMemo(
+    () => (product.availableSizes?.length ? product.availableSizes : RING_SIZES),
+    [product.availableSizes]
   )
 
   useEffect(() => {
-    setSelectedSize(null)
-    setSelectedLength(options.showLength && options.lengthOptions?.length ? options.lengthOptions[0] : null)
-    setSelectedCarat(options.showCarat && caratList.length > 0 ? caratList[0] : null)
-  }, [caratList, options.lengthOptions, options.showCarat, options.showLength])
+    setSelectedMetal((current) => {
+      if (current && metalList.some((metal) => metal.value === current.value)) return current
+      return metalList.length === 1 ? metalList[0] : null
+    })
+    setSelectedSize((current) => {
+      if (current && sizeList.includes(current)) return current
+      return options.showSize && sizeList.length === 1 ? sizeList[0] : null
+    })
+    setSelectedLength((current) => {
+      if (current && options.lengthOptions?.includes(current)) return current
+      return options.showLength && options.lengthOptions?.length === 1 ? options.lengthOptions[0] : null
+    })
+    setSelectedCarat((current) => {
+      if (current && caratList.includes(current)) return current
+      return options.showCarat && caratList.length === 1 ? caratList[0] : null
+    })
+  }, [caratList, metalList, options.lengthOptions, options.showCarat, options.showLength, options.showSize, sizeList])
 
   useEffect(() => {
-    const metalPrice = selectedMetal.value === 'platinum' ? 800
-      : selectedMetal.value === '14k_yellow_gold' ? 200
-      : selectedMetal.value === '14k_rose_gold' ? 150
-      : 0
+    const metalPrice = selectedMetal ? getModifier(product.metalPricing, selectedMetal.value) : 0
 
     const caratPrice = options.showCarat && selectedCarat
-      ? selectedCarat * (product.pricePerCarat || 300)
+      ? getModifier(product.caratPricing, selectedCarat) || selectedCarat * (product.pricePerCarat || 300)
       : 0
 
     onSelectionChange({
-      metal: selectedMetal.fullLabel,
+      metal: selectedMetal?.value || '',
       size: selectedSize || undefined,
       length: selectedLength || undefined,
       caratWeight: selectedCarat || undefined,
       totalPrice: (product.basePrice || 0) + metalPrice + caratPrice,
     })
-  }, [onSelectionChange, options.showCarat, product.basePrice, product.pricePerCarat, selectedCarat, selectedLength, selectedMetal, selectedSize])
+  }, [onSelectionChange, options.showCarat, product.basePrice, product.caratPricing, product.metalPricing, product.pricePerCarat, selectedCarat, selectedLength, selectedMetal, selectedSize])
 
   const productType = product.productType || ''
   const lengthLabel = productType.includes('necklace')
@@ -170,42 +211,42 @@ export default function ProductCustomizer({
               Metal Type:
             </span>
             <span style={{ fontSize: '13px', color: '#1A1014', fontFamily: 'var(--font-inter)' }}>
-              {selectedMetal.fullLabel}
+              {selectedMetal ? getMetalLabel(selectedMetal.value) : 'Select'}
             </span>
           </div>
 
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {METALS.map((metal) => (
+            {metalList.map((metal) => (
               <button
                 key={metal.value}
                 onClick={() => setSelectedMetal(metal)}
-                title={metal.fullLabel}
+                title={metal.label}
                 style={{
                   width: '44px',
                   height: '44px',
                   borderRadius: '50%',
-                  border: selectedMetal.value === metal.value ? '2px solid #1A1014' : '1px solid #EDD9AF',
-                  background: metal.color,
+                  border: selectedMetal?.value === metal.value ? '2px solid #1A1014' : '1px solid #EDD9AF',
+                  background: metal.hex,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   transition: 'all 0.2s',
-                  boxShadow: selectedMetal.value === metal.value ? '0 0 0 3px rgba(26,16,20,0.1)' : 'none',
+                  boxShadow: selectedMetal?.value === metal.value ? '0 0 0 3px rgba(26,16,20,0.1)' : 'none',
                 }}
                 onMouseEnter={(event) => {
-                  if (selectedMetal.value !== metal.value) {
+                  if (selectedMetal?.value !== metal.value) {
                     event.currentTarget.style.borderColor = '#1A1014'
                   }
                 }}
                 onMouseLeave={(event) => {
-                  if (selectedMetal.value !== metal.value) {
+                  if (selectedMetal?.value !== metal.value) {
                     event.currentTarget.style.borderColor = '#EDD9AF'
                   }
                 }}
               >
-                <span style={{ fontSize: '10px', fontWeight: 500, color: metal.textColor, fontFamily: 'var(--font-inter)', letterSpacing: '0.02em' }}>
-                  {metal.label}
+                <span style={{ fontSize: '10px', fontWeight: 500, color: '#1A1014', fontFamily: 'var(--font-inter)', letterSpacing: '0.02em' }}>
+                  {metal.value === 'platinum' ? 'Pt' : '14K'}
                 </span>
               </button>
             ))}
@@ -225,7 +266,7 @@ export default function ProductCustomizer({
           </div>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {RING_SIZES.map((size) => (
+            {sizeList.map((size) => (
               <button
                 key={size}
                 onClick={() => setSelectedSize(size)}

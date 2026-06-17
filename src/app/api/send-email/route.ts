@@ -7,13 +7,17 @@ type EmailPayload = {
 }
 
 export async function POST(request: NextRequest) {
+  if (process.env.NODE_ENV !== 'development') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
   const body = await request.json() as EmailPayload
 
   if (!body.to || !body.subject || !body.html) {
     return NextResponse.json({ error: 'to, subject, and html are required' }, { status: 400 })
   }
 
-  console.log('Prototype email notification', {
+  console.log('Development email notification', {
     to: body.to,
     subject: body.subject,
     html: body.html,
@@ -21,4 +25,3 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ ok: true })
 }
-

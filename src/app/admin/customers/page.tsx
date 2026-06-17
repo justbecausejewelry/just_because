@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { MessageSquare, Search, ShoppingBag, UserRound } from 'lucide-react'
+import { supabaseAuth } from '@/lib/auth'
 
 type Customer = {
   id?: string
@@ -58,6 +59,11 @@ function customerSignupSource(customer: Customer) {
   return customer.signupSource || customer.signup_source || 'direct'
 }
 
+async function getAdminToken() {
+  const { data } = await supabaseAuth.auth.getSession()
+  return data.session?.access_token || null
+}
+
 export default function AdminCustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
@@ -68,7 +74,15 @@ export default function AdminCustomersPage() {
     const fetchCustomers = async () => {
       setLoading(true)
       try {
-        const response = await fetch('/api/admin/customers')
+        const token = await getAdminToken()
+        if (!token) {
+          setCustomers([])
+          return
+        }
+
+        const response = await fetch('/api/admin/customers', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
         const payload = (await response.json()) as {
           customers?: Customer[]
           error?: string

@@ -1,10 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { requireAdmin } from '@/lib/server/security'
 
 type SupabaseWriteResult = {
   data: unknown
@@ -56,8 +51,11 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAdmin(request)
+  if ('error' in auth) return auth.error
+
   const { id } = await params
-  const { data, error } = await supabase
+  const { data, error } = await auth.admin
     .from('Product')
     .select('*')
     .eq('id', id)
@@ -74,10 +72,13 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAdmin(request)
+  if ('error' in auth) return auth.error
+
   const { id } = await params
   const body = (await request.json()) as Record<string, unknown>
   const { data, error, omittedColumns } = await writeWithSchemaRetry(body, async (saveData) =>
-    await supabase
+    await auth.admin
       .from('Product')
       .update(saveData)
       .eq('id', id)
@@ -96,8 +97,11 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAdmin(request)
+  if ('error' in auth) return auth.error
+
   const { id } = await params
-  const { error } = await supabase
+  const { error } = await auth.admin
     .from('Product')
     .update({ isActive: false })
     .eq('id', id)

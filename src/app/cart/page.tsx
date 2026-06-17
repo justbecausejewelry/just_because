@@ -5,6 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Gem, ShieldCheck } from 'lucide-react'
 import { useCart } from '@/context/CartContext'
+import { getMetalLabel } from '@/config/productOptions'
 
 type Suggestion = {
   id: string
@@ -65,7 +66,7 @@ export default function CartPage() {
       <div className="flex flex-col items-center justify-center py-24 text-center">
         <Gem color="#C9A961" size={72} strokeWidth={1.1} />
         <h2 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '32px', fontWeight: 400, marginTop: '20px' }}>Your cart is empty</h2>
-        <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '14px', marginBottom: '24px' }}>Discover something beautiful</p>
+        <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '16px', lineHeight: 1.625, marginBottom: '24px' }}>Discover something beautiful</p>
         <div className="cart-empty-actions flex flex-wrap justify-center gap-3">
           <Link href="/products" style={{ background: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.18em', padding: '14px 24px', textDecoration: 'none' }}>SHOP THE COLLECTION</Link>
           <Link href="/build" style={{ border: '1px solid #EDD9AF', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.18em', padding: '14px 24px', textDecoration: 'none' }}>BUILD YOUR OWN RING</Link>
@@ -78,18 +79,18 @@ export default function CartPage() {
   return (
     <main style={{ background: '#FBF5F0', minHeight: '100vh' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '16px clamp(16px, 5vw, 80px)', borderBottom: '0.5px solid #EDD9AF', background: '#FBF5F0' }}>
-        <Link href="/" style={{ fontSize: '11px', color: '#B8A090', textDecoration: 'none', fontFamily: 'var(--font-inter)', letterSpacing: '0.08em' }}>Home</Link>
+        <Link href="/" style={{ fontSize: '11px', color: 'var(--color-muted-text)', textDecoration: 'none', fontFamily: 'var(--font-inter)', letterSpacing: '0.08em' }}>Home</Link>
         <span style={{ color: '#EDD9AF' }}>›</span>
-        <Link href="/products" style={{ fontSize: '11px', color: '#B8A090', textDecoration: 'none', fontFamily: 'var(--font-inter)', letterSpacing: '0.08em' }}>Collection</Link>
+        <Link href="/products" style={{ fontSize: '11px', color: 'var(--color-muted-text)', textDecoration: 'none', fontFamily: 'var(--font-inter)', letterSpacing: '0.08em' }}>Collection</Link>
         <span style={{ color: '#EDD9AF' }}>›</span>
         <span style={{ fontSize: '11px', color: '#1A1014', fontFamily: 'var(--font-inter)', letterSpacing: '0.08em' }}>Cart</span>
       </div>
       <div className="mx-auto max-w-[1400px] px-4 py-6 md:px-10 md:py-10 lg:px-20 lg:py-[60px]">
-        <nav style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', marginBottom: '22px' }}>
-          <Link href="/" style={{ color: '#B8A090', textDecoration: 'none' }}>Home</Link> / <span style={{ color: '#1A1014' }}>Cart</span>
+        <nav style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '11px', marginBottom: '22px' }}>
+          <Link href="/" style={{ color: 'var(--color-muted-text)', textDecoration: 'none' }}>Home</Link> / <span style={{ color: '#1A1014' }}>Cart</span>
         </nav>
         <h1 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: 'clamp(32px, 6vw, 48px)', fontWeight: 400, lineHeight: 1.05, margin: 0 }}>Your Cart</h1>
-        <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '14px', marginTop: '8px' }}>{itemCount} items</p>
+        <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '15px', marginTop: '8px' }}>{itemCount} items</p>
 
         {items.length === 0 ? (
           emptyActions
@@ -98,7 +99,7 @@ export default function CartPage() {
             <section>
               <div className="hidden grid-cols-[100px_1fr_auto_auto_auto] gap-5 border-b pb-3 lg:grid" style={{ borderColor: '#EDD9AF' }}>
                 {['Product', 'Details', 'Price', 'Quantity', 'Total'].map((label) => (
-                  <span key={label} style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase' }}>{label}</span>
+                  <span key={label} style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.2em', textTransform: 'uppercase' }}>{label}</span>
                 ))}
               </div>
               {items.map((item) => (
@@ -110,15 +111,15 @@ export default function CartPage() {
                     <h2 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '16px', fontWeight: 400 }}>{item.productTitle}</h2>
                     <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.16em', margin: '7px 0 10px' }}>LAB-GROWN DIAMOND</p>
                     {[
-                      ['Metal', item.selectedMetal],
+                      ['Metal', getMetalLabel(item.selectedMetal)],
                       ['Carat', `${item.selectedCarat}ct`],
                       ['Shape', item.selectedShape],
                       ['Size', item.ringSize],
-                    ].map(([label, value]) => value && <p key={label} style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', marginBottom: '3px' }}>{label}: {value}</p>)}
-                    {item.engraving && <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', fontStyle: 'italic' }}>Engraving: &quot;{item.engraving}&quot;</p>}
+                    ].map(([label, value]) => value && <p key={label} style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px', marginBottom: '3px' }}>{label}: {value}</p>)}
+                    {item.engraving && <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px', fontStyle: 'italic' }}>Engraving: &quot;{item.engraving}&quot;</p>}
                     <p className="mt-3 flex items-center gap-1" style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.12em' }}><ShieldCheck size={12} /> IGI CERTIFIED</p>
                     <div className="mt-3 flex gap-4">
-                      <button onClick={() => removeItem(item.id)} style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px' }}>Remove</button>
+                      <button onClick={() => removeItem(item.id)} style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>Remove</button>
                       <button style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '11px' }}>Save for later</button>
                     </div>
                   </div>
@@ -144,10 +145,10 @@ export default function CartPage() {
                 ['Subtotal', formatPrice(subtotal), '#1A1014'],
                 ...(discount.amount ? [['Discount', `-${formatPrice(discount.amount)}`, '#C9A961']] : []),
                 ['Shipping', 'FREE', '#7A8F72'],
-                ['Est. Tax', formatPrice(tax), '#B8A090'],
+                ['Est. Tax', formatPrice(tax), 'var(--color-muted-text)'],
               ].map(([label, value, color]) => (
                 <div key={label} className="flex justify-between py-2" style={{ borderBottom: '0.5px solid #EDD9AF', fontFamily: 'var(--font-inter)', fontSize: '13px' }}>
-                  <span style={{ color: '#B8A090' }}>{label}</span>
+                  <span style={{ color: 'var(--color-muted-text)' }}>{label}</span>
                   <span style={{ color }}>{value}</span>
                 </div>
               ))}
@@ -157,7 +158,7 @@ export default function CartPage() {
               </div>
               <Link className="cart-checkout-button" href="/checkout" style={{ display: 'block', width: '100%', height: '56px', background: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.2em', lineHeight: '56px', textAlign: 'center', textDecoration: 'none', marginTop: '20px' }}>PROCEED TO CHECKOUT →</Link>
               <Link href="/products" style={{ display: 'block', width: '100%', height: '48px', border: '1px solid #EDD9AF', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.16em', lineHeight: '48px', textAlign: 'center', textDecoration: 'none', marginTop: '10px' }}>← CONTINUE SHOPPING</Link>
-              <div className="mt-5 flex justify-center gap-4" style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px' }}>
+              <div className="mt-5 flex justify-center gap-4" style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>
                 <span>Secure Checkout</span><span>30-Day Returns</span><span>IGI Certified</span>
               </div>
               {suggestions.length > 0 && (
@@ -166,7 +167,7 @@ export default function CartPage() {
                   {suggestions.map((product) => (
                     <Link key={product.id} href={`/products/${product.slug}`} className="mt-3 flex gap-3" style={{ textDecoration: 'none' }}>
                       <div style={{ width: '54px', height: '54px', background: '#F5E8ED', position: 'relative' }}>{product.images?.[0] && <Image src={product.images[0]} alt={product.title} fill sizes="54px" style={{ objectFit: 'cover' }} />}</div>
-                      <div><p style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '13px' }}>{product.title}</p><p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px' }}>{formatPrice(product.basePrice)}</p></div>
+                      <div><p style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '13px' }}>{product.title}</p><p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>{formatPrice(product.basePrice)}</p></div>
                     </Link>
                   ))}
                 </div>

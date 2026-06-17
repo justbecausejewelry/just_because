@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { LOOSE_DIAMOND_VALUE, normalizeMetalSelection } from '@/config/productOptions'
 
 export type CartPriceBreakdown = {
   base: number
@@ -30,6 +31,8 @@ export type CartItem = {
   ringSize?: string
   engraving?: string
   unitPrice?: number
+  priceAtAdd?: number
+  addedAt?: string
   priceBreakdown?: CartPriceBreakdown
 }
 
@@ -54,12 +57,13 @@ export async function trackCartEvent(
   userId?: string | null
 ) {
   try {
+    const lockedPrice = getLockedPrice(item)
     const { error } = await supabase.from('cart_events').insert({
       user_id: userId || null,
       session_id: getSessionId(),
       item_type: item.type,
       item_name: item.name,
-      item_price: item.unitPrice ?? item.price,
+      item_price: lockedPrice ?? 0,
       product_id: item.type === 'product' ? item.productId || item.id : null,
       diamond_id: item.type === 'diamond' ? item.productId || item.id : null,
       action,
@@ -82,15 +86,20 @@ export function getCart(): CartItem[] {
   if (typeof window === 'undefined') return []
   try {
     const parsed = JSON.parse(localStorage.getItem(CART_KEY) || '[]') as unknown
-    return Array.isArray(parsed) ? parsed.filter(isCartItem) : []
+    return Array.isArray(parsed)
+      ? parsed.map(normalizeCartItem).filter((item): item is CartItem => Boolean(item))
+      : []
   } catch {
     return []
   }
 }
 
 export function addToCart(item: CartItem) {
+  const normalizedItem = normalizeCartItem(item)
+  if (!normalizedItem) return
+
   const existing = getCart()
-  const idx = existing.findIndex((cartItem) => cartItem.id === item.id)
+  const idx = existing.findIndex((cartItem) => cartItem.id === normalizedItem.id)
 
   if (idx >= 0) {
     existing[idx] = {
@@ -98,11 +107,11 @@ export function addToCart(item: CartItem) {
       quantity: existing[idx].quantity + 1,
     }
   } else {
-    existing.push({ ...item, quantity: item.quantity || 1 })
+    existing.push({ ...normalizedItem, quantity: normalizedItem.quantity || 1 })
   }
 
   saveCart(existing)
-  void trackCartEvent('added', item)
+  void trackCartEvent('added', normalizedItem)
 }
 
 export function updateCartQuantity(id: string, quantity: number) {
@@ -133,15 +142,38 @@ export function clearCart() {
   window.dispatchEvent(new Event('cart-updated'))
 }
 
-function isCartItem(item: unknown): item is CartItem {
-  if (!item || typeof item !== 'object') return false
+function getLockedPrice(item: CartItem): number | null {
+  const price = item.priceAtAdd ?? item.unitPrice ?? item.price
+  return Number.isFinite(price) ? price : null
+}
+
+function normalizeCartItem(item: unknown): CartItem | null {
+  if (!item || typeof item !== 'object') return null
   const candidate = item as Record<string, unknown>
-  return (
-    typeof candidate.id === 'string' &&
-    (candidate.type === 'diamond' || candidate.type === 'product') &&
-    typeof candidate.name === 'string' &&
-    typeof candidate.price === 'number' &&
-    typeof candidate.imageUrl === 'string' &&
-    typeof candidate.quantity === 'number'
-  )
+  const lockedPrice = [
+    candidate.priceAtAdd,
+    candidate.unitPrice,
+    candidate.price,
+  ].find((value): value is number => typeof value === 'number' && Number.isFinite(value))
+
+  if (
+    typeof candidate.id !== 'string' ||
+    (candidate.type !== 'diamond' && candidate.type !== 'product') ||
+    typeof candidate.name !== 'string' ||
+    typeof candidate.imageUrl !== 'string' ||
+    typeof candidate.quantity !== 'number' ||
+    !Number.isFinite(candidate.quantity) ||
+    lockedPrice === undefined
+  ) {
+    return null
+  }
+
+  return {
+    ...(candidate as CartItem),
+    selectedMetal: normalizeMetalSelection(candidate.selectedMetal as string | undefined) || (candidate.type === 'diamond' ? LOOSE_DIAMOND_VALUE : 'white_gold'),
+    price: lockedPrice,
+    unitPrice: lockedPrice,
+    priceAtAdd: lockedPrice,
+    addedAt: typeof candidate.addedAt === 'string' ? candidate.addedAt : new Date().toISOString(),
+  }
 }

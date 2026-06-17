@@ -264,9 +264,9 @@ function ProductCard({ product }: { product: Product }) {
               <p style={{ margin: 0 }}>
                 <span
                   style={{
-                    color: '#B8A090',
+                    color: 'var(--color-muted-text)',
                     fontFamily: 'var(--font-jost)',
-                    fontSize: '12px',
+                    fontSize: '13px',
                     marginRight: '6px',
                   }}
                 >
@@ -470,7 +470,7 @@ export function BestSellers() {
           style={{
             backgroundColor: '#FDF8F2',
             border: '0.5px solid #EDD9AF',
-            color: '#B8A090',
+            color: 'var(--color-muted-text)',
             fontFamily: 'var(--font-inter)',
           }}
         >

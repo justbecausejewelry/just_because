@@ -1,5 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+import { getAuthedUserOrGuest } from '@/lib/auth/getAuthedUserOrGuest'
 import { checkReturnEligibility, isReturnReason } from '@/lib/returnEligibility'
 import { sendReturnRequestEmail } from '@/lib/sendReturnEmail'
 
@@ -8,6 +10,7 @@ type OrderRow = {
   orderNumber?: string | null
   customerName?: string | null
   customerEmail?: string | null
+  userId?: string | null
   status?: string | null
   total?: number | null
   createdAt?: string | null
@@ -42,12 +45,12 @@ type ReturnRow = {
   updated_at?: string | null
 }
 
-type CreateReturnPayload = {
-  orderId?: string
-  reason?: string
-  reasonDetails?: string
-  details?: string
-}
+const createReturnSchema = z.object({
+  orderId: z.string().trim().min(1).max(120),
+  reason: z.string().trim().min(1).max(80),
+  reasonDetails: z.string().trim().max(2000).optional(),
+  details: z.string().trim().max(2000).optional(),
+})
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -170,11 +173,19 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const auth = await requireUser(request)
   if ('error' in auth) return auth.error
+  const identity = await getAuthedUserOrGuest(request)
+  if (!identity.authed) {
+    return NextResponse.json({ error: 'Missing auth token' }, { status: 401 })
+  }
 
-  const body = await request.json() as CreateReturnPayload
-  const orderId = body.orderId?.trim()
-  const reason = body.reason?.trim()
-  const reasonDetails = (body.reasonDetails || body.details || '').trim()
+  const parsed = createReturnSchema.safeParse(await request.json().catch(() => null))
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Order and valid return reason are required' }, { status: 400 })
+  }
+
+  const orderId = parsed.data.orderId
+  const reason = parsed.data.reason
+  const reasonDetails = (parsed.data.reasonDetails || parsed.data.details || '').trim()
 
   if (!orderId || !reason || !isReturnReason(reason)) {
     return NextResponse.json({ error: 'Order and valid return reason are required' }, { status: 400 })
@@ -185,10 +196,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Order not found' }, { status: 404 })
   }
 
-  const userEmail = auth.user.email?.toLowerCase() || ''
-  const orderEmail = order.customerEmail?.toLowerCase() || ''
-  if (!userEmail || userEmail !== orderEmail) {
-    return NextResponse.json({ error: 'This order does not belong to the signed-in user' }, { status: 403 })
+  if (order.userId !== auth.user.id) {
+    return NextResponse.json({ error: 'Order not found' }, { status: 404 })
   }
 
   const eligibility = checkReturnEligibility({
@@ -219,8 +228,8 @@ export async function POST(request: NextRequest) {
       order_id: order.id,
       user_id: auth.user.id,
       order_number: order.orderNumber,
-      customer_name: order.customerName || auth.user.email,
-      customer_email: auth.user.email,
+      customer_name: order.customerName || identity.email,
+      customer_email: identity.email,
       item_name: itemTitle(firstItem),
       item_price: firstItem?.unitPrice || order.total || 0,
       reason,
@@ -236,8 +245,8 @@ export async function POST(request: NextRequest) {
 
   const returnRow = data as ReturnRow
   await sendReturnRequestEmail({
-    customerEmail: auth.user.email || '',
-    customerName: order.customerName || auth.user.email || '',
+    customerEmail: identity.email,
+    customerName: order.customerName || identity.email,
     orderNumber: order.orderNumber || order.id,
     returnId: returnRow.id,
     reason,

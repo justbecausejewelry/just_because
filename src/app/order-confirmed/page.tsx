@@ -43,10 +43,10 @@ function OrderConfirmedContent() {
         </motion.div>
         <motion.p initial={{ y: 20 }} animate={{ y: 0 }} transition={{ delay: 0.4 }} style={{ color: '#C9A961', fontFamily: 'var(--font-jost)', fontSize: '12px', fontWeight: 600, letterSpacing: '0.22em', marginBottom: '12px' }}>ORDER CONFIRMED</motion.p>
         <motion.h1 className="order-headline" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '42px', fontWeight: 400, lineHeight: 1.1, marginBottom: '16px' }}>Thank you for your order.</motion.h1>
-        <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '15px', lineHeight: 1.7, maxWidth: '440px', margin: '0 auto 32px' }}>Your Just Because piece is being lovingly crafted. You&apos;ll receive an email confirmation shortly.</motion.p>
+        <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '15px', lineHeight: 1.7, maxWidth: '440px', margin: '0 auto 32px' }}>Your Just Because piece is being lovingly crafted. You&apos;ll receive an email confirmation shortly.</motion.p>
         <motion.div className="order-number-box" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }} style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '2px', padding: '20px 28px', marginBottom: '40px', display: 'inline-flex', gap: '16px', alignItems: 'center' }}>
           <div className="text-left">
-            <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.18em' }}>ORDER NUMBER</p>
+            <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.18em' }}>ORDER NUMBER</p>
             <p style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '22px' }}>{orderNumber}</p>
           </div>
           <button onClick={copyOrder} style={{ color: '#C9A961' }}>{copied ? <CheckCheck size={18} /> : <Copy size={18} />}</button>
@@ -56,8 +56,8 @@ function OrderConfirmedContent() {
         <div className="order-journey mb-10 grid grid-cols-4 gap-2">
           {['Order Received', 'CAD Design', 'Crafting', 'Shipped'].map((label, index) => (
             <motion.div key={label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 + index * 0.1 }} className="relative text-center">
-              <span style={{ margin: '0 auto 8px', width: '32px', height: '32px', borderRadius: '50%', background: index === 0 ? '#C9A961' : 'transparent', border: `1px solid ${index === 0 ? '#C9A961' : '#EDD9AF'}`, color: index === 0 ? '#FBF5F0' : '#B8A090', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>{index === 0 ? '✓' : index + 1}</span>
-              <p style={{ color: index === 0 ? '#C9A961' : '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px' }}>{label}</p>
+              <span style={{ margin: '0 auto 8px', width: '32px', height: '32px', borderRadius: '50%', background: index === 0 ? '#C9A961' : 'transparent', border: `1px solid ${index === 0 ? '#C9A961' : '#EDD9AF'}`, color: index === 0 ? '#FBF5F0' : 'var(--color-muted-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>{index === 0 ? '✓' : index + 1}</span>
+              <p style={{ color: index === 0 ? '#C9A961' : 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '11px' }}>{label}</p>
             </motion.div>
           ))}
         </div>
@@ -65,7 +65,7 @@ function OrderConfirmedContent() {
         <div className="mb-10 grid gap-3 md:grid-cols-3">
           {[{ icon: Mail, title: 'Confirmation Email', body: 'Sent within 5 minutes' }, { icon: Clock, title: 'Crafting Time', body: '3-5 weeks for your piece' }, { icon: Package, title: 'Free Shipping', body: 'Worldwide, fully insured' }].map((card) => {
             const Icon = card.icon
-            return <div key={card.title} style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '2px', padding: '20px', textAlign: 'center' }}><span className="mx-auto mb-3 flex h-8 w-8 items-center justify-center rounded-full" style={{ background: 'rgba(201,169,97,0.14)' }}><Icon color="#C9A961" size={17} /></span><p style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', fontWeight: 500 }}>{card.title}</p><p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', lineHeight: 1.5 }}>{card.body}</p></div>
+            return <div key={card.title} style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '2px', padding: '20px', textAlign: 'center' }}><span className="mx-auto mb-3 flex h-8 w-8 items-center justify-center rounded-full" style={{ background: 'rgba(201,169,97,0.14)' }}><Icon color="#C9A961" size={17} /></span><p style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', fontWeight: 500 }}>{card.title}</p><p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '11px', lineHeight: 1.5 }}>{card.body}</p></div>
           })}
         </div>
 
@@ -91,7 +91,7 @@ function OrderConfirmedContent() {
             </h3>
             <p
               style={{
-                color: '#6B5B4E',
+                color: 'var(--color-muted-text)',
                 fontSize: '14px',
                 marginBottom: '16px',
               }}
@@ -109,7 +109,7 @@ function OrderConfirmedContent() {
           <Link href="/account/orders" style={{ border: '1px solid #EDD9AF', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.2em', padding: '14px 36px', textDecoration: 'none' }}>VIEW YOUR ORDER</Link>
         </div>
         <div className="mt-7">
-          <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', marginBottom: '10px' }}>Share the love</p>
+          <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px', marginBottom: '10px' }}>Share the love</p>
           <div className="flex justify-center gap-3"><a href="#" style={{ color: '#C9A961' }}><Share2 size={18} /></a><a href="#" style={{ color: '#C9A961' }}><Share2 size={18} /></a></div>
         </div>
       </section>
@@ -134,7 +134,7 @@ export default function OrderConfirmedPage() {
             style={{
               fontFamily: 'var(--font-playfair)',
               fontSize: '18px',
-              color: '#B8A090',
+              color: 'var(--color-muted-text)',
             }}
           >
             Loading...

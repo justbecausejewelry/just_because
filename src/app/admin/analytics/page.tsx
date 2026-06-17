@@ -20,6 +20,7 @@ import {
 import { Diamond as DiamondIcon } from 'lucide-react'
 import { supabaseAuth } from '@/lib/auth'
 import { formatCurrency, groupByDay } from '@/lib/analyticsHelpers'
+import { normalizeOrderStatus, orderStatusLabel } from '@/lib/tracking'
 
 type RangeKey = 'today' | '7d' | '30d' | 'all'
 
@@ -142,7 +143,7 @@ function formatPercent(value: number) {
 }
 
 function statusLabel(status: string | null | undefined) {
-  return (status || 'received').replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
+  return orderStatusLabel(normalizeOrderStatus(status))
 }
 
 function SimpleTooltip({ active, payload, label }: { active?: boolean; payload?: ChartPayload[]; label?: string }) {
@@ -363,7 +364,7 @@ export default function AdminAnalyticsPage() {
       .slice(0, 5)
 
     const statusCounts = rangeOrders.reduce((map, order) => {
-      const status = order.status || 'received'
+      const status = normalizeOrderStatus(order.status)
       map.set(status, (map.get(status) || 0) + 1)
       return map
     }, new Map<string, number>())

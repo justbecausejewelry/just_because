@@ -188,7 +188,7 @@ export function CheckoutAuthWall({ email, name, phone = '', onSuccess }: Props) 
       <div style={{ padding: '24px' }}>
         {mode === 'choice' ? (
           <div>
-            <p style={{ fontSize: '14px', color: '#B8A090', marginBottom: '20px', lineHeight: 1.7 }}>
+            <p style={{ fontSize: '16px', color: 'var(--color-muted-text)', marginBottom: '20px', lineHeight: 1.625 }}>
               To complete your purchase, create an account or sign in before payment. This keeps your order history and delivery updates in one place.
             </p>
 
@@ -202,11 +202,11 @@ export function CheckoutAuthWall({ email, name, phone = '', onSuccess }: Props) 
               <button type="button" onClick={() => setMode('signin')} style={{ background: 'transparent', color: '#1A1014', border: '0.5px solid #EDD9AF', padding: '20px 16px', cursor: 'pointer', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <span style={{ fontSize: '11px', letterSpacing: '0.15em', color: '#C9A961', fontWeight: 500 }}>RETURNING CUSTOMER</span>
                 <span style={{ fontSize: '18px', fontFamily: 'var(--font-playfair)', fontWeight: 400 }}>Sign In</span>
-                <span style={{ fontSize: '12px', color: '#B8A090', lineHeight: 1.5 }}>Continue with your existing account.</span>
+                <span style={{ fontSize: '13px', color: 'var(--color-muted-text)', lineHeight: 1.5 }}>Continue with your existing account.</span>
               </button>
             </div>
 
-            <p style={{ fontSize: '11px', color: '#B8A090', textAlign: 'center', lineHeight: 1.6, margin: 0 }}>
+            <p style={{ fontSize: '13px', color: 'var(--color-muted-text)', textAlign: 'center', lineHeight: 1.6, margin: 0 }}>
               Your information is encrypted and secure. We never share your data.
             </p>
           </div>
@@ -214,7 +214,7 @@ export function CheckoutAuthWall({ email, name, phone = '', onSuccess }: Props) 
 
         {mode === 'create' ? (
           <div>
-            <button type="button" onClick={() => setMode('choice')} style={{ background: 'none', border: 'none', color: '#B8A090', fontSize: '12px', cursor: 'pointer', marginBottom: '16px', padding: 0, letterSpacing: '0.06em' }}>
+            <button type="button" onClick={() => setMode('choice')} style={{ background: 'none', border: 'none', color: 'var(--color-muted-text)', fontSize: '12px', cursor: 'pointer', marginBottom: '16px', padding: 0, letterSpacing: '0.06em' }}>
               Back
             </button>
             <p style={{ fontSize: '11px', letterSpacing: '0.18em', color: '#C9A961', fontWeight: 500, marginBottom: '16px' }}>CREATE YOUR ACCOUNT</p>
@@ -234,7 +234,7 @@ export function CheckoutAuthWall({ email, name, phone = '', onSuccess }: Props) 
 
         {mode === 'signin' ? (
           <div>
-            <button type="button" onClick={() => setMode('choice')} style={{ background: 'none', border: 'none', color: '#B8A090', fontSize: '12px', cursor: 'pointer', marginBottom: '16px', padding: 0, letterSpacing: '0.06em' }}>
+            <button type="button" onClick={() => setMode('choice')} style={{ background: 'none', border: 'none', color: 'var(--color-muted-text)', fontSize: '12px', cursor: 'pointer', marginBottom: '16px', padding: 0, letterSpacing: '0.06em' }}>
               Back
             </button>
             <p style={{ fontSize: '11px', letterSpacing: '0.18em', color: '#C9A961', fontWeight: 500, marginBottom: '16px' }}>SIGN IN TO YOUR ACCOUNT</p>
@@ -259,7 +259,7 @@ export function CheckoutAuthWall({ email, name, phone = '', onSuccess }: Props) 
             <button type="button" onClick={() => void handleSignIn()} disabled={loading} className="btn-primary" style={{ width: '100%', marginTop: '16px', height: '52px', fontSize: '12px', letterSpacing: '0.12em', justifyContent: 'center', opacity: loading ? 0.72 : 1 }}>
               {loading ? 'Signing In...' : 'Sign In & Continue'}
             </button>
-            <p style={{ fontSize: '12px', color: '#B8A090', textAlign: 'center', marginTop: '12px' }}>
+            <p style={{ fontSize: '13px', color: 'var(--color-muted-text)', textAlign: 'center', marginTop: '12px' }}>
               Don&apos;t have an account?{' '}
               <button type="button" onClick={() => setMode('create')} style={{ background: 'none', border: 'none', color: '#C9A961', fontSize: '12px', cursor: 'pointer', padding: 0 }}>
                 Create one

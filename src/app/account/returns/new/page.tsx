@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { CheckCircle } from 'lucide-react'
 import type { User } from '@supabase/supabase-js'
+import { useFormPersistence } from '@/hooks/useFormPersistence'
 import { supabaseAuth } from '@/lib/auth'
 import {
   RETURN_REASONS,
@@ -74,6 +75,15 @@ function ReturnRequestContent() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const draftState = useMemo(() => ({ step, reason, details }), [details, reason, step])
+  const clearPersistedReturn = useFormPersistence('return_request_form_v1', draftState, (updater) => {
+    const next = typeof updater === 'function' ? updater(draftState) : updater
+    if (typeof next.step === 'number') setStep(next.step)
+    if (typeof next.reason === 'string' && (next.reason === '' || RETURN_REASONS.some((item) => item.value === next.reason))) {
+      setReason(next.reason as ReturnReason | '')
+    }
+    if (typeof next.details === 'string') setDetails(next.details)
+  })
 
   useEffect(() => {
     let cancelled = false
@@ -179,6 +189,7 @@ function ReturnRequestContent() {
 
       setReturnReference(payload.returnRequest.id)
       setSubmitted(true)
+      clearPersistedReturn()
       setStep(4)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Unable to submit return request.')
@@ -189,7 +200,7 @@ function ReturnRequestContent() {
 
   if (loading) {
     return (
-      <main style={{ alignItems: 'center', background: '#FBF5F0', color: '#B8A090', display: 'flex', fontFamily: 'var(--font-playfair)', fontSize: '20px', justifyContent: 'center', minHeight: '100vh' }}>
+      <main style={{ alignItems: 'center', background: '#FBF5F0', color: 'var(--color-muted-text)', display: 'flex', fontFamily: 'var(--font-playfair)', fontSize: '20px', justifyContent: 'center', minHeight: '100vh' }}>
         Loading return request...
       </main>
     )
@@ -199,7 +210,7 @@ function ReturnRequestContent() {
     <main style={{ background: '#FBF5F0', margin: '0 auto', maxWidth: '780px', minHeight: '100vh', padding: '60px 24px' }}>
       <Link href="/account/orders" style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '12px', letterSpacing: '0.08em' }}>{'<-'} Back to orders</Link>
       <h1 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '40px', fontWeight: 400, margin: '28px 0 10px' }}>Request a Return</h1>
-      <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '13px', lineHeight: 1.7, margin: '0 0 28px' }}>
+      <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '13px', lineHeight: 1.7, margin: '0 0 28px' }}>
         Returns are reviewed by our team before shipment authorization is issued.
       </p>
 
@@ -214,7 +225,7 @@ function ReturnRequestContent() {
           <CheckCircle color="#7A8F72" size={58} strokeWidth={1.2} style={{ margin: '0 auto 18px' }} />
           <h2 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '28px', fontWeight: 400, margin: 0 }}>Return Request Submitted</h2>
           <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '12px', letterSpacing: '0.08em', margin: '14px 0' }}>Return Reference: {returnReference}</p>
-          <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '13px', lineHeight: 1.7, margin: '0 auto 24px', maxWidth: '440px' }}>
+          <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '13px', lineHeight: 1.7, margin: '0 auto 24px', maxWidth: '440px' }}>
             We will review your request within 1-2 business days and email you with next steps.
           </p>
           <Link href="/account/orders" className="btn-primary">BACK TO ORDERS</Link>
@@ -233,7 +244,7 @@ function ReturnRequestContent() {
               {order ? (
                 <div style={{ background: '#FBF5F0', border: '0.5px solid #EDD9AF', padding: '18px', marginBottom: '18px' }}>
                   <h2 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '22px', fontWeight: 400, margin: 0 }}>{order.orderNumber}</h2>
-                  <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', margin: '8px 0 0' }}>{formatDate(order.createdAt)} - {firstItemName(order)} - {formatPrice(order.total || 0)}</p>
+                  <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px', margin: '8px 0 0' }}>{formatDate(order.createdAt)} - {firstItemName(order)} - {formatPrice(order.total || 0)}</p>
                 </div>
               ) : null}
               <div style={{ background: eligibility.eligible ? 'rgba(201,169,97,0.08)' : '#FCF0F4', border: `0.5px solid ${eligibility.eligible ? '#EDD9AF' : '#A85C6A'}`, color: eligibility.eligible ? '#1A1014' : '#A85C6A', fontFamily: 'var(--font-inter)', fontSize: '13px', lineHeight: 1.7, padding: '16px' }}>
@@ -269,7 +280,7 @@ function ReturnRequestContent() {
                     }}
                   >
                     <p style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '15px', fontWeight: 500, margin: 0 }}>{item.label}</p>
-                    <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '13px', margin: '5px 0 0' }}>{item.description}</p>
+                    <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '13px', margin: '5px 0 0' }}>{item.description}</p>
                   </button>
                 ))}
               </div>
@@ -318,7 +329,7 @@ export default function NewReturnPage() {
   return (
     <Suspense
       fallback={
-        <main style={{ alignItems: 'center', background: '#FBF5F0', color: '#B8A090', display: 'flex', fontFamily: 'var(--font-playfair)', fontSize: '20px', justifyContent: 'center', minHeight: '100vh' }}>
+        <main style={{ alignItems: 'center', background: '#FBF5F0', color: 'var(--color-muted-text)', display: 'flex', fontFamily: 'var(--font-playfair)', fontSize: '20px', justifyContent: 'center', minHeight: '100vh' }}>
           Loading return request...
         </main>
       }

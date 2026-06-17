@@ -25,6 +25,7 @@ video {
   --color-blush:    #E8C4D0;
   --color-noir:     #1A1014;
   --color-taupe:    #B8A090;
+  --color-muted-text: rgba(42, 30, 36, 0.80);
   --color-ivory:    #FDF8F2;
   --color-goldtint: #EDD9AF;
   --color-rose:     #F5E8ED;
@@ -48,6 +49,7 @@ video {
   --color-blush:    #E8C4D0;
   --color-noir:     #1A1014;
   --color-taupe:    #B8A090;
+  --color-muted-text: rgba(42, 30, 36, 0.80);
   --color-ivory:    #FDF8F2;
   --color-goldtint: #EDD9AF;
   --color-rose:     #F5E8ED;
@@ -278,7 +280,7 @@ h4 {
 }
 
 p {
-  color: #6B5B4E;
+  color: var(--color-muted-text);
   font-family: var(--font-jost), sans-serif;
   font-size: 16px;
   font-weight: 300;
@@ -2043,7 +2045,7 @@ textarea {
 
 input::placeholder,
 textarea::placeholder {
-  color: #B8A090 !important;
+  color: var(--color-muted-text) !important;
   font-size: 15px !important;
 }
 
@@ -2053,7 +2055,7 @@ th {
 }
 
 th {
-  color: #B8A090 !important;
+  color: var(--color-muted-text) !important;
   font-size: 11px !important;
   font-weight: 600 !important;
   letter-spacing: 0.15em !important;
@@ -2930,4 +2932,11 @@ body {
   .footer-badges {
     display: none !important;
   }
+}
+
+footer.site-footer .footer-grid > div:first-child p.footer-tagline {
+  color: rgba(253, 248, 242, 0.72) !important;
+  font-size: 16px !important;
+  font-style: italic !important;
+  line-height: 1.6 !important;
 }

@@ -1,30 +1,47 @@
-import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { z } from 'zod'
+import { getAuthedUserOrGuest } from '@/lib/auth/getAuthedUserOrGuest'
+import { requireAdmin, requireUser } from '@/lib/server/security'
 
 type ConversationParams = {
   params: Promise<{ id: string }>
 }
 
+const replySchema = z.object({
+  content: z.string().trim().min(1).max(5000),
+  senderType: z.enum(['admin', 'customer']),
+  senderName: z.string().trim().max(160).optional(),
+})
+
+const patchSchema = z.object({
+  status: z.enum(['open', 'replied', 'resolved']).optional(),
+})
+
+async function isAdminViewer(request: NextRequest) {
+  return new URL(request.url).searchParams.get('viewer') === 'admin'
+}
+
 export async function GET(request: NextRequest, { params }: ConversationParams) {
   const { id } = await params
-  const viewer = new URL(request.url).searchParams.get('viewer')
+  const adminViewer = await isAdminViewer(request)
+  const auth = adminViewer ? await requireAdmin(request) : await requireUser(request)
+  if ('error' in auth) return auth.error
 
-  const { data: conversation, error } = await supabase
+  let query = auth.admin
     .from('Conversation')
     .select('*')
     .eq('id', id)
-    .single()
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 404 })
+  if (!adminViewer) {
+    query = query.eq('customerId', auth.user.id)
   }
 
-  const { data: messages, error: messageError } = await supabase
+  const { data: conversation, error } = await query.maybeSingle()
+  if (error || !conversation) {
+    return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
+  }
+
+  const { data: messages, error: messageError } = await auth.admin
     .from('ConversationMessage')
     .select('*')
     .eq('conversationId', id)
@@ -34,9 +51,9 @@ export async function GET(request: NextRequest, { params }: ConversationParams) 
     return NextResponse.json({ error: messageError.message }, { status: 500 })
   }
 
-  await supabase
+  await auth.admin
     .from('Conversation')
-    .update(viewer === 'admin' ? { isReadByAdmin: true } : { isReadByCustomer: true })
+    .update(adminViewer ? { isReadByAdmin: true } : { isReadByCustomer: true })
     .eq('id', id)
 
   return NextResponse.json({ conversation, messages: messages || [] })
@@ -44,37 +61,57 @@ export async function GET(request: NextRequest, { params }: ConversationParams) 
 
 export async function POST(request: NextRequest, { params }: ConversationParams) {
   const { id } = await params
-  const body = (await request.json()) as {
-    content?: string
-    senderType?: 'admin' | 'customer'
-    senderName?: string
-  }
-  const { content, senderType, senderName } = body
-
-  if (!content || !senderType) {
-    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+  const parsed = replySchema.safeParse(await request.json().catch(() => null))
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid reply payload' }, { status: 400 })
   }
 
-  const { error: msgError } = await supabase
+  const adminReply = parsed.data.senderType === 'admin'
+  const auth = adminReply ? await requireAdmin(request) : await requireUser(request)
+  if ('error' in auth) return auth.error
+  const identity = adminReply ? null : await getAuthedUserOrGuest(request)
+  if (!adminReply && (!identity || !identity.authed)) {
+    return NextResponse.json({ error: 'Missing auth token' }, { status: 401 })
+  }
+
+  let conversationQuery = auth.admin
+    .from('Conversation')
+    .select('id')
+    .eq('id', id)
+
+  if (!adminReply) {
+    conversationQuery = conversationQuery.eq('customerId', auth.user.id)
+  }
+
+  const { data: conversation, error: conversationError } = await conversationQuery.maybeSingle()
+  if (conversationError || !conversation) {
+    return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
+  }
+
+  const senderName = adminReply
+    ? 'Just Because Team'
+    : identity?.authed ? identity.name || identity.email : 'Customer'
+
+  const { error: msgError } = await auth.admin
     .from('ConversationMessage')
     .insert({
       conversationId: id,
-      senderType,
-      senderName: senderName || (senderType === 'admin' ? 'Just Because Team' : 'Customer'),
-      content,
+      senderType: parsed.data.senderType,
+      senderName,
+      content: parsed.data.content,
     })
 
   if (msgError) {
     return NextResponse.json({ error: msgError.message }, { status: 500 })
   }
 
-  const { error: updateError } = await supabase
+  const { error: updateError } = await auth.admin
     .from('Conversation')
     .update({
       updatedAt: new Date().toISOString(),
-      status: senderType === 'admin' ? 'replied' : 'open',
-      isReadByAdmin: senderType === 'admin',
-      isReadByCustomer: senderType === 'admin' ? false : true,
+      status: adminReply ? 'replied' : 'open',
+      isReadByAdmin: adminReply,
+      isReadByCustomer: adminReply ? false : true,
     })
     .eq('id', id)
 
@@ -87,23 +124,20 @@ export async function POST(request: NextRequest, { params }: ConversationParams)
 
 export async function PATCH(request: NextRequest, { params }: ConversationParams) {
   const { id } = await params
-  const body = (await request.json()) as {
-    status?: 'open' | 'replied' | 'resolved'
-    isReadByAdmin?: boolean
-    isReadByCustomer?: boolean
+  const auth = await requireAdmin(request)
+  if ('error' in auth) return auth.error
+
+  const parsed = patchSchema.safeParse(await request.json().catch(() => null))
+  if (!parsed.success || !parsed.data.status) {
+    return NextResponse.json({ error: 'Invalid conversation update payload' }, { status: 400 })
   }
 
-  const updates: Record<string, string | boolean> = {
-    updatedAt: new Date().toISOString(),
-  }
-
-  if (body.status) updates.status = body.status
-  if (typeof body.isReadByAdmin === 'boolean') updates.isReadByAdmin = body.isReadByAdmin
-  if (typeof body.isReadByCustomer === 'boolean') updates.isReadByCustomer = body.isReadByCustomer
-
-  const { error } = await supabase
+  const { error } = await auth.admin
     .from('Conversation')
-    .update(updates)
+    .update({
+      status: parsed.data.status,
+      updatedAt: new Date().toISOString(),
+    })
     .eq('id', id)
 
   if (error) {

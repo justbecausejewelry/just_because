@@ -1,6 +1,7 @@
 'use server'
 
 import { returnReasonLabel } from '@/lib/returnEligibility'
+import { resend, resendFromEmail } from '@/lib/email/resend'
 
 type ReturnEmailType = 'requested' | 'approved' | 'rejected' | 'refunded'
 
@@ -35,17 +36,22 @@ function formatCurrency(value: number | undefined) {
 }
 
 async function postEmail(payload: { to: string; subject: string; html: string }) {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+  const result = await resend.emails.send({
+    from: resendFromEmail,
+    to: payload.to,
+    subject: payload.subject,
+    html: payload.html,
+  })
 
-  try {
-    await fetch(`${siteUrl}/api/send-email`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-  } catch (error) {
-    console.log('Prototype email log:', payload, error)
+  if (result.error) {
+    throw new Error(result.error.message)
   }
+
+  console.log('[resend] return email accepted:', {
+    id: result.data?.id,
+    to: payload.to,
+    subject: payload.subject,
+  })
 }
 
 export async function sendReturnRequestEmail({
@@ -130,4 +136,3 @@ export async function sendReturnRequestEmail({
     html: customerMessages[type],
   })
 }
-

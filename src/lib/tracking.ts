@@ -1,13 +1,12 @@
 export type CarrierValue = 'fedex' | 'ups' | 'usps' | 'dhl' | 'other'
 
 export type OrderStatus =
-  | 'received'
   | 'pending'
   | 'confirmed'
-  | 'in_production'
   | 'processing'
   | 'shipped'
   | 'delivered'
+  | 'completed'
   | 'cancelled'
   | 'refunded'
 
@@ -27,13 +26,6 @@ export const ORDER_STATUSES: Array<{
   description: string
 }> = [
   {
-    value: 'received',
-    label: 'Received',
-    color: '#6B4A10',
-    background: '#EDD9AF',
-    description: 'Order received',
-  },
-  {
     value: 'pending',
     label: 'Pending',
     color: '#B8A090',
@@ -46,13 +38,6 @@ export const ORDER_STATUSES: Array<{
     color: '#8A6A24',
     background: '#EDD9AF',
     description: 'Order confirmed',
-  },
-  {
-    value: 'in_production',
-    label: 'In Production',
-    color: '#6B2D44',
-    background: '#E8C4D0',
-    description: 'Being prepared',
   },
   {
     value: 'processing',
@@ -74,6 +59,13 @@ export const ORDER_STATUSES: Array<{
     color: '#3F5D34',
     background: '#DDE8D6',
     description: 'Delivered',
+  },
+  {
+    value: 'completed',
+    label: 'Completed',
+    color: '#3F5D34',
+    background: '#DDE8D6',
+    description: 'Completed',
   },
   {
     value: 'cancelled',
@@ -111,16 +103,19 @@ export function getTrackingUrl(carrier: string, trackingNumber: string): string 
 }
 
 export function normalizeOrderStatus(status?: string | null): OrderStatus {
+  if (status === 'received') return 'confirmed'
+  if (status === 'in_production') return 'processing'
+
   if (ORDER_STATUSES.some((item) => item.value === status)) {
     return status as OrderStatus
   }
 
-  return 'received'
+  return 'pending'
 }
 
 export function orderStatusLabel(status?: string | null): string {
   const normalized = normalizeOrderStatus(status)
-  return ORDER_STATUSES.find((item) => item.value === normalized)?.label || 'Received'
+  return ORDER_STATUSES.find((item) => item.value === normalized)?.label || 'Pending'
 }
 
 export function orderStatusStyle(status?: string | null) {

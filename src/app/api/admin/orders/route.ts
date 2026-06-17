@@ -1,21 +1,16 @@
-import { createClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { sendDeliveryEmail, sendShippingEmail } from '@/lib/emails/shippingEmail'
+import { requireAdmin } from '@/lib/server/security'
 import { getCarrierLabel, getTrackingUrl, normalizeOrderStatus, type CarrierValue, type OrderStatus } from '@/lib/tracking'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 const allowedStatuses = new Set<OrderStatus>([
-  'received',
   'pending',
   'confirmed',
-  'in_production',
   'processing',
   'shipped',
   'delivered',
+  'completed',
   'cancelled',
   'refunded',
 ])
@@ -62,18 +57,20 @@ function orderDisplayId(order: OrderRow) {
 
 function defaultMessage(status: OrderStatus, order: OrderRow, body: PatchPayload) {
   if (status === 'confirmed') return `Order ${orderDisplayId(order)} confirmed.`
-  if (status === 'processing' || status === 'in_production') return 'Your jewelry is being prepared.'
+  if (status === 'processing') return 'Your jewelry is being prepared.'
   if (status === 'shipped') {
     const carrierLabel = getCarrierLabel(body.carrier)
     return body.note?.trim() || `Order shipped via ${carrierLabel}. Tracking: ${body.trackingNumber || ''}`.trim()
   }
   if (status === 'delivered') return `Order ${orderDisplayId(order)} delivered.`
+  if (status === 'completed') return `Order ${orderDisplayId(order)} completed.`
   if (status === 'cancelled') return `Order ${orderDisplayId(order)} cancelled.`
   if (status === 'refunded') return `Order ${orderDisplayId(order)} refunded.`
   return `Order ${orderDisplayId(order)} updated.`
 }
 
 async function createOrderEvent({
+  admin,
   orderId,
   status,
   message,
@@ -81,6 +78,7 @@ async function createOrderEvent({
   carrier,
   trackingUrl,
 }: {
+  admin: SupabaseClient
   orderId: string
   status: OrderStatus
   message: string
@@ -88,7 +86,7 @@ async function createOrderEvent({
   carrier?: string | null
   trackingUrl?: string | null
 }) {
-  const { error } = await supabase
+  const { error } = await admin
     .from('order_events')
     .insert({
       order_id: orderId,
@@ -105,8 +103,11 @@ async function createOrderEvent({
   }
 }
 
-export async function GET() {
-  const { data: ordersData, error } = await supabase
+export async function GET(request: NextRequest) {
+  const auth = await requireAdmin(request)
+  if ('error' in auth) return auth.error
+
+  const { data: ordersData, error } = await auth.admin
     .from('Order')
     .select('*')
     .order('createdAt', { ascending: false })
@@ -116,7 +117,7 @@ export async function GET() {
     return NextResponse.json({ error: error.message, orders: [] }, { status: 500 })
   }
 
-  const { data: itemsData, error: itemsError } = await supabase
+  const { data: itemsData, error: itemsError } = await auth.admin
     .from('OrderItem')
     .select('*')
 
@@ -124,7 +125,7 @@ export async function GET() {
     console.error('Order items error:', itemsError)
   }
 
-  const { data: eventsData, error: eventsError } = await supabase
+  const { data: eventsData, error: eventsError } = await auth.admin
     .from('order_events')
     .select('*')
     .order('created_at', { ascending: true })
@@ -145,6 +146,9 @@ export async function GET() {
 }
 
 export async function PATCH(request: NextRequest) {
+  const auth = await requireAdmin(request)
+  if ('error' in auth) return auth.error
+
   const body = (await request.json()) as PatchPayload
 
   if (!body.orderId || !body.status) {
@@ -161,7 +165,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Tracking number is required to mark an order shipped' }, { status: 400 })
   }
 
-  const { data: currentData, error: currentError } = await supabase
+  const { data: currentData, error: currentError } = await auth.admin
     .from('Order')
     .select('*')
     .eq('id', body.orderId)
@@ -195,7 +199,7 @@ export async function PATCH(request: NextRequest) {
     patch.deliveredAt = now
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await auth.admin
     .from('Order')
     .update(patch)
     .eq('id', body.orderId)
@@ -206,7 +210,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  const { data: itemsData, error: itemsError } = await supabase
+  const { data: itemsData, error: itemsError } = await auth.admin
     .from('OrderItem')
     .select('*')
     .eq('orderId', body.orderId)
@@ -219,6 +223,7 @@ export async function PATCH(request: NextRequest) {
   const message = defaultMessage(status, currentOrder, body)
 
   await createOrderEvent({
+    admin: auth.admin,
     orderId: body.orderId,
     status,
     message,

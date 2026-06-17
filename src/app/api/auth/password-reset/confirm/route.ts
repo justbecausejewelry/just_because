@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { z } from 'zod'
+import { checkRateLimit, rateLimitResponse } from '@/lib/server/rateLimit'
 
 export const runtime = 'nodejs'
 
@@ -8,6 +10,12 @@ type ConfirmPasswordResetBody = {
   code?: unknown
   password?: unknown
 }
+
+const passwordResetConfirmSchema = z.object({
+  email: z.string().trim().email('Enter a valid email address.').max(254),
+  code: z.string().trim().regex(/^\d{4}$/, 'Enter the 4-digit code sent to your email.'),
+  password: z.string().min(8, 'Password must be at least 8 characters.').max(128),
+})
 
 type OtpRow = {
   id: string
@@ -40,25 +48,21 @@ export async function POST(request: Request) {
   }
 
   const body: unknown = await request.json().catch(() => null)
-  if (!isRecord(body)) {
-    return NextResponse.json({ error: 'Invalid password reset payload' }, { status: 400 })
+  const parsed = passwordResetConfirmSchema.safeParse(isRecord(body) ? body : {})
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0]
+    return NextResponse.json({ error: issue?.message || 'Invalid password reset payload' }, { status: 400 })
   }
+  const email = normalizeEmail(parsed.data.email)
+  const code = normalizeCode(parsed.data.code)
+  const password = parsed.data.password
 
-  const email = normalizeEmail(body.email)
-  const code = normalizeCode(body.code)
-  const password = typeof body.password === 'string' ? body.password : ''
-
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return NextResponse.json({ error: 'Enter a valid email address.' }, { status: 400 })
-  }
-
-  if (!/^\d{4}$/.test(code)) {
-    return NextResponse.json({ error: 'Enter the 4-digit code sent to your email.' }, { status: 400 })
-  }
-
-  if (password.length < 8) {
-    return NextResponse.json({ error: 'Password must be at least 8 characters.' }, { status: 400 })
-  }
+  const limit = checkRateLimit({
+    key: `password-reset-confirm:${email}`,
+    limit: 10,
+    windowMs: 60 * 60 * 1000,
+  })
+  if (!limit.ok) return rateLimitResponse(limit.resetAt)
 
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
     auth: {

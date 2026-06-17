@@ -38,15 +38,18 @@ export default function MessageThreadPage() {
 
   const loadConversation = useCallback(async () => {
     const {
-      data: { user },
-    } = await supabaseAuth.auth.getUser()
+      data: { session },
+    } = await supabaseAuth.auth.getSession()
+    const user = session?.user
 
-    if (!user) {
+    if (!user || !session?.access_token) {
       router.replace(`/login?redirect=/account/messages/${params.id}`)
       return
     }
 
-    const response = await fetch(`/api/conversations/${params.id}`)
+    const response = await fetch(`/api/conversations/${params.id}`, {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
     const payload = (await response.json()) as {
       conversation?: Conversation
       messages?: ConversationMessage[]
@@ -72,12 +75,21 @@ export default function MessageThreadPage() {
     setIsSending(true)
     try {
       const {
-        data: { user },
-      } = await supabaseAuth.auth.getUser()
+        data: { session },
+      } = await supabaseAuth.auth.getSession()
+      const user = session?.user
+
+      if (!user || !session?.access_token) {
+        router.replace(`/login?redirect=/account/messages/${params.id}`)
+        return
+      }
 
       const response = await fetch(`/api/conversations/${params.id}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           senderType: 'customer',
           senderName: typeof user?.user_metadata?.name === 'string' ? user.user_metadata.name : user?.email || 'Customer',
@@ -113,7 +125,7 @@ export default function MessageThreadPage() {
             <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', borderBottom: '0.5px solid #EDD9AF', padding: '24px 0 18px' }}>
               <div>
                 <h1 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '28px', fontWeight: 400, margin: 0 }}>{conversation.subject}</h1>
-                <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', marginTop: '8px' }}>
+                <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px', marginTop: '8px' }}>
                   Started {formatTime(conversation.createdAt)}
                 </p>
               </div>
@@ -144,7 +156,7 @@ export default function MessageThreadPage() {
                       </p>
                     )}
                     <p style={{ fontFamily: 'var(--font-inter)', fontSize: '13px', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap' }}>{message.content}</p>
-                    <time style={{ color: isCustomer ? '#B8A090' : '#B8A090', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '10px', marginTop: '8px', textAlign: 'right' }}>
+                    <time style={{ color: 'var(--color-muted-text)', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '10px', marginTop: '8px', textAlign: 'right' }}>
                       {formatTime(message.createdAt)}
                     </time>
                   </article>
@@ -165,7 +177,7 @@ export default function MessageThreadPage() {
             )}
           </>
         ) : (
-          <div style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', padding: '40px 0' }}>Conversation not found.</div>
+          <div style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', padding: '40px 0' }}>Conversation not found.</div>
         )}
       </section>
     </main>

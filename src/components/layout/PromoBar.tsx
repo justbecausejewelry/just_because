@@ -1,10 +1,10 @@
 export function PromoBar() {
   const marqueeItems = [
-    '+1 (800) 555-0192',
-    'Sign up · 30% off your first piece',
+    'A reason, in itself',
+    'Lab-grown diamonds',
     'Free shipping over $200',
     'IGI Certified Lab Diamonds',
-    'Zero Mining · 100% Renewable',
+    'Zero Mining',
     'Lifetime Warranty',
     '30-Day Returns',
   ]
@@ -55,7 +55,7 @@ export function PromoBar() {
                     paddingLeft: '24px',
                   }}
                 >
-                  ✦
+                  *
                 </span>
                 <span
                   style={{

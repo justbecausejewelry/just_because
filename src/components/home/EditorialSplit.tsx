@@ -255,9 +255,9 @@ export function EditorialSplit() {
           <p
             style={{
               fontFamily: 'var(--font-inter)',
-              fontSize: '14px',
-              color: '#B8A090',
-              lineHeight: 1.85,
+              fontSize: '16px',
+              color: 'var(--color-muted-text)',
+              lineHeight: 1.625,
               maxWidth: '380px',
               marginBottom: '40px',
             }}

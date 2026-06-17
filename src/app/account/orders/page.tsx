@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ExternalLink, Package, RotateCcw, ShoppingBag } from 'lucide-react'
 import type { User } from '@supabase/supabase-js'
+import { getMetalLabel } from '@/config/productOptions'
 import { supabaseAuth } from '@/lib/auth'
 import { checkReturnEligibility } from '@/lib/returnEligibility'
 import { getCarrierLabel, orderStatusLabel, orderStatusStyle } from '@/lib/tracking'
@@ -34,6 +35,11 @@ type Order = {
   OrderItem?: OrderItem[]
 }
 
+type OrdersResponse = {
+  orders?: Order[]
+  error?: string
+}
+
 function formatPrice(value: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value)
 }
@@ -46,7 +52,7 @@ function formatDate(value?: string | null) {
 function itemLine(item: OrderItem) {
   return [
     item.productTitle || 'Just Because piece',
-    item.selectedMetal,
+    getMetalLabel(item.selectedMetal),
     item.selectedCarat ? `${item.selectedCarat}ct` : null,
     item.selectedShape,
   ].filter(Boolean).join(' - ')
@@ -68,14 +74,26 @@ export default function AccountOrdersPage() {
 
       try {
         setIsLoading(true)
-        const { data } = await supabaseAuth
-          .from('Order')
-          .select('*, OrderItem(*)')
-          .eq('customerEmail', user.email || '')
-          .order('createdAt', { ascending: false })
+        const { data: sessionData } = await supabaseAuth.auth.getSession()
+        const token = sessionData.session?.access_token
+
+        if (!token) {
+          router.replace('/login?redirect=/account/orders')
+          return
+        }
+
+        const response = await fetch('/api/account/orders', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+
+        const payload = await response.json().catch(() => ({})) as OrdersResponse
+
+        if (!response.ok) {
+          throw new Error(payload.error || 'Unable to load orders')
+        }
 
         if (!cancelled) {
-          setOrders((data || []) as Order[])
+          setOrders(payload.orders || [])
         }
       } catch (error) {
         console.error('Orders load error:', error)
@@ -88,6 +106,16 @@ export default function AccountOrdersPage() {
         }
       }
     }
+
+    void supabaseAuth.auth.getSession().then(({ data }) => {
+      if (cancelled) return
+
+      if (data.session?.user) {
+        void loadForUser(data.session.user)
+      } else {
+        router.replace('/login?redirect=/account/orders')
+      }
+    })
 
     const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange((event, session) => {
       if (cancelled) return
@@ -115,7 +143,7 @@ export default function AccountOrdersPage() {
 
   if (isLoading) {
     return (
-      <main style={{ minHeight: '100vh', background: '#FBF5F0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#B8A090', fontFamily: 'var(--font-playfair)', fontSize: '20px' }}>
+      <main style={{ minHeight: '100vh', background: '#FBF5F0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-muted-text)', fontFamily: 'var(--font-playfair)', fontSize: '20px' }}>
         Loading orders...
       </main>
     )
@@ -136,7 +164,7 @@ export default function AccountOrdersPage() {
         <section style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', padding: '56px 24px', textAlign: 'center' }}>
           <ShoppingBag size={52} color="#C9A961" strokeWidth={1.2} style={{ margin: '0 auto 18px' }} />
           <h2 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '24px', fontWeight: 400, margin: 0 }}>No orders yet</h2>
-          <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '14px', margin: '10px 0 24px' }}>No orders yet. Start browsing.</p>
+          <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '14px', margin: '10px 0 24px' }}>No orders yet. Start browsing.</p>
           <Link href="/diamonds" className="btn-primary">START BROWSING -</Link>
         </section>
       ) : (
@@ -157,8 +185,8 @@ export default function AccountOrdersPage() {
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div>
                     <h2 style={{ color: '#C9A961', fontFamily: 'var(--font-playfair)', fontSize: '18px', fontWeight: 400, margin: 0 }}>{order.orderNumber}</h2>
-                    <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', marginTop: '4px' }}>{formatDate(order.createdAt)}</p>
-                    <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', margin: '4px 0 0' }}>{itemSummary}</p>
+                    <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px', marginTop: '4px' }}>{formatDate(order.createdAt)}</p>
+                    <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px', margin: '4px 0 0' }}>{itemSummary}</p>
                   </div>
                   <div style={{ alignItems: 'flex-start', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <span style={{ ...orderStatusStyle(order.status), border: '0.5px solid #EDD9AF', borderRadius: '4px', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.12em', padding: '5px 10px', textTransform: 'uppercase' }}>{orderStatusLabel(order.status)}</span>
@@ -172,7 +200,7 @@ export default function AccountOrdersPage() {
                       <Package size={18} color="#C9A961" />
                       <div>
                         <p style={{ color: '#1A1014', fontSize: '12px', margin: 0 }}>{getCarrierLabel(order.carrier)} {order.trackingNumber}</p>
-                        <p style={{ color: '#B8A090', fontSize: '11px', margin: '4px 0 0' }}>Estimated delivery: {formatDate(order.estimatedDelivery)}</p>
+                        <p style={{ color: 'var(--color-muted-text)', fontSize: '11px', margin: '4px 0 0' }}>Estimated delivery: {formatDate(order.estimatedDelivery)}</p>
                       </div>
                     </div>
                     {order.trackingUrl ? (
@@ -187,7 +215,7 @@ export default function AccountOrdersPage() {
                 {expanded === order.id && (
                   <div style={{ borderTop: '0.5px solid #EDD9AF', marginTop: '16px', paddingTop: '14px' }}>
                     {(order.OrderItem || []).map((item) => (
-                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', padding: '7px 0' }}>
+                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px', padding: '7px 0' }}>
                         <span>{itemLine(item)}</span>
                         <span>{formatPrice((item.unitPrice || 0) * (item.quantity || 1))}</span>
                       </div>
@@ -224,11 +252,11 @@ export default function AccountOrdersPage() {
                   ) : null}
                 </div>
                 {eligibility.eligible ? (
-                  <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', margin: '8px 0 0' }}>
+                  <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '11px', margin: '8px 0 0' }}>
                     {eligibility.daysRemaining} days left to return
                   </p>
                 ) : (
-                  <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', margin: '8px 0 0' }}>
+                  <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '11px', margin: '8px 0 0' }}>
                     {eligibility.reason}
                   </p>
                 )}

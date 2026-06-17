@@ -30,7 +30,7 @@ export function Hero() {
         <div>
           <p
             className="mb-5 uppercase"
-            style={{ color: '#C9A961', fontFamily: 'var(--font-jost)', fontSize: '10.5px', fontWeight: 500, letterSpacing: '0.2em' }}
+            style={{ color: '#C9A961', fontFamily: 'var(--font-jost)', fontSize: '11px', fontWeight: 500, letterSpacing: '0.2em' }}
           >
             DESIGN YOUR RING
           </p>
@@ -52,7 +52,7 @@ export function Hero() {
           </h1>
           <p
             className="mx-auto mb-10 max-w-[430px] md:mx-0"
-            style={{ color: '#6B5B4E', fontFamily: 'var(--font-jost)', fontSize: '15px', fontWeight: 300, lineHeight: 1.8 }}
+            style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-jost)', fontSize: '16px', fontWeight: 300, lineHeight: 1.625 }}
           >
             Lab-grown diamonds and 18k recycled gold, crafted for the moments
             that don&apos;t ask for an occasion.
@@ -93,7 +93,7 @@ export function Hero() {
 
           <div
             className="mt-12 grid grid-cols-2 gap-x-4 gap-y-2 sm:flex sm:flex-wrap"
-            style={{ color: '#B8A090', fontFamily: 'var(--font-jost)', fontSize: '12px', letterSpacing: '0.06em' }}
+            style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-jost)', fontSize: '14px', letterSpacing: '0.06em' }}
           >
             <span>IGI Certified</span>
             <span>-</span>

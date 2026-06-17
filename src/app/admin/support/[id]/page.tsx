@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { useToast } from '@/context/ToastContext'
+import { supabaseAuth } from '@/lib/auth'
 
 type ConversationStatus = 'open' | 'replied' | 'resolved'
 
@@ -43,8 +44,23 @@ export default function AdminSupportThreadPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSending, setIsSending] = useState(false)
 
+  const getAccessToken = async () => {
+    const {
+      data: { session },
+    } = await supabaseAuth.auth.getSession()
+    return session?.access_token || null
+  }
+
   const loadConversation = useCallback(async () => {
-    const response = await fetch(`/api/conversations/${params.id}?viewer=admin`)
+    const token = await getAccessToken()
+    if (!token) {
+      router.replace('/login?redirect=/admin/support')
+      return
+    }
+
+    const response = await fetch(`/api/conversations/${params.id}?viewer=admin`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
     const payload = (await response.json()) as {
       conversation?: Conversation
       messages?: ConversationMessage[]
@@ -52,7 +68,7 @@ export default function AdminSupportThreadPage() {
     setConversation(payload.conversation || null)
     setMessages(payload.messages || [])
     setIsLoading(false)
-  }, [params.id])
+  }, [params.id, router])
 
   useEffect(() => {
     void loadConversation()
@@ -65,9 +81,15 @@ export default function AdminSupportThreadPage() {
 
     setIsSending(true)
     try {
+      const token = await getAccessToken()
+      if (!token) throw new Error('Please sign in again')
+
       const response = await fetch(`/api/conversations/${params.id}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           senderType: 'admin',
           senderName: 'Just Because Team',
@@ -88,9 +110,15 @@ export default function AdminSupportThreadPage() {
   }
 
   const updateStatus = async (status: ConversationStatus) => {
+    const token = await getAccessToken()
+    if (!token) return
+
     await fetch(`/api/conversations/${params.id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({ status }),
     })
     setConversation((prev) => (prev ? { ...prev, status } : prev))

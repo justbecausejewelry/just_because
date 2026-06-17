@@ -92,7 +92,7 @@ export default function RingSizeGuidePage() {
 
       <section className="ring-size-hero" style={{ minHeight: '70vh', alignItems: 'center' }}>
         <div className="ring-size-hero-copy" style={{ padding: '0 80px' }}>
-          <Link href="/" style={{ fontSize: '11px', color: '#B8A090', textDecoration: 'none', letterSpacing: '0.1em', fontFamily: 'var(--font-inter)' }}>
+          <Link href="/" style={{ fontSize: '11px', color: 'var(--color-muted-text)', textDecoration: 'none', letterSpacing: '0.1em', fontFamily: 'var(--font-inter)' }}>
             Back to home
           </Link>
 
@@ -107,7 +107,7 @@ export default function RingSizeGuidePage() {
             perfect fit.
           </h1>
 
-          <p style={{ fontSize: '14px', color: '#B8A090', lineHeight: 1.85, maxWidth: '460px', marginBottom: '32px', fontFamily: 'var(--font-inter)' }}>
+          <p style={{ fontSize: '14px', color: 'var(--color-muted-text)', lineHeight: 1.85, maxWidth: '460px', marginBottom: '32px', fontFamily: 'var(--font-inter)' }}>
             A ring that fits well sits snugly without pinching, slides over your knuckle with gentle resistance, and feels invisible on your finger.
           </p>
 
@@ -147,7 +147,7 @@ export default function RingSizeGuidePage() {
               <h3 style={{ fontFamily: 'var(--font-playfair)', fontSize: '22px', fontWeight: 400, color: '#1A1014', marginBottom: '12px' }}>
                 {method.title}
               </h3>
-              <p style={{ fontSize: '13px', color: '#B8A090', lineHeight: 1.75, marginBottom: '20px', fontFamily: 'var(--font-inter)' }}>
+              <p style={{ fontSize: '13px', color: 'var(--color-muted-text)', lineHeight: 1.75, marginBottom: '20px', fontFamily: 'var(--font-inter)' }}>
                 {method.desc}
               </p>
               <div style={{ fontSize: '10px', letterSpacing: '0.18em', color: '#C9A961', fontFamily: 'var(--font-inter)', paddingTop: '16px', borderTop: '0.5px solid #EDD9AF' }}>
@@ -220,7 +220,7 @@ export default function RingSizeGuidePage() {
             <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '24px', color: '#1A1014', marginBottom: '8px' }}>
               Need a free sizer?
             </div>
-            <p style={{ fontSize: '13px', color: '#B8A090', lineHeight: 1.75, marginBottom: '24px', fontFamily: 'var(--font-inter)' }}>
+            <p style={{ fontSize: '13px', color: 'var(--color-muted-text)', lineHeight: 1.75, marginBottom: '24px', fontFamily: 'var(--font-inter)' }}>
               We will mail you a complimentary plastic ring sizer with 27 ring sizes to find your perfect fit.
             </p>
 
@@ -232,7 +232,7 @@ export default function RingSizeGuidePage() {
               REQUEST FREE SIZER
             </button>
 
-            <p style={{ fontSize: '10px', color: '#B8A090', marginTop: '12px', textAlign: 'center', fontFamily: 'var(--font-inter)' }}>
+            <p style={{ fontSize: '10px', color: 'var(--color-muted-text)', marginTop: '12px', textAlign: 'center', fontFamily: 'var(--font-inter)' }}>
               Ships in 2-3 days / Free worldwide
             </p>
           </div>

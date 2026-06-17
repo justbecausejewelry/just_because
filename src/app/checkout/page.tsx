@@ -8,6 +8,8 @@ import { motion } from 'framer-motion'
 import { Gem } from 'lucide-react'
 import { CheckoutAuthWall } from '@/components/checkout/CheckoutAuthWall'
 import { useCart } from '@/context/CartContext'
+import { getMetalLabel, normalizeMetalSelection } from '@/config/productOptions'
+import { useFormPersistence } from '@/hooks/useFormPersistence'
 import { supabaseAuth } from '@/lib/auth'
 import { trackCartEvent, type CartItem as AnalyticsCartItem } from '@/lib/cart'
 
@@ -35,11 +37,26 @@ function formatPrice(value: number) {
   }).format(value)
 }
 
-function Field({ label, value, onChange, placeholder = '' }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string }) {
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder = '',
+  error = '',
+  readOnly = false,
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  placeholder?: string
+  error?: string
+  readOnly?: boolean
+}) {
   return (
     <label>
       <span style={{ color: '#C9A961', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '8px' }}>{label}</span>
-      <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} style={{ background: '#FDF8F2', border: '1px solid #EDD9AF', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', padding: '13px 15px', width: '100%' }} />
+      <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} readOnly={readOnly} style={{ background: readOnly ? '#F5E8ED' : '#FDF8F2', border: `1px solid ${error ? '#A85C6A' : '#EDD9AF'}`, color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', padding: '13px 15px', width: '100%' }} />
+      {error && <span style={{ color: '#A85C6A', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '11px', marginTop: '6px' }}>{error}</span>}
     </label>
   )
 }
@@ -68,6 +85,8 @@ function toAnalyticsCartItem(item: ReturnType<typeof useCart>['items'][number]):
     ringSize: item.ringSize,
     engraving: item.engraving,
     unitPrice: item.unitPrice,
+    priceAtAdd: item.priceAtAdd ?? item.unitPrice,
+    addedAt: item.addedAt,
     priceBreakdown: item.priceBreakdown,
   }
 }
@@ -78,6 +97,7 @@ export default function CheckoutPage() {
   const [step, setStep] = useState(1)
   const [isPlacing, setIsPlacing] = useState(false)
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [summaryOpen, setSummaryOpen] = useState(false)
   const [shippingMethod, setShippingMethod] = useState<'standard' | 'express'>('standard')
   const [userId, setUserId] = useState<string | null>(null)
@@ -100,6 +120,7 @@ export default function CheckoutPage() {
     cvv: '',
     cardName: '',
   })
+  const clearPersistedCheckout = useFormPersistence('checkout_form_v1', form, setForm)
   const shippingAmount = shippingMethod === 'express' ? 25 : 0
   const tax = Math.round(subtotal * 0.08)
   const total = subtotal + shippingAmount + tax
@@ -107,6 +128,17 @@ export default function CheckoutPage() {
     const digits = form.cardNumber.replace(/\D/g, '').slice(-4) || '4242'
     return `•••• •••• •••• ${digits}`
   }, [form.cardNumber])
+  const cartItemErrors = useMemo(() => {
+    return items.map((item) => normalizeMetalSelection(item.selectedMetal) ? '' : 'Choose an available metal for this item.')
+  }, [items])
+  const summaryItems = useMemo(() => items.map((item) => ({
+    ...item,
+    selectedMetal: getMetalLabel(item.selectedMetal),
+  })), [items])
+  const cartHasErrors = cartItemErrors.some(Boolean)
+  const contactValid = Boolean(form.firstName.trim() && form.lastName.trim() && form.email.includes('@') && form.phone.trim())
+  const shippingValid = Boolean(form.address1.trim() && form.city.trim() && form.state.trim() && form.zip.trim() && form.country.trim())
+  const canPlaceOrder = Boolean(items.length && !cartHasErrors && contactValid && shippingValid && userId && !isPlacing)
 
   const refreshUser = useCallback(async () => {
     const {
@@ -123,7 +155,7 @@ export default function CheckoutPage() {
     setUserId(user.id)
     setForm((current) => ({
       ...current,
-      email: current.email || user.email || '',
+      email: user.email || current.email || '',
     }))
 
     const { data } = await supabaseAuth
@@ -140,11 +172,32 @@ export default function CheckoutPage() {
   }, [refreshUser])
 
   const setField = (key: keyof typeof form, value: string) => {
+    setFieldErrors((current) => ({ ...current, [key]: '' }))
     setForm((current) => ({ ...current, [key]: value }))
   }
 
   const continueTo = (next: number) => {
     setError('')
+    setFieldErrors({})
+    if (next === 2 && !contactValid) {
+      setFieldErrors({
+        firstName: form.firstName.trim() ? '' : 'Enter your first name.',
+        lastName: form.lastName.trim() ? '' : 'Enter your last name.',
+        email: form.email.includes('@') ? '' : 'Enter a valid account email.',
+        phone: form.phone.trim() ? '' : 'Enter a phone number.',
+      })
+      return
+    }
+    if (next === 3 && !shippingValid) {
+      setFieldErrors({
+        address1: form.address1.trim() ? '' : 'Enter your street address.',
+        city: form.city.trim() ? '' : 'Enter your city.',
+        state: form.state.trim() ? '' : 'Enter your state.',
+        zip: form.zip.trim() ? '' : 'Enter your ZIP/postal code.',
+        country: form.country.trim() ? '' : 'Enter your country.',
+      })
+      return
+    }
     setStep(next)
   }
 
@@ -188,24 +241,37 @@ export default function CheckoutPage() {
       }
 
       const customerName = `${form.firstName} ${form.lastName}`.trim()
-      const customerEmail = form.email.trim() || user.email || ''
+      const customerEmail = user.email || ''
 
       if (!customerEmail || !customerEmail.includes('@')) {
-        setError('Please enter a valid email address.')
+        setFieldErrors({ email: 'Your signed-in account needs a valid email address.' })
         setIsPlacing(false)
         return
       }
 
       if (!customerName) {
-        setError('Please enter your name.')
+        setFieldErrors({ firstName: 'Please enter your name.' })
         setIsPlacing(false)
         return
       }
 
       const orderNumber = `JB-${Date.now().toString().slice(-6)}`
+      const {
+        data: { session },
+      } = await supabaseAuth.auth.getSession()
+
+      if (!session?.access_token) {
+        setError('Please sign in again before placing your order.')
+        setIsPlacing(false)
+        return
+      }
+
       const response = await fetch('/api/orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           customerName,
           customerEmail,
@@ -222,34 +288,35 @@ export default function CheckoutPage() {
             method: shippingMethod,
           },
           items: items.map((item) => ({
-            ...item,
-            totalPrice: item.unitPrice * item.quantity,
+            productId: item.productId,
+            productSlug: item.productSlug,
+            productTitle: item.productTitle,
+            productImage: item.productImage,
+            selectedMetal: item.selectedMetal,
+            selectedCarat: item.selectedCarat,
+            selectedShape: item.selectedShape,
+            selectedColor: item.selectedColor,
+            selectedClarity: item.selectedClarity,
+            ringSize: item.ringSize,
+            engraving: item.engraving,
+            quantity: item.quantity,
           })),
-          subtotal,
-          shippingAmount,
-          shippingCost: shippingAmount,
-          taxAmount: tax,
-          discount: 0,
-          discountAmount: 0,
-          total,
-          status: 'received',
-          paymentMethod: 'pending',
-          paymentStatus: 'pending',
-          userId: user.id,
-          isGuest: false,
-          guestEmail: null,
-          guestName: null,
           orderNumber,
         }),
       })
       const payload = (await response.json()) as {
         order?: { id: string; orderNumber?: string | null }
         orderNumber?: string
-        error?: string
+        error?: string | { code?: string; field?: string; message?: string }
       }
 
       if (!response.ok || !payload.order?.id) {
-        throw new Error(payload.error || 'Unable to place order.')
+        if (typeof payload.error === 'object' && payload.error?.field) {
+          const apiMessage = payload.error.message || 'Please review this field.'
+          setFieldErrors({ [payload.error.field]: apiMessage })
+          throw new Error(apiMessage)
+        }
+        throw new Error(typeof payload.error === 'string' ? payload.error : 'Unable to place order.')
       }
 
       if (saveAddress && userId) {
@@ -273,6 +340,7 @@ export default function CheckoutPage() {
 
       await Promise.all(items.map((item) => trackCartEvent('purchased', toAnalyticsCartItem(item), user?.id || null)))
       await clearCart()
+      clearPersistedCheckout()
       const confirmationParams = new URLSearchParams({
         order: payload.order.id,
         number: payload.orderNumber || payload.order.orderNumber || orderNumber,
@@ -281,7 +349,7 @@ export default function CheckoutPage() {
     } catch (orderError) {
       const message = orderError instanceof Error ? orderError.message : 'Unable to place order.'
       console.error('Order error:', orderError)
-      setError(`Failed to place order: ${message}`)
+      setError(message)
       setIsPlacing(false)
     }
   }
@@ -327,7 +395,7 @@ export default function CheckoutPage() {
                 fontFamily: 'var(--font-inter)',
                 background: step > progressStep.num ? '#C9A961' : step === progressStep.num ? '#1A1014' : 'transparent',
                 border: step >= progressStep.num ? 'none' : '1px solid #EDD9AF',
-                color: step >= progressStep.num ? '#FBF5F0' : '#B8A090',
+                color: step >= progressStep.num ? '#FBF5F0' : 'var(--color-muted-text)',
                 flexShrink: 0,
               }}>
                 {step > progressStep.num ? '✓' : progressStep.num}
@@ -337,7 +405,7 @@ export default function CheckoutPage() {
                 letterSpacing: '0.1em',
                 fontFamily: 'var(--font-inter)',
                 fontWeight: step === progressStep.num ? 500 : 400,
-                color: step === progressStep.num ? '#1A1014' : step > progressStep.num ? '#C9A961' : '#B8A090',
+                color: step === progressStep.num ? '#1A1014' : step > progressStep.num ? '#C9A961' : 'var(--color-muted-text)',
               }}>
                 {progressStep.num}. {progressStep.label}
               </span>
@@ -362,12 +430,13 @@ export default function CheckoutPage() {
               <div className="grid gap-5">
                 <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.3em' }}>CONTACT</p>
                 <div className="grid gap-4 md:grid-cols-2">
-                  <Field label="FIRST NAME" value={form.firstName} onChange={(value) => setField('firstName', value)} />
-                  <Field label="LAST NAME" value={form.lastName} onChange={(value) => setField('lastName', value)} />
+                  <Field label="FIRST NAME" value={form.firstName} onChange={(value) => setField('firstName', value)} error={fieldErrors.firstName} />
+                  <Field label="LAST NAME" value={form.lastName} onChange={(value) => setField('lastName', value)} error={fieldErrors.lastName} />
                 </div>
-                <Field label="EMAIL ADDRESS" value={form.email} onChange={(value) => setField('email', value)} />
-                <Field label="PHONE NUMBER" value={form.phone} onChange={(value) => setField('phone', value)} />
-                <label className="flex items-center gap-3" style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px' }}><input type="checkbox" style={{ accentColor: '#1A1014' }} /> Email me about new collections and exclusive offers</label>
+                <Field label="EMAIL ADDRESS" value={form.email} onChange={(value) => setField('email', value)} error={fieldErrors.email} readOnly={Boolean(userId)} />
+                {userId && <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px', marginTop: '-8px' }}>Sending as {form.email} (logged in)</p>}
+                <Field label="PHONE NUMBER" value={form.phone} onChange={(value) => setField('phone', value)} error={fieldErrors.phone} />
+                <label className="flex items-center gap-3" style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '13px' }}><input type="checkbox" style={{ accentColor: '#1A1014' }} /> Email me about new collections and exclusive offers</label>
                 <button type="button" onClick={() => continueTo(2)} style={{ background: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '11px', height: '52px', letterSpacing: '0.2em' }}>CONTINUE TO SHIPPING →</button>
               </div>
             )}
@@ -395,26 +464,26 @@ export default function CheckoutPage() {
                           }}
                         >
                           <strong style={{ color: '#C9A961', fontWeight: 500 }}>{address.label}</strong>
-                          <span style={{ color: '#B8A090', display: 'block', marginTop: '4px' }}>
+                          <span style={{ color: 'var(--color-muted-text)', display: 'block', marginTop: '4px' }}>
                             {address.addressLine1}, {address.city}, {address.state} {address.zipCode}
                           </span>
                         </button>
                       ))}
                     </div>
-                    <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', marginTop: '14px' }}>Or enter a new address</p>
+                    <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px', marginTop: '14px' }}>Or enter a new address</p>
                   </div>
                 )}
-                <Field label="ADDRESS LINE 1" value={form.address1} onChange={(value) => setField('address1', value)} />
+                <Field label="ADDRESS LINE 1" value={form.address1} onChange={(value) => setField('address1', value)} error={fieldErrors.address1} />
                 <Field label="ADDRESS LINE 2" value={form.address2} onChange={(value) => setField('address2', value)} />
-                <div className="grid gap-4 md:grid-cols-2"><Field label="CITY" value={form.city} onChange={(value) => setField('city', value)} /><Field label="STATE" value={form.state} onChange={(value) => setField('state', value)} /></div>
-                <div className="grid gap-4 md:grid-cols-2"><Field label="ZIP CODE" value={form.zip} onChange={(value) => setField('zip', value)} /><Field label="COUNTRY" value={form.country} onChange={(value) => setField('country', value)} /></div>
+                <div className="grid gap-4 md:grid-cols-2"><Field label="CITY" value={form.city} onChange={(value) => setField('city', value)} error={fieldErrors.city} /><Field label="STATE" value={form.state} onChange={(value) => setField('state', value)} error={fieldErrors.state} /></div>
+                <div className="grid gap-4 md:grid-cols-2"><Field label="ZIP CODE" value={form.zip} onChange={(value) => setField('zip', value)} error={fieldErrors.zip} /><Field label="COUNTRY" value={form.country} onChange={(value) => setField('country', value)} error={fieldErrors.country} /></div>
                 {[
                   ['standard', 'Standard Shipping', 'FREE', '3-5 business days'],
                   ['express', 'Express Shipping', '$25', '1-2 business days'],
                 ].map(([value, label, price, copy]) => (
                   <button key={value} type="button" onClick={() => setShippingMethod(value as 'standard' | 'express')} className="text-left" style={{ background: '#FDF8F2', border: `1px solid ${shippingMethod === value ? '#1A1014' : '#EDD9AF'}`, padding: '16px 20px' }}>
                     <span style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px' }}>{shippingMethod === value ? '●' : '○'} {label} ({price})</span>
-                    <span style={{ color: '#B8A090', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '11px', marginTop: '4px' }}>{copy}</span>
+                    <span style={{ color: 'var(--color-muted-text)', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '12px', marginTop: '4px' }}>{copy}</span>
                   </button>
                 ))}
                 <button type="button" onClick={() => continueTo(3)} style={{ background: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '11px', height: '52px', letterSpacing: '0.2em' }}>CONTINUE TO PAYMENT →</button>
@@ -439,16 +508,16 @@ export default function CheckoutPage() {
                 <Field label="CARD NUMBER" value={form.cardNumber} onChange={(value) => setField('cardNumber', value.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim().slice(0, 19))} placeholder="1234 5678 9012 3456" />
                 <div className="grid gap-4 md:grid-cols-2"><Field label="EXPIRY MM/YY" value={form.expiry} onChange={(value) => setField('expiry', value)} /><Field label="CVV" value={form.cvv} onChange={(value) => setField('cvv', value)} /></div>
                 <Field label="CARDHOLDER NAME" value={form.cardName} onChange={(value) => setField('cardName', value)} placeholder="Name on card" />
-                <label style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px' }}><input type="checkbox" defaultChecked style={{ accentColor: '#1A1014', marginRight: '8px' }} /> Same as shipping address</label>
+                <label style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '13px' }}><input type="checkbox" defaultChecked style={{ accentColor: '#1A1014', marginRight: '8px' }} /> Same as shipping address</label>
                 {userId && (
-                  <label style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>
+                  <label style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '13px' }}>
                     <input type="checkbox" checked={saveAddress} onChange={(event) => setSaveAddress(event.target.checked)} style={{ accentColor: '#1A1014', marginRight: '8px' }} />
                     Save this address for future orders
                   </label>
                 )}
                 {error && <p style={{ color: '#A85C6A', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>{error}</p>}
-                <button disabled={isPlacing} style={{ background: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '13px', height: '60px', letterSpacing: '0.25em', opacity: isPlacing ? 0.7 : 1 }}>{isPlacing ? 'PROCESSING...' : `PLACE ORDER — ${formatPrice(total)}`}</button>
-                <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px', textAlign: 'center' }}>SSL Encrypted | PCI Compliant | 256-bit Security</p>
+                <button disabled={!canPlaceOrder} style={{ background: '#1A1014', color: '#FBF5F0', cursor: canPlaceOrder ? 'pointer' : 'not-allowed', fontFamily: 'var(--font-inter)', fontSize: '13px', height: '60px', letterSpacing: '0.25em', opacity: canPlaceOrder ? 1 : 0.55 }}>{isPlacing ? 'PROCESSING...' : `PLACE ORDER — ${formatPrice(total)}`}</button>
+                <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px', textAlign: 'center' }}>SSL Encrypted | PCI Compliant | 256-bit Security</p>
               </div>
               )
             )}
@@ -457,10 +526,10 @@ export default function CheckoutPage() {
 
         <aside className={`checkout-summary ${summaryOpen ? 'is-open' : ''} lg:sticky lg:top-8`} style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '2px', padding: '28px', height: 'fit-content' }}>
           <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.3em', marginBottom: '14px' }}>ORDER SUMMARY</p>
-          {items.map((item) => (
+          {summaryItems.map((item) => (
             <div key={item.id} className="flex gap-3 py-3" style={{ borderBottom: '0.5px solid #EDD9AF' }}>
               <div style={{ width: '56px', height: '56px', background: '#F5E8ED', position: 'relative' }}>{item.productImage ? <Image src={item.productImage} alt={item.productTitle} fill sizes="56px" style={{ objectFit: 'cover' }} /> : <Gem color="#C9A961" size={20} />}</div>
-              <div className="min-w-0 flex-1"><p style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '13px' }}>{item.productTitle}</p><p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px' }}>{item.selectedMetal} · {item.selectedCarat}ct</p></div>
+              <div className="min-w-0 flex-1"><p style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '13px' }}>{item.productTitle}</p><p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>{item.selectedMetal} · {item.selectedCarat}ct</p></div>
               <p style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '14px' }}>{formatPrice(item.unitPrice * item.quantity)}</p>
             </div>
           ))}
@@ -468,7 +537,7 @@ export default function CheckoutPage() {
             ['Subtotal', formatPrice(subtotal)],
             ['Shipping', shippingAmount ? formatPrice(shippingAmount) : 'FREE'],
             ['Tax', formatPrice(tax)],
-          ].map(([label, value]) => <div key={label} className="flex justify-between py-2" style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '13px' }}><span>{label}</span><span>{value}</span></div>)}
+          ].map(([label, value]) => <div key={label} className="flex justify-between py-2" style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '13px' }}><span>{label}</span><span>{value}</span></div>)}
           <div className="mt-3 flex justify-between" style={{ borderTop: '0.5px solid #EDD9AF', paddingTop: '14px' }}><span style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.2em' }}>TOTAL</span><span style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '28px' }}>{formatPrice(total)}</span></div>
           <Link href="/cart" style={{ color: '#C9A961', display: 'inline-block', fontFamily: 'var(--font-inter)', fontSize: '11px', marginTop: '16px', textDecoration: 'none' }}>← Edit cart</Link>
         </aside>

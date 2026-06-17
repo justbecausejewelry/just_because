@@ -253,7 +253,7 @@ export function ShopByShape() {
                   <span
                     style={{
                       fontSize: windowWidth < 768 ? '14px' : '15px',
-                      color: isSelected ? '#C9A961' : '#B8A090',
+                      color: isSelected ? '#C9A961' : 'var(--color-muted-text)',
                       letterSpacing: '0.08em',
                       fontFamily: 'var(--font-jost)',
                       fontWeight: isSelected ? 500 : 400,
@@ -284,8 +284,8 @@ export function ShopByShape() {
       <div
         style={{
           marginTop: '24px',
-          fontSize: '14px',
-          color: '#B8A090',
+          fontSize: '15px',
+          color: 'var(--color-muted-text)',
           fontFamily: 'var(--font-jost)',
           letterSpacing: '0.1em',
         }}

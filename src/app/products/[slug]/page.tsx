@@ -10,6 +10,7 @@ import DiamondVisualizer from '@/components/diamonds/DiamondVisualizer'
 import ProductCustomizer, { productNeedsRingSize } from '@/components/products/ProductCustomizer'
 import { useCart } from '@/context/CartContext'
 import { useToast } from '@/context/ToastContext'
+import { getMetalLabel, normalizeMetalSelection } from '@/config/productOptions'
 import { supabaseAuth } from '@/lib/auth'
 
 type PricingMap = Record<string, { enabled?: boolean; modifier?: number }>
@@ -74,6 +75,23 @@ function validImageUrl(image: string | null | undefined): image is string {
   if (!image) return false
   const trimmed = image.trim()
   return Boolean(trimmed) && !trimmed.endsWith('?') && !trimmed.includes('undefined') && !trimmed.includes('null')
+}
+
+function normalizeCaratOptions(options?: number[] | null) {
+  return Array.from(
+    new Set(
+      (options || [])
+        .map((option) => Number(option))
+        .filter((option) => Number.isFinite(option) && option > 0)
+    )
+  ).sort((left, right) => left - right)
+}
+
+function getModifier(pricing: PricingMap | null | undefined, key?: string | number) {
+  if (key === undefined || key === null || !pricing) return 0
+  const entry = pricing[String(key)]
+  if (!entry?.enabled) return 0
+  return typeof entry.modifier === 'number' ? entry.modifier : 0
 }
 
 function ProductPlaceholder({ size = 72 }: { size?: number }) {
@@ -154,11 +172,14 @@ export default function ProductDetailPage() {
       }
 
       const incoming = payload.product
+      const incomingCarats = normalizeCaratOptions(incoming.availableCarats)
+      const incomingMetals = incoming.availableMetals || []
+      const incomingSizes = incoming.availableSizes || []
       setProduct(incoming)
       setReviews(payload.reviews || [])
-      setSelectedMetal('14K White Gold')
-      setSelectedCarat(isRingProduct(incoming.productType, incoming.category) ? incoming.defaultCarat || 1 : null)
-      setSelectedSize(null)
+      setSelectedMetal(incomingMetals.length === 1 ? normalizeMetalSelection(incomingMetals[0]) || incomingMetals[0] : '')
+      setSelectedCarat(incomingCarats.length === 1 ? incomingCarats[0] : null)
+      setSelectedSize(incomingSizes.length === 1 ? incomingSizes[0] : null)
       setCalculatedPrice(incoming.basePrice)
       setSelectedImage(0)
       setIsZoomed(false)
@@ -176,7 +197,7 @@ export default function ProductDetailPage() {
   const images = useMemo(() => {
     if (!product) return []
 
-    const metalKey = selectedMetal.toLowerCase().replace(/^14k\s+/, '').replace(/\s+/g, '_')
+    const metalKey = selectedMetal
     const metalImages = product.metalImages?.[metalKey]
 
     if (metalImages?.length) {
@@ -240,10 +261,12 @@ export default function ProductDetailPage() {
     : 4.9
 
   const ringProduct = isRingProduct(product?.productType, product?.category)
-  const productDefaultCarat = product?.defaultCarat || 1
+  const availableCarats = useMemo(() => normalizeCaratOptions(product?.availableCarats), [product?.availableCarats])
+  const productDefaultCarat = availableCarats[0] || product?.defaultCarat || 1
   const visualizerCarat = selectedCarat ?? productDefaultCarat
-  const caratDelta = ringProduct ? Math.max(0, visualizerCarat - productDefaultCarat) : 0
-  const caratLivePrice = caratDelta * (product?.pricePerCarat || 300)
+  const caratLivePrice = selectedCarat
+    ? getModifier(product?.caratPricing, selectedCarat) || Math.max(0, selectedCarat - productDefaultCarat) * (product?.pricePerCarat || 300)
+    : 0
   const livePrice = (calculatedPrice || product?.basePrice || 0) + caratLivePrice
   const currentPrice = formatPrice(livePrice)
   const imagePosition = product?.productType?.includes('necklace') || product?.productType?.includes('pendant')
@@ -252,7 +275,13 @@ export default function ProductDetailPage() {
   const cartItem = items.find((item) => item.productSlug === product?.slug)
   const isInCart = Boolean(cartItem)
   const needsRingSize = productNeedsRingSize(product?.productType, product?.category)
-  const canAddToCart = !needsRingSize || Boolean(selectedSize)
+  const needsCarat = Boolean(availableCarats.length)
+  const missingSelections = [
+    !selectedMetal ? 'Metal' : null,
+    needsCarat && !selectedCarat ? 'Carat' : null,
+    needsRingSize && !selectedSize ? 'Ring size' : null,
+  ].filter((value): value is string => Boolean(value))
+  const canAddToCart = missingSelections.length === 0
   const priceBreakdown = {
     base: product?.basePrice || 0,
     metal: 0,
@@ -301,7 +330,7 @@ export default function ProductDetailPage() {
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center" style={{ backgroundColor: '#FBF5F0' }}>
         <Gem color="#C9A961" size={72} strokeWidth={1.05} />
         <h1 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '30px', fontWeight: 400, margin: 0 }}>We could not find that piece</h1>
-        <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '14px', margin: 0 }}>{error}</p>
+        <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '15px', lineHeight: 1.625, margin: 0 }}>{error}</p>
         <button onClick={loadProduct} style={{ backgroundColor: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.18em', padding: '12px 18px' }}>
           RETRY
         </button>
@@ -404,7 +433,7 @@ export default function ProductDetailPage() {
             background: 'transparent',
             border: 'none',
             cursor: 'pointer',
-            color: '#B8A090',
+            color: 'var(--color-muted-text)',
             fontSize: '12px',
             letterSpacing: '0.1em',
             fontFamily: 'var(--font-inter)',
@@ -412,7 +441,7 @@ export default function ProductDetailPage() {
             transition: 'color 0.2s',
           }}
           onMouseEnter={(event) => event.currentTarget.style.color = '#1A1014'}
-          onMouseLeave={(event) => event.currentTarget.style.color = '#B8A090'}
+          onMouseLeave={(event) => event.currentTarget.style.color = 'var(--color-muted-text)'}
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M10 12L6 8L10 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -421,10 +450,10 @@ export default function ProductDetailPage() {
         </button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-          <span style={{ fontSize: '11px', color: '#B8A090', fontFamily: 'var(--font-inter)', letterSpacing: '0.05em' }}>
+          <span style={{ fontSize: '11px', color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', letterSpacing: '0.05em' }}>
             {product?.category?.replace(/_/g, ' ').toUpperCase()}
           </span>
-          <button style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'transparent', border: 'none', cursor: 'pointer', color: '#B8A090', fontSize: '11px', fontFamily: 'var(--font-inter)' }}>
+          <button style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-muted-text)', fontSize: '11px', fontFamily: 'var(--font-inter)' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/>
               <polyline points="16 6 12 2 8 6"/>
@@ -596,7 +625,7 @@ export default function ProductDetailPage() {
                   background: 'rgba(253,248,242,0.92)',
                   padding: '5px 10px',
                   fontSize: '10px',
-                  color: '#B8A090',
+                  color: 'var(--color-muted-text)',
                   fontFamily: 'var(--font-inter)',
                   letterSpacing: '0.1em',
                   display: 'flex',
@@ -748,14 +777,14 @@ export default function ProductDetailPage() {
               ))
             )}
           </div>
-          <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px', marginTop: '12px', textAlign: 'center' }}>Click to zoom - use arrow keys or swipe to browse</p>
+          <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px', marginTop: '12px', textAlign: 'center' }}>Click to zoom - use arrow keys or swipe to browse</p>
         </section>
 
         <section>
-          <nav style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', marginBottom: '20px' }}>
-            <Link href="/" style={{ color: '#B8A090', textDecoration: 'none' }}>Home</Link>
+          <nav style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '11px', marginBottom: '20px' }}>
+            <Link href="/" style={{ color: 'var(--color-muted-text)', textDecoration: 'none' }}>Home</Link>
             <span> / </span>
-            <Link href="/products" style={{ color: '#B8A090', textDecoration: 'none' }}>{prettify(product.productType)}</Link>
+            <Link href="/products" style={{ color: 'var(--color-muted-text)', textDecoration: 'none' }}>{prettify(product.productType)}</Link>
             <span> / </span>
             <span style={{ color: '#1A1014' }}>{product.title}</span>
           </nav>
@@ -765,7 +794,7 @@ export default function ProductDetailPage() {
             {product.title}
           </h1>
           <div>
-            <p style={{ color: '#B8A090', fontFamily: 'var(--font-jost)', fontSize: '12px', marginBottom: '6px' }}>From</p>
+            <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-jost)', fontSize: '13px', marginBottom: '6px' }}>From</p>
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentPrice}
@@ -807,49 +836,25 @@ export default function ProductDetailPage() {
                     </h2>
                   </div>
                   <div style={{ color: '#1A1014', fontFamily: 'var(--font-cormorant)', fontSize: '2.5rem', fontWeight: 400, whiteSpace: 'nowrap' }}>
-                    {visualizerCarat.toFixed(1)} ct
+                    {selectedCarat ? `${selectedCarat.toFixed(1)} ct` : 'Select'}
                   </div>
                 </div>
 
                 <DiamondVisualizer
                   initialShape={product.diamondShape || 'Round'}
                   initialCarat={visualizerCarat}
+                  availableCarats={availableCarats}
+                  diamondSelected={Boolean(selectedCarat)}
                   onCaratChange={setSelectedCarat}
                   showShapeSelector={false}
                 />
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px', marginTop: '14px' }}>
-                  {[1, 1.5, 2].map((caratOption) => {
-                    const selected = visualizerCarat === caratOption
-                    return (
-                      <button
-                        key={caratOption}
-                        type="button"
-                        onClick={() => setSelectedCarat(caratOption)}
-                        style={{
-                          background: selected ? '#1A1014' : '#FBF5F0',
-                          border: '0.5px solid #EDD9AF',
-                          borderRadius: '2px',
-                          color: selected ? '#FBF5F0' : '#1A1014',
-                          cursor: 'pointer',
-                          fontFamily: 'var(--font-inter)',
-                          fontSize: '11px',
-                          letterSpacing: '0.12em',
-                          padding: '11px 8px',
-                        }}
-                      >
-                        {caratOption.toFixed(1)} CT
-                      </button>
-                    )
-                  })}
-                </div>
-
                 <div style={{ borderTop: '0.5px solid #EDD9AF', display: 'grid', gap: '8px', marginTop: '16px', paddingTop: '14px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '13px' }}>
                     <span>Base setting</span>
                     <span>{formatPrice(calculatedPrice || product.basePrice)}</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '13px' }}>
                     <span>Carat upgrade</span>
                     <span>{caratLivePrice > 0 ? `+ ${formatPrice(caratLivePrice)}` : 'Included'}</span>
                   </div>
@@ -883,8 +888,8 @@ export default function ProductDetailPage() {
                     <div style={{ fontSize: '12px', color: '#1A1014', fontWeight: 500, fontFamily: 'var(--font-inter)' }}>
                       This item is in your cart
                     </div>
-                    <div style={{ fontSize: '10px', color: '#B8A090', fontFamily: 'var(--font-inter)', marginTop: '2px' }}>
-                      {[cartItem?.selectedMetal, cartItem?.selectedCarat ? `${cartItem.selectedCarat}ct` : null, cartItem?.ringSize ? `Size ${cartItem.ringSize}` : null].filter(Boolean).join(' - ')}
+                    <div style={{ fontSize: '12px', color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', marginTop: '2px' }}>
+                      {[getMetalLabel(cartItem?.selectedMetal), cartItem?.selectedCarat ? `${cartItem.selectedCarat}ct` : null, cartItem?.ringSize ? `Size ${cartItem.ringSize}` : null].filter(Boolean).join(' - ')}
                     </div>
                   </div>
                 </div>
@@ -1006,7 +1011,7 @@ export default function ProductDetailPage() {
                   gap: '4px',
                 }}
               >
-                ! Please select a ring size to continue
+                ! Please select: {missingSelections.join(', ')}
               </p>
             )}
 
@@ -1026,7 +1031,7 @@ export default function ProductDetailPage() {
                   <div key={badge.title} className="flex flex-col items-center gap-1 px-2 py-4 text-center" style={{ borderLeft: index === 0 ? 'none' : '0.5px solid #EDD9AF' }}>
                     <Icon color="#C9A961" size={18} strokeWidth={1.4} />
                     <span style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '10px', fontWeight: 500 }}>{badge.title}</span>
-                    <span style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px' }}>{badge.copy}</span>
+                    <span style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>{badge.copy}</span>
                   </div>
                 )
               })}
@@ -1061,7 +1066,7 @@ export default function ProductDetailPage() {
                 <div
                   style={{
                     fontSize: '11px',
-                    color: '#B8A090',
+                    color: 'var(--color-muted-text)',
                     fontFamily: 'var(--font-inter)',
                   }}
                 >
@@ -1160,21 +1165,21 @@ export default function ProductDetailPage() {
           <div>
             <div style={{ color: '#C9A961', fontFamily: 'var(--font-playfair)', fontSize: '48px', lineHeight: 1 }}>{averageRating.toFixed(1)}</div>
             <Stars rating={Math.round(averageRating)} />
-            <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', marginTop: '8px' }}>Based on {reviews.length} reviews</p>
+            <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '13px', marginTop: '8px' }}>Based on {reviews.length} reviews</p>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             {reviews.length ? reviews.map((review) => (
               <motion.article key={review.id} whileHover={{ y: -4 }} transition={{ duration: 0.35 }} style={{ backgroundColor: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '2px', padding: '20px 24px' }}>
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <Stars rating={review.rating} />
-                  <span style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px' }}>{new Date(review.createdAt).toLocaleDateString()}</span>
+                  <span style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>{new Date(review.createdAt).toLocaleDateString()}</span>
                 </div>
                 <p style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', fontWeight: 500, marginBottom: '6px' }}>{review.customerName}</p>
                 <h3 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '15px', fontStyle: 'italic', fontWeight: 400, marginBottom: '8px' }}>{review.title}</h3>
-                <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '13px', lineHeight: 1.7, margin: 0 }}>{review.comment}</p>
+                <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '15px', lineHeight: 1.625, margin: 0 }}>{review.comment}</p>
               </motion.article>
             )) : (
-              <div style={{ backgroundColor: '#FDF8F2', border: '0.5px solid #EDD9AF', color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '13px', padding: '24px' }}>
+              <div style={{ backgroundColor: '#FDF8F2', border: '0.5px solid #EDD9AF', color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '15px', lineHeight: 1.625, padding: '24px' }}>
                 Reviews will appear here once this piece has been tried, loved, and written about.
               </div>
             )}

@@ -27,7 +27,7 @@ const cardStyle = {
 } as const
 
 const bodyTextStyle = {
-  color: '#6B5B4E',
+  color: 'var(--color-muted-text)',
   fontFamily: 'var(--font-inter)',
   fontSize: '14px',
   lineHeight: 1.85,
@@ -193,7 +193,7 @@ export default function ReturnsPage() {
                 key={item}
                 style={{
                   borderBottom: '0.5px solid rgba(237,217,175,0.8)',
-                  color: '#6B5B4E',
+                  color: 'var(--color-muted-text)',
                   fontFamily: 'var(--font-inter)',
                   fontSize: '14px',
                   lineHeight: 1.6,
@@ -256,7 +256,7 @@ export default function ReturnsPage() {
             style={{
               background: '#FDF8F2',
               border: '0.5px solid #C9A961',
-              color: '#6B5B4E',
+              color: 'var(--color-muted-text)',
               fontFamily: 'var(--font-jost)',
               fontSize: '16px',
               lineHeight: 1.8,

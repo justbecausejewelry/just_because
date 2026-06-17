@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { supabaseAuth } from '@/lib/auth'
 import { useToast } from '@/context/ToastContext'
+import { useFormPersistence } from '@/hooks/useFormPersistence'
 
 function strengthFor(password: string) {
   let score = 0
@@ -92,6 +93,19 @@ export default function SignupPage() {
   const [resendMessage, setResendMessage] = useState('')
   const strength = useMemo(() => strengthFor(password), [password])
   const strengthColor = strength <= 1 ? '#A85C6A' : strength === 2 ? '#B7791F' : strength === 3 ? '#C9A961' : '#7A8F72'
+  const signupDraft = useMemo(() => ({
+    name,
+    email,
+    termsAccepted,
+    showVerifyScreen,
+  }), [email, name, showVerifyScreen, termsAccepted])
+  const clearPersistedSignup = useFormPersistence('signup_form_v1', signupDraft, (updater) => {
+    const next = typeof updater === 'function' ? updater(signupDraft) : updater
+    if (typeof next.name === 'string') setName(next.name)
+    if (typeof next.email === 'string') setEmail(next.email)
+    if (typeof next.termsAccepted === 'boolean') setTermsAccepted(next.termsAccepted)
+    if (typeof next.showVerifyScreen === 'boolean') setShowVerifyScreen(next.showVerifyScreen)
+  })
 
   useEffect(() => {
     const verifyEmail = new URLSearchParams(window.location.search).get('verifyEmail')
@@ -185,16 +199,19 @@ export default function SignupPage() {
       })
 
       if (signInError) {
+        clearPersistedSignup()
         showToast('Email verified. Please sign in to continue.', 'success')
         router.push(`/login?verified=1&email=${encodeURIComponent(normalizedEmail)}`)
         return
       }
 
+      clearPersistedSignup()
       showToast('Email verified. Welcome to Just Because.', 'success')
       router.push('/account')
       return
     }
 
+    clearPersistedSignup()
     showToast('Email verified. Please sign in to continue.', 'success')
     router.push(`/login?verified=1&email=${encodeURIComponent(normalizedEmail)}`)
   }
@@ -293,6 +310,7 @@ export default function SignupPage() {
           src="/images/login-hero.jpg"
           alt="Just Because diamond ring"
           fill
+          sizes="(max-width: 900px) 100vw, 45vw"
           style={{ objectFit: 'cover', objectPosition: 'center' }}
           priority
           quality={95}
@@ -626,7 +644,7 @@ export default function SignupPage() {
                 width: '100%',
                 padding: '14px',
                 background: 'transparent',
-                color: '#B8A090',
+                color: 'var(--color-muted-text)',
                 border: 'none',
                 fontSize: '11px',
                 letterSpacing: '0.18em',
@@ -751,14 +769,14 @@ export default function SignupPage() {
                   border: 'none',
                   cursor: 'pointer',
                   padding: '4px',
-                  color: '#B8A090',
+                  color: 'var(--color-muted-text)',
                 }}
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
             <div style={{
-              color: password.length >= 8 ? '#7A8F72' : '#B8A090',
+              color: password.length >= 8 ? '#7A8F72' : 'var(--color-muted-text)',
               fontFamily: 'var(--font-inter)',
               fontSize: '11px',
               lineHeight: 1.5,

@@ -151,7 +151,7 @@ function MenuCard({ href, icon: Icon, title, description, badge }: MenuCardProps
             <span style={{ background: '#E8C4D0', color: '#1A1014', borderRadius: '4px', fontSize: '10px', padding: '1px 7px' }}>{badge}</span>
           ) : null}
         </span>
-        <span style={{ display: 'block', color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', marginTop: '4px' }}>{description}</span>
+        <span style={{ display: 'block', color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px', marginTop: '4px' }}>{description}</span>
       </span>
     </Link>
   )
@@ -330,7 +330,7 @@ export default function AccountPage() {
           {initialFor(user, profile)}
         </div>
         <div>
-          <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '14px', margin: '0 0 4px' }}>Welcome back,</p>
+          <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '15px', margin: '0 0 4px' }}>Welcome back,</p>
           <h1 style={{ alignItems: 'center', color: '#1A1014', display: 'flex', flexWrap: 'wrap', fontFamily: 'var(--font-playfair)', fontSize: '28px', fontWeight: 400, gap: '10px', margin: 0 }}>
             {displayName(user, profile)}
             {isAdmin ? (
@@ -339,7 +339,7 @@ export default function AccountPage() {
               </span>
             ) : null}
           </h1>
-          <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', margin: '6px 0 0' }}>
+          <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '13px', margin: '6px 0 0' }}>
             {user?.email} {profile?.createdAt ? `- Member since ${new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' }).format(new Date(profile.createdAt))}` : ''}
           </p>
         </div>
@@ -353,7 +353,7 @@ export default function AccountPage() {
           ['Ring Size', profile?.ringSize || 'Not set'],
         ].map(([label, value]) => (
           <div key={label} style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', padding: '16px' }}>
-            <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.16em', margin: 0, textTransform: 'uppercase' }}>{label}</p>
+            <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.16em', margin: 0, textTransform: 'uppercase' }}>{label}</p>
             <p style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '22px', margin: '6px 0 0' }}>
               {value}
               {label === 'Messages' && stats.unreadMessages && stats.unreadMessages > 0 ? <span style={{ display: 'inline-block', width: '7px', height: '7px', borderRadius: '4px', background: '#C9A961', marginLeft: '8px' }} /> : null}
@@ -467,7 +467,7 @@ export default function AccountPage() {
           cursor: 'pointer',
           fontSize: '12px',
           letterSpacing: '0.15em',
-          color: '#B8A090',
+          color: 'var(--color-muted-text)',
           fontFamily: 'var(--font-inter)',
           marginTop: '32px',
           transition: 'all 0.2s',
@@ -478,7 +478,7 @@ export default function AccountPage() {
         }}
         onMouseLeave={(event) => {
           event.currentTarget.style.borderColor = '#EDD9AF'
-          event.currentTarget.style.color = '#B8A090'
+          event.currentTarget.style.color = 'var(--color-muted-text)'
         }}
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">

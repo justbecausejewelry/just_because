@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { Gem } from 'lucide-react'
 import { useCart } from '@/context/CartContext'
+import { LOOSE_DIAMOND_VALUE } from '@/config/productOptions'
 import { getDiamondImage } from '@/lib/diamondImages'
 import { supabase } from '@/lib/supabase'
 
@@ -142,7 +143,7 @@ export default function DiamondDetailPage() {
       productSlug: `loose-diamond-${displayDiamond.id}`,
       productTitle: `${displayDiamond.carat.toFixed(2)}ct ${displayDiamond.shape} Diamond`,
       productImage: getDiamondImage(displayDiamond.shape),
-      selectedMetal: 'Loose diamond',
+      selectedMetal: LOOSE_DIAMOND_VALUE,
       selectedCarat: displayDiamond.carat,
       selectedShape: displayDiamond.shape,
       selectedColor: displayDiamond.color,
@@ -187,12 +188,12 @@ export default function DiamondDetailPage() {
 
   return (
     <main style={{ background: '#FBF5F0', minHeight: '100vh', padding: 'clamp(24px, 5vw, 72px)' }}>
-      <Link href="/diamonds" style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.12em', textDecoration: 'none' }}>
+      <Link href="/diamonds" style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.12em', textDecoration: 'none' }}>
         - BACK TO DIAMONDS
       </Link>
 
       {loading ? (
-        <div style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', padding: '80px 0' }}>
+        <div style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', padding: '80px 0' }}>
           Loading diamond...
         </div>
       ) : error || !diamond ? (
@@ -223,7 +224,7 @@ export default function DiamondDetailPage() {
             <h1 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: 'clamp(34px, 5vw, 52px)', fontWeight: 400, lineHeight: 1.05, margin: '0 0 16px' }}>
               {(displayDiamond || diamond).carat.toFixed(2)}ct {(displayDiamond || diamond).shape}
               <br />
-              <span style={{ color: '#B8A090', fontSize: '0.58em' }}>Lab-Grown Diamond</span>
+              <span style={{ color: 'var(--color-muted-text)', fontSize: '0.58em' }}>Lab-Grown Diamond</span>
             </h1>
             <p style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '30px', marginBottom: '24px' }}>
               {formatPrice((displayDiamond || diamond).price)}
@@ -236,7 +237,7 @@ export default function DiamondDetailPage() {
                 ['CUT', (displayDiamond || diamond).cut || 'Excellent'],
               ].map(([label, value]) => (
                 <div key={label} style={{ padding: '16px 10px', borderRight: label === 'CUT' ? 'none' : '0.5px solid #EDD9AF', textAlign: 'center' }}>
-                  <div style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.18em', marginBottom: '6px' }}>{label}</div>
+                  <div style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.18em', marginBottom: '6px' }}>{label}</div>
                   <div style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '18px' }}>{value}</div>
                 </div>
               ))}
@@ -305,7 +306,7 @@ export default function DiamondDetailPage() {
                   Not available in this combination.
                 </div>
               ) : selectedMatch ? (
-                <div style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', marginTop: '14px' }}>
+                <div style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px', marginTop: '14px' }}>
                   Matched to {selectedMatch.carat.toFixed(2)}ct diamond {selectedMatch.id}.
                 </div>
               ) : null}
@@ -322,7 +323,7 @@ export default function DiamondDetailPage() {
                 ['Certificate', (displayDiamond || diamond).certificateNumber],
               ].map(([label, value]) => value ? (
                 <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', padding: '8px 0', borderBottom: '0.5px solid rgba(237,217,175,0.7)', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px' }}>
-                  <span style={{ color: '#B8A090' }}>{label}</span>
+                  <span style={{ color: 'var(--color-muted-text)' }}>{label}</span>
                   <span>{value}</span>
                 </div>
               ) : null)}
@@ -332,7 +333,7 @@ export default function DiamondDetailPage() {
               <button disabled={!combinationAvailable} onClick={() => void addDiamondToCart()} style={{ width: '100%', background: combinationAvailable ? '#1A1014' : '#B8A090', color: '#FBF5F0', border: 'none', cursor: combinationAvailable ? 'pointer' : 'not-allowed', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.2em', padding: '17px' }}>
                 ADD LOOSE DIAMOND TO CART - {displayDiamond ? formatPrice(displayDiamond.price) : ''}
               </button>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '10px', alignItems: 'center', color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.2em' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '10px', alignItems: 'center', color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.2em' }}>
                 <span style={{ height: '0.5px', background: '#EDD9AF' }} />
                 <span>OR</span>
                 <span style={{ height: '0.5px', background: '#EDD9AF' }} />
@@ -340,7 +341,7 @@ export default function DiamondDetailPage() {
               <button disabled={!combinationAvailable} onClick={buildRingWithDiamond} style={{ width: '100%', background: '#FDF8F2', color: '#1A1014', border: '0.5px solid #EDD9AF', cursor: combinationAvailable ? 'pointer' : 'not-allowed', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.18em', padding: '15px' }}>
                 USE THIS DIAMOND TO BUILD A RING -
               </button>
-              <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', lineHeight: 1.7, margin: 0 }}>
+              <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px', lineHeight: 1.7, margin: 0 }}>
                 Add the diamond alone, or pair it with a setting in the ring builder.
               </p>
             </div>

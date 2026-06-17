@@ -158,7 +158,7 @@ function ResetPasswordContent() {
         }
 
         .reset-input::placeholder {
-          color: #B8A090;
+          color: var(--color-muted-text);
         }
 
         .reset-primary-button {
@@ -268,7 +268,7 @@ function ResetPasswordContent() {
                 <p
                   style={{
                     fontSize: '13px',
-                    color: '#B8A090',
+                    color: 'var(--color-muted-text)',
                     marginBottom: '28px',
                     lineHeight: 1.6,
                   }}
@@ -388,7 +388,7 @@ function ResetPasswordContent() {
                         background: 'transparent',
                         border: 0,
                         cursor: 'pointer',
-                        color: '#B8A090',
+                        color: 'var(--color-muted-text)',
                         display: 'flex',
                         padding: '6px',
                       }}
@@ -427,7 +427,7 @@ function ResetPasswordContent() {
                     <div
                       style={{
                         fontSize: '12px',
-                        color: '#B8A090',
+                        color: 'var(--color-muted-text)',
                         marginTop: '6px',
                       }}
                     >
@@ -461,7 +461,7 @@ function ResetPasswordContent() {
                     <div
                       style={{
                         fontSize: '11px',
-                        color: '#B8A090',
+                        color: 'var(--color-muted-text)',
                       }}
                     >
                       {strength.label}
@@ -491,7 +491,7 @@ function ResetPasswordContent() {
                       alignItems: 'center',
                       gap: '8px',
                       fontSize: '13px',
-                      color: '#B8A090',
+                      color: 'var(--color-muted-text)',
                       textDecoration: 'none',
                       fontFamily: 'var(--font-inter)',
                     }}
@@ -532,7 +532,7 @@ function ResetPasswordContent() {
                 <p
                   style={{
                     fontSize: '13px',
-                    color: '#B8A090',
+                    color: 'var(--color-muted-text)',
                     lineHeight: 1.7,
                   }}
                 >

@@ -1,11 +1,13 @@
 'use client'
 
-import { CSSProperties, Suspense, useEffect, useMemo, useState } from 'react'
+import { CSSProperties, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCart } from '@/context/CartContext'
 import { useToast } from '@/context/ToastContext'
+import { METALS, MetalValue, getMetalLabel, isMetalValue, metalMatches, normalizeMetalSelection } from '@/config/productOptions'
+import { useFormPersistence } from '@/hooks/useFormPersistence'
 import { ALL_DIAMONDS, Diamond, SHAPE_DATA } from '@/lib/diamondCatalog'
 import { supabase } from '@/lib/supabase'
 
@@ -31,13 +33,6 @@ type ProductListResponse = {
   products?: RingProduct[]
 }
 
-const metalOptions = [
-  ['14k_white_gold', '14K White Gold', 'white_gold'],
-  ['14k_yellow_gold', '14K Yellow Gold', 'yellow_gold'],
-  ['14k_rose_gold', '14K Rose Gold', 'rose_gold'],
-  ['platinum', 'Platinum', 'platinum'],
-] as const
-
 const ringSizes = ['4', '4.5', '5', '5.5', '6', '6.5', '7', '7.5', '8', '8.5', '9']
 
 function formatMoney(value: number) {
@@ -48,9 +43,20 @@ function formatMoney(value: number) {
   }).format(value)
 }
 
-function imageForRing(ring: RingProduct, metal: string) {
-  const metalKey = metalOptions.find(([value]) => value === metal)?.[2] || 'white_gold'
-  return ring.metalImages?.[metalKey]?.[0] || ring.images?.[0] || ''
+type BuilderMetalValue = MetalValue | ''
+
+function availableMetalsForRing(ring: RingProduct | null) {
+  if (!ring?.availableMetals?.length) return [...METALS]
+  return METALS.filter((metal) => ring.availableMetals?.some((option) => metalMatches(option, metal.value)))
+}
+
+function availableSizesForRing(ring: RingProduct | null) {
+  return ring?.availableSizes?.length ? ring.availableSizes : ringSizes
+}
+
+function imageForRing(ring: RingProduct, metal: BuilderMetalValue) {
+  if (!metal) return ring.images?.[0] || ''
+  return ring.metalImages?.[metal]?.[0] || ring.images?.[0] || ''
 }
 
 function isRingProduct(product: RingProduct) {
@@ -88,13 +94,14 @@ function isStoredDiamond(value: unknown): value is Diamond {
 }
 
 function diamondFromParams(searchParams: URLSearchParams): Diamond | null {
-  const requestedDiamond = searchParams.get('diamond')
+  const requestedDiamond = searchParams.get('diamondId') || searchParams.get('diamond')
   if (!requestedDiamond) return null
 
   const catalogDiamond = ALL_DIAMONDS.find((item) => item.id === requestedDiamond)
   const carat = Number(searchParams.get('carat'))
   const price = Number(searchParams.get('price'))
-  const shape = searchParams.get('shape') || catalogDiamond?.shape || 'Round'
+  const requestedShape = shapeFromParam(searchParams.get('shape'))
+  const shape = catalogDiamond?.shape || (requestedShape === 'All' ? 'Round' : requestedShape)
   const shapeImage = SHAPE_DATA.find((item) => item.name === shape)?.img || SHAPE_DATA[0].img
 
   return {
@@ -118,6 +125,15 @@ function diamondFromParams(searchParams: URLSearchParams): Diamond | null {
   }
 }
 
+function shapeFromParam(value: string | null) {
+  if (!value || value.toLowerCase() === 'all') return 'All'
+  return SHAPE_DATA.find((shape) => shape.name.toLowerCase() === value.toLowerCase())?.name || 'All'
+}
+
+function shapeToParam(shape: string) {
+  return shape.toLowerCase()
+}
+
 function StepIndicator({ step }: { step: number }) {
   const steps = ['CHOOSE DIAMOND', 'CHOOSE SETTING', 'PREVIEW & ORDER']
 
@@ -138,7 +154,7 @@ function StepIndicator({ step }: { step: number }) {
                 borderRadius: '50%',
                 background: active || complete ? '#C9A961' : '#FBF5F0',
                 border: `0.5px solid ${active || complete ? '#C9A961' : '#EDD9AF'}`,
-                color: active || complete ? '#1A1014' : '#B8A090',
+                color: active || complete ? '#1A1014' : 'var(--color-muted-text)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -148,7 +164,7 @@ function StepIndicator({ step }: { step: number }) {
               }}>
                 {complete ? '+' : stepNumber}
               </div>
-              <div style={{ fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.18em', color: active ? '#1A1014' : '#B8A090', textAlign: 'center' }}>
+              <div style={{ fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.18em', color: active ? '#1A1014' : 'var(--color-muted-text)', textAlign: 'center' }}>
                 {label}
               </div>
             </div>
@@ -190,7 +206,7 @@ function DiamondCard({
         <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '19px', color: '#1A1014', marginBottom: '8px' }}>
           {diamond.carat}ct {diamond.shape}
         </div>
-        <div style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', marginBottom: '13px' }}>
+        <div style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px', marginBottom: '13px' }}>
           {diamond.color} color - {diamond.clarity} clarity - {diamond.cut}
         </div>
         <div style={{ fontFamily: 'var(--font-playfair)', color: '#1A1014', fontSize: '23px' }}>
@@ -206,17 +222,25 @@ function BuildContent() {
   const searchParams = useSearchParams()
   const { addItem } = useCart()
   const { showToast } = useToast()
+  const actionBarRef = useRef<HTMLDivElement | null>(null)
   const [step, setStep] = useState(1)
   const [selectedDiamond, setSelectedDiamond] = useState<Diamond | null>(null)
   const [selectedSetting, setSelectedSetting] = useState<RingProduct | null>(null)
-  const [selectedMetal, setSelectedMetal] = useState('14k_white_gold')
+  const [selectedMetal, setSelectedMetal] = useState<BuilderMetalValue>('')
   const [selectedSize, setSelectedSize] = useState('')
   const [rings, setRings] = useState<RingProduct[]>([])
   const [loadingRings, setLoadingRings] = useState(true)
-  const [selectedShape, setSelectedShape] = useState('All')
+  const activeShape = shapeFromParam(searchParams.get('shape'))
+  const builderDraft = useMemo(() => ({ step, selectedMetal, selectedSize }), [selectedMetal, selectedSize, step])
+  const clearPersistedBuilder = useFormPersistence('build_ring_form_v1', builderDraft, (updater) => {
+    const next = typeof updater === 'function' ? updater(builderDraft) : updater
+    if (typeof next.step === 'number') setStep(next.step)
+    if (next.selectedMetal === '' || isMetalValue(next.selectedMetal)) setSelectedMetal(next.selectedMetal)
+    if (typeof next.selectedSize === 'string') setSelectedSize(next.selectedSize)
+  })
 
   useEffect(() => {
-    const requestedDiamond = searchParams.get('diamond')
+    const requestedDiamond = searchParams.get('diamondId') || searchParams.get('diamond')
     const requestedStep = Number(searchParams.get('step'))
     let nextDiamond: Diamond | null = null
 
@@ -236,9 +260,12 @@ function BuildContent() {
 
     if (nextDiamond) {
       setSelectedDiamond(nextDiamond)
-      setSelectedShape(nextDiamond.shape)
       setStep(requestedStep === 2 ? 2 : 1)
+      return
     }
+
+    setSelectedDiamond(null)
+    setStep(requestedStep === 2 ? 2 : 1)
   }, [searchParams])
 
   useEffect(() => {
@@ -285,17 +312,19 @@ function BuildContent() {
   }, [])
 
   const diamondOptions = useMemo(() => {
-    const list = selectedShape === 'All'
+    const list = activeShape === 'All'
       ? ALL_DIAMONDS
-      : ALL_DIAMONDS.filter((diamond) => diamond.shape === selectedShape)
+      : ALL_DIAMONDS.filter((diamond) => diamond.shape === activeShape)
     return list.slice(0, 32)
-  }, [selectedShape])
+  }, [activeShape])
 
   const shapeOptions = useMemo(() => ['All', ...SHAPE_DATA.map((shape) => shape.name)], [])
   const settingPrice = selectedSetting?.basePrice || 0
   const diamondPrice = selectedDiamond?.price || 0
   const total = settingPrice + diamondPrice
-  const selectedMetalLabel = metalOptions.find(([value]) => value === selectedMetal)?.[1] || '14K White Gold'
+  const selectedMetalLabel = getMetalLabel(selectedMetal)
+  const selectedSettingMetalOptions = useMemo(() => availableMetalsForRing(selectedSetting), [selectedSetting])
+  const selectedSettingSizeOptions = useMemo(() => availableSizesForRing(selectedSetting), [selectedSetting])
   const ringImage = selectedSetting ? imageForRing(selectedSetting, selectedMetal) : ''
 
   const selectButtonStyle: CSSProperties = {
@@ -310,9 +339,60 @@ function BuildContent() {
     cursor: 'pointer',
   }
 
+  const replaceBuilderParams = useCallback((updates: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams.toString())
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value) {
+        params.set(key, value)
+      } else {
+        params.delete(key)
+      }
+    })
+
+    const query = params.toString()
+    router.replace(query ? `/build?${query}` : '/build', { scroll: false })
+  }, [router, searchParams])
+
+  const updateShapeFilter = useCallback((shape: string) => {
+    replaceBuilderParams({
+      shape: shape === 'All' ? null : shapeToParam(shape),
+    })
+  }, [replaceBuilderParams])
+
+  const selectDiamond = useCallback((diamond: Diamond) => {
+    setSelectedDiamond(diamond)
+    replaceBuilderParams({
+      diamondId: diamond.id,
+      diamond: null,
+      carat: diamond.carat.toString(),
+      color: diamond.color,
+      clarity: diamond.clarity,
+      price: diamond.price.toString(),
+    })
+
+    window.setTimeout(() => {
+      actionBarRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }, 0)
+  }, [replaceBuilderParams])
+
+  const continueToSettings = useCallback(() => {
+    setStep(2)
+    replaceBuilderParams({ step: '2' })
+  }, [replaceBuilderParams])
+
+  const returnToDiamondStep = useCallback(() => {
+    setStep(1)
+    replaceBuilderParams({ step: null })
+  }, [replaceBuilderParams])
+
   const addCompleteRing = async () => {
     if (!selectedDiamond || !selectedSetting) {
       showToast('Choose a diamond and setting before adding your ring.', 'error')
+      return
+    }
+
+    if (!selectedMetal) {
+      showToast('Please choose a metal to complete your custom ring.', 'error')
       return
     }
 
@@ -326,7 +406,7 @@ function BuildContent() {
       productSlug: `custom-${selectedSetting.slug}-${selectedDiamond.id.toLowerCase()}`,
       productTitle: `Custom ${selectedSetting.title}`,
       productImage: ringImage || selectedDiamond.img,
-      selectedMetal: selectedMetalLabel,
+      selectedMetal,
       selectedCarat: selectedDiamond.carat,
       selectedShape: selectedDiamond.shape,
       selectedColor: selectedDiamond.color,
@@ -344,6 +424,7 @@ function BuildContent() {
       },
     })
     showToast('Custom ring added to cart', 'success')
+    clearPersistedBuilder()
     router.push('/cart')
   }
 
@@ -393,11 +474,11 @@ function BuildContent() {
               {shapeOptions.map((shape) => (
                 <button
                   key={shape}
-                  onClick={() => setSelectedShape(shape)}
+                  onClick={() => updateShapeFilter(shape)}
                   style={{
-                    background: selectedShape === shape ? '#1A1014' : '#FDF8F2',
+                    background: activeShape === shape ? '#1A1014' : '#FDF8F2',
                     border: '0.5px solid #EDD9AF',
-                    color: selectedShape === shape ? '#FBF5F0' : '#1A1014',
+                    color: activeShape === shape ? '#FBF5F0' : '#1A1014',
                     cursor: 'pointer',
                     fontFamily: 'var(--font-inter)',
                     fontSize: '10px',
@@ -417,20 +498,20 @@ function BuildContent() {
                 key={diamond.id}
                 diamond={diamond}
                 selected={selectedDiamond?.id === diamond.id}
-                onSelect={() => setSelectedDiamond(diamond)}
+                onSelect={() => selectDiamond(diamond)}
               />
             ))}
           </div>
 
           {selectedDiamond ? (
-            <div style={{ position: 'sticky', bottom: 0, background: '#1A1014', margin: '28px -24px -110px', padding: '18px 24px', zIndex: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '18px', flexWrap: 'wrap' }}>
+            <div ref={actionBarRef} style={{ position: 'sticky', bottom: 0, background: '#1A1014', margin: '28px -24px -110px', padding: '18px 24px', zIndex: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '18px', flexWrap: 'wrap' }}>
               <div>
                 <div style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.24em', marginBottom: '5px' }}>SELECTED DIAMOND</div>
                 <div style={{ color: '#FBF5F0', fontFamily: 'var(--font-playfair)', fontSize: '22px' }}>
                   {selectedDiamond.carat}ct {selectedDiamond.shape} - {formatMoney(selectedDiamond.price)}
                 </div>
               </div>
-              <button onClick={() => setStep(2)} style={{ ...selectButtonStyle, width: 'auto', minWidth: '220px', background: '#C9A961', color: '#1A1014' }}>
+              <button onClick={continueToSettings} style={{ ...selectButtonStyle, width: 'auto', minWidth: '220px', background: '#C9A961', color: '#1A1014' }}>
                 CONTINUE TO SETTINGS -
               </button>
             </div>
@@ -445,12 +526,12 @@ function BuildContent() {
               <div style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.3em', marginBottom: '10px' }}>STEP TWO</div>
               <h2 style={{ fontFamily: 'var(--font-playfair)', color: '#1A1014', fontWeight: 400, fontSize: '32px', margin: 0 }}>Choose your setting</h2>
               {selectedDiamond ? (
-                <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '13px', margin: '8px 0 0' }}>
+                <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '13px', margin: '8px 0 0' }}>
                   Building around a {selectedDiamond.carat}ct {selectedDiamond.shape}, {selectedDiamond.color}, {selectedDiamond.clarity} diamond.
                 </p>
               ) : null}
             </div>
-            <button onClick={() => setStep(1)} style={{ background: 'transparent', border: '0.5px solid #EDD9AF', color: '#B8A090', padding: '11px 16px', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.14em', cursor: 'pointer' }}>
+            <button onClick={returnToDiamondStep} style={{ background: 'transparent', border: '0.5px solid #EDD9AF', color: 'var(--color-muted-text)', padding: '11px 16px', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.14em', cursor: 'pointer' }}>
               CHANGE DIAMOND
             </button>
           </div>
@@ -463,11 +544,11 @@ function BuildContent() {
               </button>
             </div>
           ) : loadingRings ? (
-            <div style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', padding: '60px 0' }}>Loading ring settings...</div>
+            <div style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', padding: '60px 0' }}>Loading ring settings...</div>
           ) : rings.length === 0 ? (
             <div style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', padding: '36px', textAlign: 'center' }}>
               <h3 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '26px', fontWeight: 400, margin: '0 0 10px' }}>No ring settings found</h3>
-              <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '13px', lineHeight: 1.7, margin: '0 auto 22px', maxWidth: '480px' }}>
+              <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '13px', lineHeight: 1.7, margin: '0 auto 22px', maxWidth: '480px' }}>
                 Add an active ring product so the builder has a setting to pair with a diamond.
               </p>
               <Link href="/admin/products/new" style={{ ...selectButtonStyle, display: 'inline-block', textDecoration: 'none', width: 'auto' }}>
@@ -478,6 +559,7 @@ function BuildContent() {
             <div className="builder-setting-grid">
               {rings.map((ring) => {
                 const image = imageForRing(ring, selectedMetal)
+                const ringMetalOptions = availableMetalsForRing(ring)
                 return (
                   <article key={ring.id} style={{ background: '#FDF8F2', border: selectedSetting?.id === ring.id ? '1px solid #C9A961' : '0.5px solid #EDD9AF', borderRadius: '2px', overflow: 'hidden' }}>
                     <div style={{ aspectRatio: '1', position: 'relative', background: '#FBF5F0' }}>
@@ -487,30 +569,34 @@ function BuildContent() {
                       <div style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.2em', marginBottom: '7px' }}>{ring.category.replace(/_/g, ' ').toUpperCase()}</div>
                       <h3 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '20px', fontWeight: 400, margin: '0 0 10px' }}>{ring.title}</h3>
                       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '14px' }}>
-                        {metalOptions.map(([value, label]) => (
+                        {ringMetalOptions.map((metal) => (
                           <button
-                            key={value}
-                            onClick={() => setSelectedMetal(value)}
+                            key={metal.value}
+                            onClick={() => setSelectedMetal(metal.value)}
                             style={{
-                              border: selectedMetal === value ? '1px solid #1A1014' : '0.5px solid #EDD9AF',
-                              background: selectedMetal === value ? '#1A1014' : '#FBF5F0',
-                              color: selectedMetal === value ? '#FBF5F0' : '#B8A090',
+                              border: selectedMetal === metal.value ? '1px solid #1A1014' : '0.5px solid #EDD9AF',
+                              background: selectedMetal === metal.value ? '#1A1014' : '#FBF5F0',
+                              color: selectedMetal === metal.value ? '#FBF5F0' : 'var(--color-muted-text)',
                               fontFamily: 'var(--font-inter)',
                               fontSize: '9px',
                               padding: '5px 7px',
                               cursor: 'pointer',
                             }}
                           >
-                            {label.replace('14K ', '')}
+                            {metal.label.replace('14K ', '')}
                           </button>
                         ))}
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                        <span style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px' }}>Setting</span>
+                        <span style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '11px' }}>Setting</span>
                         <span style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '22px' }}>{formatMoney(ring.basePrice)}</span>
                       </div>
                       <button
                         onClick={() => {
+                          const currentMetalAllowed = selectedMetal && ringMetalOptions.some((metal) => metal.value === selectedMetal)
+                          setSelectedMetal(currentMetalAllowed ? selectedMetal : ringMetalOptions.length === 1 ? ringMetalOptions[0].value : '')
+                          const nextSizes = availableSizesForRing(ring)
+                          setSelectedSize(nextSizes.length === 1 ? nextSizes[0] : '')
                           setSelectedSetting(ring)
                           setStep(3)
                         }}
@@ -549,10 +635,10 @@ function BuildContent() {
                 {[
                   ['Diamond', `${selectedDiamond.carat}ct ${selectedDiamond.shape}, ${selectedDiamond.color}, ${selectedDiamond.clarity}`],
                   ['Setting', selectedSetting.title],
-                  ['Metal', selectedMetalLabel],
+                  ['Metal', selectedMetalLabel || 'Select metal'],
                 ].map(([label, value]) => (
                   <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', padding: '10px 0', borderBottom: '0.5px solid #EDD9AF', fontFamily: 'var(--font-inter)', fontSize: '13px' }}>
-                    <span style={{ color: '#B8A090' }}>{label}</span>
+                    <span style={{ color: 'var(--color-muted-text)' }}>{label}</span>
                     <span style={{ color: '#1A1014', textAlign: 'right' }}>{value}</span>
                   </div>
                 ))}
@@ -561,13 +647,18 @@ function BuildContent() {
                   <span style={{ display: 'block', color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.2em', marginBottom: '8px' }}>RING SIZE</span>
                   <select value={selectedSize} onChange={(event) => setSelectedSize(event.target.value)} style={{ width: '100%', background: '#FBF5F0', border: '0.5px solid #EDD9AF', color: '#1A1014', padding: '12px', fontFamily: 'var(--font-inter)' }}>
                     <option value="">Select size</option>
-                    {ringSizes.map((size) => <option key={size} value={size}>{size}</option>)}
+                    {selectedSettingSizeOptions.map((size) => <option key={size} value={size}>{size}</option>)}
                   </select>
                 </label>
                 <label style={{ display: 'block', marginTop: '14px' }}>
                   <span style={{ display: 'block', color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.2em', marginBottom: '8px' }}>METAL</span>
-                  <select value={selectedMetal} onChange={(event) => setSelectedMetal(event.target.value)} style={{ width: '100%', background: '#FBF5F0', border: '0.5px solid #EDD9AF', color: '#1A1014', padding: '12px', fontFamily: 'var(--font-inter)' }}>
-                    {metalOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  <select value={selectedMetal} onChange={(event) => {
+                    const normalized = normalizeMetalSelection(event.target.value)
+                    if (!event.target.value) setSelectedMetal('')
+                    if (isMetalValue(normalized)) setSelectedMetal(normalized)
+                  }} style={{ width: '100%', background: '#FBF5F0', border: '0.5px solid #EDD9AF', color: '#1A1014', padding: '12px', fontFamily: 'var(--font-inter)' }}>
+                    <option value="">Select metal</option>
+                    {selectedSettingMetalOptions.map((metal) => <option key={metal.value} value={metal.value}>{metal.label}</option>)}
                   </select>
                 </label>
               </div>
@@ -577,7 +668,7 @@ function BuildContent() {
                   ['Diamond', diamondPrice],
                   ['Setting', settingPrice],
                 ].map(([label, value]) => (
-                  <div key={label as string} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontFamily: 'var(--font-inter)', fontSize: '13px', color: '#B8A090' }}>
+                  <div key={label as string} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontFamily: 'var(--font-inter)', fontSize: '13px', color: 'var(--color-muted-text)' }}>
                     <span>{label as string}</span>
                     <span style={{ color: '#1A1014' }}>{formatMoney(value as number)}</span>
                   </div>
@@ -589,7 +680,7 @@ function BuildContent() {
                 <button onClick={addCompleteRing} style={{ ...selectButtonStyle, padding: '15px', fontSize: '11px', marginBottom: '12px' }}>
                   ADD COMPLETE RING TO CART
                 </button>
-                <button onClick={() => setStep(2)} style={{ width: '100%', background: 'transparent', color: '#B8A090', border: '0.5px solid #EDD9AF', padding: '12px', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.14em', cursor: 'pointer' }}>
+                <button onClick={() => setStep(2)} style={{ width: '100%', background: 'transparent', color: 'var(--color-muted-text)', border: '0.5px solid #EDD9AF', padding: '12px', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.14em', cursor: 'pointer' }}>
                   CHANGE SETTING
                 </button>
               </div>
