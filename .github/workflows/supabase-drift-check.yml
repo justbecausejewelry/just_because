@@ -1,0 +1,42 @@
+name: Supabase Drift Check
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/**'
+      - '.github/workflows/supabase-drift-check.yml'
+
+jobs:
+  supabase-drift-check:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_REF: xayiwdexbykvbvcgudne
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Link Supabase project
+        run: npx supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+
+      - name: Fail on schema drift
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx supabase db diff --linked --schema public --output /tmp/supabase-drift.sql
+          if [ -s /tmp/supabase-drift.sql ]; then
+            echo "Supabase schema drift detected. Create and commit a migration."
+            cat /tmp/supabase-drift.sql
+            exit 1
+          fi
+          echo "No Supabase schema drift detected."
