@@ -1,5 +1,5 @@
 import { LOOSE_DIAMOND_VALUE, getMetalLabel, normalizeMetalSelection } from '@/config/productOptions'
-import { resend, resendFromEmail } from '@/lib/email/resend'
+import { getResendClient, resendFromEmail } from '@/lib/email/resend'
 
 const BRAND = {
   pearl: '#FBF5F0',
@@ -441,6 +441,7 @@ function buildAdminText({ order, customer, items }: SendOrderConfirmationEmailIn
 
 async function postResendEmail(payload: { to: string; subject: string; html?: string; text?: string }) {
   const from = cleanEnvSecret(resendFromEmail) || DEFAULT_FROM
+  const resend = getResendClient()
   const { data, error } = payload.html
     ? await resend.emails.send({
         from,

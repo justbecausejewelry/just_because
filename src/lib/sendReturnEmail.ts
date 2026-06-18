@@ -1,7 +1,7 @@
 'use server'
 
 import { returnReasonLabel } from '@/lib/returnEligibility'
-import { resend, resendFromEmail } from '@/lib/email/resend'
+import { getResendClient, resendFromEmail } from '@/lib/email/resend'
 
 type ReturnEmailType = 'requested' | 'approved' | 'rejected' | 'refunded'
 
@@ -36,7 +36,7 @@ function formatCurrency(value: number | undefined) {
 }
 
 async function postEmail(payload: { to: string; subject: string; html: string }) {
-  const result = await resend.emails.send({
+  const result = await getResendClient().emails.send({
     from: resendFromEmail,
     to: payload.to,
     subject: payload.subject,

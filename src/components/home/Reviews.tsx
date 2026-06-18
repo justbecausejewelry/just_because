@@ -4,31 +4,31 @@ import Image from 'next/image'
 
 const ugcPhotos = [
   {
-    src: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=600&q=90',
+    src: '/images/reviews/review-01.jpg',
     name: 'Priya M.',
     location: 'Mumbai',
     review: 'I bought this for myself on a Tuesday. No occasion. Just because.',
   },
   {
-    src: 'https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?w=600&q=90',
+    src: '/images/reviews/review-02.jpg',
     name: 'Sarah K.',
     location: 'Brooklyn',
     review: 'The packaging alone made me cry. The diamond outshines everything.',
   },
   {
-    src: 'https://images.unsplash.com/photo-1573408301185-9519f94816b5?w=600&q=90',
+    src: '/images/reviews/review-03.jpg',
     name: 'Aisha R.',
     location: 'Dubai',
     review: 'Wore it to dinner and got asked about it three times.',
   },
   {
-    src: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=600&q=90',
-    name: 'Emma L.',
+    src: '/images/reviews/review-04.jpg',
+    name: 'Elena L.',
     location: 'London',
     review: 'It felt personal, considered, and quietly luxurious.',
   },
   {
-    src: 'https://images.unsplash.com/photo-1611955167811-4711904bb9f8?w=600&q=90',
+    src: '/images/reviews/review-05.png',
     name: 'Aaron L.',
     location: 'Toronto',
     review: 'Everything about it felt like a boutique appointment.',
@@ -186,13 +186,14 @@ export function Reviews() {
           >
             <Image
               src={photo.src}
-              alt={photo.name}
+              alt="Just Because jewelry customer"
               fill
               style={{
                 objectFit: 'cover',
                 transition: 'transform 0.6s ease',
               }}
-              sizes="(max-width: 767px) 78vw, (max-width: 1023px) 34vw, 20vw"
+              sizes="(max-width: 768px) 100vw, 20vw"
+              priority={false}
             />
             <div
               style={{
