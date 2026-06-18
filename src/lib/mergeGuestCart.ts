@@ -8,7 +8,7 @@ type UserCartRow = {
   productSlug: string
   selectedMetal: string
   selectedCarat: number
-  selectedShape: string
+  selectedShape?: string | null
   selectedColor?: string | null
   selectedClarity?: string | null
   ringSize?: string | null
@@ -46,7 +46,7 @@ function guestToUserCartPayload(userId: string, item: GuestCartItem) {
     productImage: item.productImage || item.imageUrl,
     selectedMetal,
     selectedCarat: item.selectedCarat ?? item.carat ?? 0,
-    selectedShape: item.selectedShape || item.shape || 'Round',
+    selectedShape: item.selectedShape || item.shape || (item.type === 'diamond' ? 'Round' : null),
     selectedColor: item.selectedColor,
     selectedClarity: item.selectedClarity,
     ringSize: item.ringSize,
@@ -66,7 +66,7 @@ function sameCartSelection(row: UserCartRow, item: GuestCartItem) {
     row.productSlug === (item.productSlug || item.id) &&
     rowMetal === itemMetal &&
     Number(row.selectedCarat) === Number(item.selectedCarat ?? item.carat ?? 0) &&
-    row.selectedShape === (item.selectedShape || item.shape || 'Round') &&
+    (row.selectedShape || '') === (item.selectedShape || item.shape || (item.type === 'diamond' ? 'Round' : '')) &&
     (row.selectedColor || '') === (item.selectedColor || '') &&
     (row.selectedClarity || '') === (item.selectedClarity || '') &&
     (row.ringSize || '') === (item.ringSize || '') &&

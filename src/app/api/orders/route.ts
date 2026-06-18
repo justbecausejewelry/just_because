@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
   let discount
   try {
     computed = await computeCheckoutLines(auth.admin, parsed.data.items)
-    discount = await computeDiscount(auth.admin, parsed.data.discountCode, computed.subtotal)
+    discount = await computeDiscount(auth.admin, parsed.data.discountCode, computed.subtotal, auth.user.id)
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to price checkout'
     if (error instanceof CheckoutValidationError) {
@@ -238,6 +238,29 @@ export async function POST(request: NextRequest) {
   if (itemsError) {
     console.error('[order-create] order item insert failed:', itemsError)
     return NextResponse.json({ error: itemsError.message }, { status: 500 })
+  }
+
+  if (discount.id && discount.amount > 0) {
+    const { error: usageError } = await auth.admin
+      .from('DiscountCodeUsage')
+      .insert({
+        discountCodeId: discount.id,
+        userId: auth.user.id,
+        orderId,
+        discountAmount: discount.amount,
+      })
+
+    if (usageError) {
+      console.error('[order-create] discount usage insert failed:', usageError)
+    }
+
+    const { error: incrementError } = await auth.admin.rpc('increment_discount_usage', {
+      code_id: discount.id,
+    })
+
+    if (incrementError) {
+      console.error('[order-create] discount usage increment failed:', incrementError)
+    }
   }
 
   const emailPayload = {

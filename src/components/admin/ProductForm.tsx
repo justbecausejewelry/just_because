@@ -27,10 +27,10 @@ type ProductFormData = {
   title: string
   slug: string
   description: string
-  basePrice: number
-  pricePerCarat: number
+  basePrice: string | number
+  pricePerCarat: string | number
   diamondShape: string
-  defaultCarat: number
+  defaultCarat: string | number
   metalPricing: PricingMap
   caratPricing: PricingMap
   shapePricing: PricingMap
@@ -54,7 +54,7 @@ type ProductFormData = {
   isNewArrival: boolean
   internalNotes: string
   tags: string[]
-  sortOrder: number
+  sortOrder: string | number
   seoTitle: string
   seoDescription: string
 }
@@ -185,8 +185,33 @@ function slugify(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 }
 
-function formatMoney(value: number) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value || 0)
+function asNumber(value: string | number | null | undefined, fallback = 0) {
+  if (value === '' || value === null || value === undefined) return fallback
+  const numericValue = Number(value)
+  return Number.isFinite(numericValue) ? numericValue : fallback
+}
+
+function formatMoney(value: string | number | null | undefined) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(asNumber(value))
+}
+
+function cleanNumberInput(value: string) {
+  if (value === '') return ''
+  return value.replace(/-/g, '').replace(/^0+(?=\d)/, '')
+}
+
+function numberInputValue(value: string | number | null | undefined) {
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'number' && value === 0) return ''
+  if (typeof value === 'string' && Number(value) === 0) return ''
+  return value
+}
+
+function numberOrZero(value: string) {
+  const cleaned = cleanNumberInput(value)
+  if (cleaned === '') return 0
+  const numericValue = Number(cleaned)
+  return Number.isFinite(numericValue) ? Math.max(0, numericValue) : 0
 }
 
 async function getAdminToken() {
@@ -233,11 +258,11 @@ function validateForm(formData: ProductFormData): ValidationError[] {
     errors.push({ field: 'description', message: 'Description is required', tab: 0 })
   }
 
-  if (!formData.basePrice || formData.basePrice <= 0) {
+  if (asNumber(formData.basePrice) <= 0) {
     errors.push({ field: 'basePrice', message: 'Base price must be greater than 0', tab: 0 })
   }
 
-  if (isRingProduct(formData.productType) && (!formData.defaultCarat || formData.defaultCarat <= 0)) {
+  if (isRingProduct(formData.productType) && asNumber(formData.defaultCarat) <= 0) {
     errors.push({ field: 'defaultCarat', message: 'Default carat must be greater than 0', tab: 0 })
   }
 
@@ -257,10 +282,10 @@ function blankProduct(): ProductFormData {
     title: '',
     slug: '',
     description: '',
-    basePrice: 0,
-    pricePerCarat: 300,
+    basePrice: '',
+    pricePerCarat: '300',
     diamondShape: 'Round',
-    defaultCarat: 1,
+    defaultCarat: '1',
     metalPricing: mapFromOptions(optionSets.metals, { 'Yellow Gold': 200, 'Rose Gold': 150, Platinum: 800 }),
     caratPricing: mapFromOptions(optionSets.carats, { '9': 3000, '12': 7000 }),
     shapePricing: mapFromOptions(optionSets.shapes),
@@ -289,7 +314,7 @@ function blankProduct(): ProductFormData {
     isNewArrival: false,
     internalNotes: '',
     tags: [],
-    sortOrder: 0,
+    sortOrder: '',
     seoTitle: '',
     seoDescription: '',
   }
@@ -331,10 +356,20 @@ function TextInput({
   placeholder?: string
   hasError?: boolean
 }) {
+  const inputValue = type === 'number' ? numberInputValue(value) : value ?? ''
+
   return (
     <label className="block">
       <span style={{ color: hasError ? '#A85C6A' : '#C9A961', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '8px' }}>{label}</span>
-      <input value={value ?? ''} onChange={(event) => onChange(event.target.value)} type={type} placeholder={placeholder} style={{ backgroundColor: '#FDF8F2', border: hasError ? '1px solid #A85C6A' : '1px solid #EDD9AF', borderRadius: '2px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', outlineColor: hasError ? '#A85C6A' : '#1A1014', padding: '12px 14px', transition: 'border-color 0.2s', width: '100%' }} />
+      <input
+        value={inputValue}
+        onChange={(event) => onChange(type === 'number' ? cleanNumberInput(event.target.value) : event.target.value)}
+        type={type}
+        placeholder={placeholder || (type === 'number' ? '0.00' : '')}
+        min={type === 'number' ? '0' : undefined}
+        step={type === 'number' ? '0.01' : undefined}
+        style={{ backgroundColor: '#FDF8F2', border: hasError ? '1px solid #A85C6A' : '1px solid #EDD9AF', borderRadius: '2px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', outlineColor: hasError ? '#A85C6A' : '#1A1014', padding: '12px 14px', transition: 'border-color 0.2s', width: '100%' }}
+      />
     </label>
   )
 }
@@ -543,25 +578,29 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
     [form.productType]
   )
   const samplePriceRows = useMemo(() => {
+    const basePrice = asNumber(form.basePrice)
+    const defaultCarat = asNumber(form.defaultCarat, 1)
+    const pricePerCarat = asNumber(form.pricePerCarat, 300)
+
     if (ringProduct) {
-      return [form.defaultCarat || 1, 1.5, 2].map((carat) => {
-        const caratCost = Math.max(0, carat - (form.defaultCarat || 1)) * form.pricePerCarat
+      return [defaultCarat, 1.5, 2].map((carat) => {
+        const caratCost = Math.max(0, carat - defaultCarat) * pricePerCarat
         return {
           label: `White Gold, ${carat}ct ${form.diamondShape}`,
           carat,
           caratCost,
-          total: form.basePrice + whiteGoldModifier + caratCost,
+          total: basePrice + whiteGoldModifier + caratCost,
         }
       })
     }
 
     return caratSamples.map((carat) => {
-      const caratCost = carat * form.pricePerCarat
+      const caratCost = carat * pricePerCarat
       return {
         label: `White Gold, ${carat}ct`,
         carat,
         caratCost,
-        total: form.basePrice + whiteGoldModifier + caratCost,
+        total: basePrice + whiteGoldModifier + caratCost,
       }
     })
   }, [caratSamples, form.basePrice, form.defaultCarat, form.diamondShape, form.pricePerCarat, ringProduct, whiteGoldModifier])
@@ -581,8 +620,8 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
       availableCarats: nextConfig.caratOptions || [],
       availableSizes: nextConfig.fields.sizes ? ringSizeOptions : nextConfig.lengthOptions || [],
       diamondShape: isRingProduct(value) ? current.diamondShape || 'Round' : current.diamondShape,
-      defaultCarat: isRingProduct(value) ? current.defaultCarat || 1 : current.defaultCarat,
-      pricePerCarat: current.pricePerCarat || 300,
+      defaultCarat: isRingProduct(value) ? current.defaultCarat || '1' : current.defaultCarat,
+      pricePerCarat: current.pricePerCarat || '300',
     }))
     setValidationErrors((current) => current.filter((error) => error.field !== 'productType' && error.field !== 'category'))
   }
@@ -695,9 +734,11 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
         ...form,
         slug: form.slug || slugify(form.title),
         isActive: publish,
-        pricePerCarat: Number(form.pricePerCarat) || 300,
+        basePrice: asNumber(form.basePrice),
+        pricePerCarat: asNumber(form.pricePerCarat, 300),
         diamondShape: form.diamondShape || 'Round',
-        defaultCarat: Number(form.defaultCarat) || 1,
+        defaultCarat: asNumber(form.defaultCarat, 1),
+        sortOrder: asNumber(form.sortOrder),
         certificateUrl: form.certificateUrl || null,
         hoverImage: null,
         modelUrl: null,
@@ -873,7 +914,7 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
               <FieldError message={getFieldError('description')} />
             </label>
             <div>
-              <TextInput label="BASE PRICE *" value={form.basePrice} type="number" hasError={Boolean(getFieldError('basePrice'))} onChange={(value) => setField('basePrice', Number(value))} />
+              <TextInput label="BASE PRICE *" value={form.basePrice} type="number" hasError={Boolean(getFieldError('basePrice'))} onChange={(value) => setField('basePrice', value)} />
               <FieldError message={getFieldError('basePrice')} />
             </div>
             {ringProduct && (
@@ -890,10 +931,10 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
                     </Select>
                   </label>
                   <div>
-                    <TextInput label="DEFAULT CARAT *" value={form.defaultCarat} type="number" hasError={Boolean(getFieldError('defaultCarat'))} onChange={(value) => setField('defaultCarat', Number(value))} />
+                    <TextInput label="DEFAULT CARAT *" value={form.defaultCarat} type="number" hasError={Boolean(getFieldError('defaultCarat'))} onChange={(value) => setField('defaultCarat', value)} />
                     <FieldError message={getFieldError('defaultCarat')} />
                   </div>
-                  <TextInput label="PRICE PER EXTRA CARAT" value={form.pricePerCarat} type="number" onChange={(value) => setField('pricePerCarat', Number(value))} />
+                  <TextInput label="PRICE PER EXTRA CARAT" value={form.pricePerCarat} type="number" onChange={(value) => setField('pricePerCarat', value)} />
                 </div>
                 <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', lineHeight: 1.6, marginTop: '10px' }}>
                   Product page price = selected metal price plus carat above the default times this extra-carat rate.
@@ -938,8 +979,10 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
                       </span>
                       <input
                         type="number"
-                        value={value}
-                        onChange={(event) => updateMetalModifier(metal, Number.parseInt(event.target.value, 10) || 0)}
+                        value={numberInputValue(value)}
+                        onChange={(event) => updateMetalModifier(metal, numberOrZero(event.target.value))}
+                        min="0"
+                        step="0.01"
                         style={{ width: '100px', padding: '8px 12px', background: '#FDF8F2', border: '1px solid #EDD9AF', color: '#1A1014', fontSize: '13px', fontFamily: 'var(--font-inter)', textAlign: 'right', outline: 'none' }}
                       />
                       <span style={{ fontSize: '12px', color: '#B8A090', fontFamily: 'var(--font-inter)' }}>
@@ -958,8 +1001,10 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                     <input
                       type="number"
-                      value={form.pricePerCarat || 300}
-                      onChange={(event) => setField('pricePerCarat', Number.parseInt(event.target.value, 10) || 0)}
+                      value={numberInputValue(form.pricePerCarat)}
+                      onChange={(event) => setField('pricePerCarat', numberOrZero(event.target.value))}
+                      min="0"
+                      step="0.01"
                       style={{ width: '140px', padding: '12px 16px', background: '#FDF8F2', border: '1px solid #EDD9AF', color: '#1A1014', fontSize: '14px', fontFamily: 'var(--font-inter)', outline: 'none' }}
                     />
                     <span style={{ fontSize: '13px', color: '#B8A090', fontFamily: 'var(--font-inter)' }}>
@@ -1300,7 +1345,7 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
                 <Toggle checked={Boolean(form[key as keyof ProductFormData])} onChange={(checked) => setField(key as 'isActive' | 'isFeatured' | 'isNewArrival', checked)} />
               </div>
             ))}
-            <TextInput label="SORT ORDER" value={form.sortOrder} type="number" onChange={(value) => setField('sortOrder', Number(value))} />
+            <TextInput label="SORT ORDER" value={form.sortOrder} type="number" onChange={(value) => setField('sortOrder', value)} />
             <label>
               <span style={{ color: '#C9A961', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '8px' }}>INTERNAL NOTES</span>
               <textarea value={form.internalNotes ?? ''} onChange={(event) => setField('internalNotes', event.target.value)} style={{ backgroundColor: '#FDF8F2', border: '1px solid #EDD9AF', color: '#1A1014', minHeight: '100px', padding: '12px 14px', width: '100%' }} />

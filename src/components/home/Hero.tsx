@@ -13,9 +13,9 @@ export function Hero() {
             src="/images/hero/hero-necklace.jpg"
             alt="Just Because diamond necklace in luxury jewelry box"
             fill
+            className="object-cover object-[center_60%] md:object-[center_top]"
             sizes="(max-width: 768px) 100vw, 50vw"
             priority={true}
-            style={{ objectFit: 'cover', objectPosition: 'center top' }}
           />
           <div
             className="absolute inset-0"
@@ -44,7 +44,7 @@ export function Hero() {
           >
             A reason,
             <br />
-            <em style={{ color: '#E8C4D0', fontSize: 'clamp(2rem, 3.8vw, 3.4rem)', fontStyle: 'italic' }}>
+            <em style={{ color: '#C9A961', fontSize: 'clamp(2rem, 3.8vw, 3.4rem)', fontStyle: 'italic' }}>
               in itself.
             </em>
           </h1>

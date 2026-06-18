@@ -6,9 +6,12 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Gem, Heart, RotateCcw, Share2, ShieldCheck, Sparkles, Star } from 'lucide-react'
+import ProductAccordion from '@/components/product/ProductAccordion'
+import ShareModal from '@/components/product/ShareModal'
 import ProductCustomizer, { productNeedsRingSize } from '@/components/products/ProductCustomizer'
 import { useCart } from '@/context/CartContext'
 import { useToast } from '@/context/ToastContext'
+import { useWishlist } from '@/context/WishlistContext'
 import { getMetalLabel, normalizeMetalSelection } from '@/config/productOptions'
 import { supabaseAuth } from '@/lib/auth'
 
@@ -41,6 +44,13 @@ type Product = {
   engravingMaxChars: number
   images: string[]
   metalImages?: MetalImages | null
+  totalCaratWeight?: string | number | null
+  colorGrade?: string | null
+  clarity?: string | null
+  cut?: string | null
+  metalKarat?: string | null
+  settingStyle?: string | null
+  dimensions?: string | null
 }
 
 type Review = {
@@ -84,6 +94,15 @@ function normalizeCaratOptions(options?: number[] | null) {
         .filter((option) => Number.isFinite(option) && option > 0)
     )
   ).sort((left, right) => left - right)
+}
+
+function defaultMetalSelection(availableMetals?: string[] | null) {
+  const normalizedMetals = (availableMetals || [])
+    .map((metal) => normalizeMetalSelection(metal))
+    .filter(Boolean)
+
+  if (normalizedMetals.includes('white_gold')) return 'white_gold'
+  return normalizedMetals[0] || 'white_gold'
 }
 
 function getModifier(pricing: PricingMap | null | undefined, key?: string | number) {
@@ -136,6 +155,7 @@ export default function ProductDetailPage() {
   const params = useParams<{ slug: string }>()
   const router = useRouter()
   const { addItem, items, removeItem } = useCart()
+  const { isWishlisted, toggleItem } = useWishlist()
   const { showToast } = useToast()
   const [product, setProduct] = useState<Product | null>(null)
   const [reviews, setReviews] = useState<Review[]>([])
@@ -150,6 +170,7 @@ export default function ProductDetailPage() {
   const [selectedSize, setSelectedSize] = useState<string | null>(null)
   const [calculatedPrice, setCalculatedPrice] = useState(0)
   const [addedToCart, setAddedToCart] = useState(false)
+  const [shareModalOpen, setShareModalOpen] = useState(false)
   const imageRef = useRef<HTMLDivElement>(null)
   const touchStartX = useRef(0)
   const touchEndX = useRef(0)
@@ -176,9 +197,9 @@ export default function ProductDetailPage() {
       const incomingSizes = incoming.availableSizes || []
       setProduct(incoming)
       setReviews(payload.reviews || [])
-      setSelectedMetal(incomingMetals.length === 1 ? normalizeMetalSelection(incomingMetals[0]) || incomingMetals[0] : '')
+      setSelectedMetal(defaultMetalSelection(incomingMetals))
       setSelectedCarat(incomingCarats.length === 1 ? incomingCarats[0] : null)
-      setSelectedSize(incomingSizes.length === 1 ? incomingSizes[0] : null)
+      setSelectedSize(incomingSizes.length === 1 && !isRingProduct(incoming.productType, incoming.category) ? incomingSizes[0] : null)
       setCalculatedPrice(incoming.basePrice)
       setSelectedImage(0)
       setIsZoomed(false)
@@ -207,6 +228,7 @@ export default function ProductDetailPage() {
   }, [product, selectedMetal])
 
   const primaryImage = images[0] || product?.images?.[0] || ''
+  const wishlisted = product ? isWishlisted(product.slug) : false
 
 
   useEffect(() => {
@@ -271,6 +293,11 @@ export default function ProductDetailPage() {
     : 'center center'
   const cartItem = items.find((item) => item.productSlug === product?.slug)
   const isInCart = Boolean(cartItem)
+  const cartItemVariant = [
+    getMetalLabel(cartItem?.selectedMetal),
+    cartItem?.selectedCarat ? `${cartItem.selectedCarat}ct` : null,
+    cartItem?.ringSize ? `Size ${cartItem.ringSize}` : null,
+  ].filter(Boolean).join(' - ')
   const needsRingSize = productNeedsRingSize(product?.productType, product?.category)
   const needsCarat = !ringProduct && Boolean(availableCarats.length)
   const missingSelections = [
@@ -341,6 +368,8 @@ export default function ProductDetailPage() {
     if (cartItem) {
       await removeItem(cartItem.id)
     }
+    const selectedShape = ringProduct ? product.diamondShape || product.availableShapes?.[0] || 'Round' : undefined
+
     await addItem({
       productId: product.id,
       productSlug: product.slug,
@@ -348,7 +377,7 @@ export default function ProductDetailPage() {
       productImage: primaryImage,
       selectedMetal,
       selectedCarat: selectedCarat || 0,
-      selectedShape: ringProduct ? product.diamondShape || 'Round' : product.category,
+      selectedShape,
       selectedColor: undefined,
       selectedClarity: undefined,
       ringSize: selectedSize || undefined,
@@ -365,6 +394,8 @@ export default function ProductDetailPage() {
   const handleBuyNow = async () => {
     if (!canAddToCart) return
 
+    const selectedShape = ringProduct ? product.diamondShape || product.availableShapes?.[0] || 'Round' : undefined
+
     await addItem({
       productId: product.id,
       productSlug: product.slug,
@@ -372,7 +403,7 @@ export default function ProductDetailPage() {
       productImage: primaryImage,
       selectedMetal,
       selectedCarat: selectedCarat || 0,
-      selectedShape: ringProduct ? product.diamondShape || 'Round' : product.category,
+      selectedShape,
       selectedColor: undefined,
       selectedClarity: undefined,
       ringSize: selectedSize || undefined,
@@ -404,6 +435,50 @@ export default function ProductDetailPage() {
     })
 
     router.push(`/account/messages/new?${params.toString()}`)
+  }
+
+  const handleShare = async () => {
+    const shareData: ShareData = {
+      title: product.title,
+      text: `Check out this beautiful piece from Just Because: ${product.title}`,
+      url: window.location.href,
+    }
+
+    if (navigator.share && (navigator.canShare?.(shareData) ?? true)) {
+      try {
+        await navigator.share(shareData)
+        return
+      } catch {
+        setShareModalOpen(true)
+        return
+      }
+    }
+
+    setShareModalOpen(true)
+  }
+
+  const handleWishlistToggle = async () => {
+    const {
+      data: { user },
+    } = await supabaseAuth.auth.getUser()
+
+    if (!user) {
+      showToast('Please sign in to save this piece.', 'info')
+      router.push(`/login?redirect=${encodeURIComponent(`/products/${product.slug}`)}`)
+      return
+    }
+
+    await toggleItem({
+      id: product.id,
+      productSlug: product.slug,
+      productTitle: product.title,
+      productImage: primaryImage,
+      basePrice: product.basePrice,
+      category: product.category,
+      productType: product.productType,
+    })
+
+    showToast(wishlisted ? 'Removed from wishlist' : 'Saved to wishlist', wishlisted ? 'info' : 'wishlist')
   }
 
   return (
@@ -450,7 +525,7 @@ export default function ProductDetailPage() {
           <span style={{ fontSize: '11px', color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', letterSpacing: '0.05em' }}>
             {product?.category?.replace(/_/g, ' ').toUpperCase()}
           </span>
-          <button style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-muted-text)', fontSize: '11px', fontFamily: 'var(--font-inter)' }}>
+          <button onClick={handleShare} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-muted-text)', fontSize: '11px', fontFamily: 'var(--font-inter)' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/>
               <polyline points="16 6 12 2 8 6"/>
@@ -834,16 +909,15 @@ export default function ProductDetailPage() {
                   </div>
                   <div>
                     <div style={{ fontSize: '12px', color: '#1A1014', fontWeight: 500, fontFamily: 'var(--font-inter)' }}>
-                      This item is in your cart
+                      You already added {cartItemVariant || 'this item'} to cart
                     </div>
                     <div style={{ fontSize: '12px', color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', marginTop: '2px' }}>
-                      {[getMetalLabel(cartItem?.selectedMetal), cartItem?.selectedCarat ? `${cartItem.selectedCarat}ct` : null, cartItem?.ringSize ? `Size ${cartItem.ringSize}` : null].filter(Boolean).join(' - ')}
+                      Review your selected variant before checkout.
                     </div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <Link href="/cart" style={{ padding: '8px 14px', background: '#1A1014', color: '#FBF5F0', fontSize: '10px', letterSpacing: '0.15em', textDecoration: 'none', fontFamily: 'var(--font-inter)', whiteSpace: 'nowrap' }}>VIEW CART</Link>
-                  <Link href="/checkout" style={{ padding: '8px 14px', background: '#C9A961', color: '#1A1014', fontSize: '10px', letterSpacing: '0.15em', textDecoration: 'none', fontFamily: 'var(--font-inter)', whiteSpace: 'nowrap' }}>CHECKOUT</Link>
                 </div>
               </div>
             )}
@@ -964,8 +1038,20 @@ export default function ProductDetailPage() {
             )}
 
             <div className="flex items-center justify-center gap-8">
-              <button className="flex items-center gap-2" style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '12px' }}><Heart size={15} /> Save to Wishlist</button>
-              <button className="flex items-center gap-2" style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '12px' }}><Share2 size={15} /> Share</button>
+              <button
+                className="flex items-center gap-2"
+                onClick={handleWishlistToggle}
+                style={{ color: wishlisted ? '#C9A961' : '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px' }}
+              >
+                <Heart size={15} fill={wishlisted ? '#C9A961' : 'transparent'} /> {wishlisted ? 'Saved' : 'Save to Wishlist'}
+              </button>
+              <button
+                className="flex items-center gap-2"
+                onClick={handleShare}
+                style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '12px' }}
+              >
+                <Share2 size={15} /> Share
+              </button>
             </div>
 
             <div className="grid grid-cols-3" style={{ border: '0.5px solid #EDD9AF', backgroundColor: '#FDF8F2' }}>
@@ -1050,6 +1136,8 @@ export default function ProductDetailPage() {
                 TALK TO AN EXPERT
               </button>
             </div>
+
+            <ProductAccordion product={product} selectedMetal={selectedMetal} />
           </div>
         </section>
       </div>
@@ -1134,6 +1222,13 @@ export default function ProductDetailPage() {
           </div>
         </div>
       </section>
+
+      <ShareModal
+        open={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        title={product.title}
+        imageUrl={primaryImage}
+      />
     </motion.main>
   )
 }

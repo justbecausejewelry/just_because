@@ -85,11 +85,14 @@ type DiamondRow = {
 }
 
 type DiscountRow = {
+  id: string
   code: string
   type?: string | null
   value?: number | null
   minOrderAmt?: number | null
   maxUses?: number | null
+  maxUsesPerUser?: number | null
+  firstTimeOnly?: boolean | null
   usedCount?: number | null
   isActive?: boolean | null
   expiresAt?: string | null
@@ -141,6 +144,10 @@ function includesValue(values: string[] | number[] | null | undefined, value: st
   return values.map(String).some((candidate) => matcher(candidate, selected))
 }
 
+function hasOptions(values: string[] | number[] | null | undefined) {
+  return Array.isArray(values) && values.length > 0
+}
+
 function assertAllowed(condition: boolean, code: string, field: string, message: string) {
   if (!condition) throw new CheckoutValidationError(code, field, message)
 }
@@ -155,8 +162,56 @@ function isRingProduct(product: ProductRow) {
   return ['engagement_ring', 'wedding_ring', 'ring'].includes(type) || category === 'engagement' || category === 'wedding'
 }
 
+function supportsShapeSelection(product: ProductRow) {
+  return isRingProduct(product) || (product.productType || '').toLowerCase() === 'diamond'
+}
+
 function itemField(index: number, field: string) {
   return `cart_items[${index}].${field}`
+}
+
+function isDiscountExpired(value?: string | null) {
+  if (!value) return false
+  const expiry = new Date(value.includes('T') ? value : `${value}T23:59:59.999`)
+  return Number.isFinite(expiry.getTime()) && expiry.getTime() < Date.now()
+}
+
+async function enforceDiscountCustomerLimits(admin: SupabaseClient, discount: DiscountRow, userId?: string) {
+  const requiresCustomerCheck = Boolean(discount.firstTimeOnly) || (
+    discount.maxUsesPerUser !== null &&
+    discount.maxUsesPerUser !== undefined
+  )
+  if (!requiresCustomerCheck) return
+
+  if (!userId) {
+    throw new Error('Please sign in to use this discount code')
+  }
+
+  if (discount.firstTimeOnly) {
+    const { count, error } = await admin
+      .from('Order')
+      .select('id', { count: 'exact', head: true })
+      .eq('userId', userId)
+      .neq('status', 'cancelled')
+
+    if (error) throw new Error('Unable to validate discount code')
+    if ((count || 0) > 0) {
+      throw new Error('This code is only for first-time customers')
+    }
+  }
+
+  if (discount.maxUsesPerUser !== null && discount.maxUsesPerUser !== undefined) {
+    const { count, error } = await admin
+      .from('DiscountCodeUsage')
+      .select('id', { count: 'exact', head: true })
+      .eq('userId', userId)
+      .eq('discountCodeId', discount.id)
+
+    if (error) throw new Error('Unable to validate discount code')
+    if ((count || 0) >= discount.maxUsesPerUser) {
+      throw new Error('You have already used this code')
+    }
+  }
 }
 
 async function computeProductLine(admin: SupabaseClient, item: CheckoutLineInput, index: number): Promise<ComputedLine> {
@@ -174,16 +229,41 @@ async function computeProductLine(admin: SupabaseClient, item: CheckoutLineInput
   const selectedColor = normalizeDiamondColor(item.selectedColor) || item.selectedColor
   const selectedClarity = normalizeDiamondClarity(item.selectedClarity) || item.selectedClarity
   const ringProduct = isRingProduct(product)
+  const shapeProduct = supportsShapeSelection(product)
   const selectedCarat = ringProduct ? undefined : item.selectedCarat
+  const lineSelectedShape = shapeProduct ? selectedShape : undefined
+  const hasMetalOptions = hasOptions(product.availableMetals)
+  const hasCaratOptions = hasOptions(product.availableCarats)
+  const hasShapeOptions = hasOptions(product.availableShapes)
+  const hasColorOptions = hasOptions(product.availableColors)
+  const hasClarityOptions = hasOptions(product.availableClarities)
+  const hasSizeOptions = ringProduct || hasOptions(product.availableSizes)
 
-  assertAllowed(Boolean(selectedMetal), 'INVALID_METAL', itemField(index, 'selectedMetal'), 'Selected metal is not available')
-  assertAllowed(includesValue(product.availableMetals, selectedMetal, metalMatches), 'INVALID_METAL', itemField(index, 'selectedMetal'), 'Selected metal is not available')
-  assertAllowed(ringProduct || !product.availableCarats?.length || selectedCarat !== undefined, 'INVALID_CARAT', itemField(index, 'selectedCarat'), 'Please select a carat for this product')
-  assertAllowed(ringProduct || includesValue(product.availableCarats, selectedCarat), 'INVALID_CARAT', itemField(index, 'selectedCarat'), `${selectedCarat}ct is not available for this product`)
-  assertAllowed(includesValue(product.availableShapes, selectedShape, optionMatches), 'INVALID_SHAPE', itemField(index, 'selectedShape'), 'Selected shape is not available')
-  assertAllowed(includesValue(product.availableColors, selectedColor, (left, right) => left.toUpperCase() === right.toUpperCase()), 'INVALID_COLOR', itemField(index, 'selectedColor'), 'Selected color is not available')
-  assertAllowed(includesValue(product.availableClarities, selectedClarity, (left, right) => left.toUpperCase() === right.toUpperCase()), 'INVALID_CLARITY', itemField(index, 'selectedClarity'), 'Selected clarity is not available')
-  assertAllowed(includesValue(ringProduct ? RING_SIZES : product.availableSizes, item.ringSize), 'INVALID_SIZE', itemField(index, 'ringSize'), 'Selected size is not available')
+  if (hasMetalOptions) {
+    assertAllowed(Boolean(selectedMetal), 'INVALID_METAL', itemField(index, 'selectedMetal'), 'Selected metal is not available')
+    assertAllowed(includesValue(product.availableMetals, selectedMetal, metalMatches), 'INVALID_METAL', itemField(index, 'selectedMetal'), 'Selected metal is not available')
+  }
+
+  if (!ringProduct && hasCaratOptions) {
+    assertAllowed(selectedCarat !== undefined, 'INVALID_CARAT', itemField(index, 'selectedCarat'), 'Please select a carat for this product')
+    assertAllowed(includesValue(product.availableCarats, selectedCarat), 'INVALID_CARAT', itemField(index, 'selectedCarat'), `${selectedCarat}ct is not available for this product`)
+  }
+
+  if (shapeProduct && hasShapeOptions && selectedShape !== undefined && selectedShape !== null && selectedShape !== '') {
+    assertAllowed(includesValue(product.availableShapes, selectedShape, optionMatches), 'INVALID_SHAPE', itemField(index, 'selectedShape'), 'Selected shape is not available')
+  }
+
+  if (hasColorOptions && selectedColor !== undefined && selectedColor !== null && selectedColor !== '') {
+    assertAllowed(includesValue(product.availableColors, selectedColor, (left, right) => left.toUpperCase() === right.toUpperCase()), 'INVALID_COLOR', itemField(index, 'selectedColor'), 'Selected color is not available')
+  }
+
+  if (hasClarityOptions && selectedClarity !== undefined && selectedClarity !== null && selectedClarity !== '') {
+    assertAllowed(includesValue(product.availableClarities, selectedClarity, (left, right) => left.toUpperCase() === right.toUpperCase()), 'INVALID_CLARITY', itemField(index, 'selectedClarity'), 'Selected clarity is not available')
+  }
+
+  if (hasSizeOptions && item.ringSize !== undefined && item.ringSize !== null) {
+    assertAllowed(includesValue(ringProduct ? RING_SIZES : product.availableSizes, item.ringSize), 'INVALID_SIZE', itemField(index, 'ringSize'), 'Selected size is not available')
+  }
 
   const base = Number(product.basePrice || 0)
   const configuredCaratModifier = ringProduct ? 0 : getModifier(product.caratPricing, selectedCarat)
@@ -195,7 +275,7 @@ async function computeProductLine(admin: SupabaseClient, item: CheckoutLineInput
     base,
     metal: getModifier(product.metalPricing, selectedMetal),
     carat: caratDelta,
-    shape: getModifier(product.shapePricing, selectedShape),
+    shape: getModifier(product.shapePricing, lineSelectedShape),
     color: getModifier(product.colorPricing, selectedColor),
     clarity: getModifier(product.clarityPricing, selectedClarity),
   }
@@ -207,7 +287,7 @@ async function computeProductLine(admin: SupabaseClient, item: CheckoutLineInput
     productImage: productImage(product) || item.productImage || null,
     selectedMetal,
     selectedCarat,
-    selectedShape,
+    selectedShape: lineSelectedShape,
     selectedColor,
     selectedClarity,
     ringSize: item.ringSize,
@@ -268,13 +348,13 @@ export async function computeCheckoutLines(admin: SupabaseClient, items: Checkou
   return { lines, subtotal }
 }
 
-export async function computeDiscount(admin: SupabaseClient, code: string | undefined, subtotal: number) {
+export async function computeDiscount(admin: SupabaseClient, code: string | undefined, subtotal: number, userId?: string) {
   const normalizedCode = code?.trim().toUpperCase()
-  if (!normalizedCode) return { code: null, amount: 0 }
+  if (!normalizedCode) return { id: null, code: null, amount: 0 }
 
   const { data, error } = await admin
     .from('DiscountCode')
-    .select('code,type,value,minOrderAmt,maxUses,usedCount,isActive,expiresAt')
+    .select('id,code,type,value,minOrderAmt,maxUses,maxUsesPerUser,firstTimeOnly,usedCount,isActive,expiresAt')
     .eq('code', normalizedCode)
     .eq('isActive', true)
     .maybeSingle()
@@ -282,7 +362,7 @@ export async function computeDiscount(admin: SupabaseClient, code: string | unde
   if (error || !data) throw new Error('Invalid discount code')
 
   const discount = data as DiscountRow
-  if (discount.expiresAt && new Date(discount.expiresAt).getTime() < Date.now()) {
+  if (isDiscountExpired(discount.expiresAt)) {
     throw new Error('Discount code has expired')
   }
   if (subtotal < Number(discount.minOrderAmt || 0)) {
@@ -291,12 +371,14 @@ export async function computeDiscount(admin: SupabaseClient, code: string | unde
   if (discount.maxUses !== null && discount.maxUses !== undefined && Number(discount.usedCount || 0) >= discount.maxUses) {
     throw new Error('Discount code usage limit reached')
   }
+  await enforceDiscountCustomerLimits(admin, discount, userId)
 
   const rawAmount = discount.type === 'percentage'
     ? Math.round((subtotal * Number(discount.value || 0)) / 100)
     : Number(discount.value || 0)
 
   return {
+    id: discount.id,
     code: discount.code,
     amount: Math.max(0, Math.min(Math.round(rawAmount), subtotal)),
   }

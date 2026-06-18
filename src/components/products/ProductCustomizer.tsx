@@ -162,7 +162,7 @@ export default function ProductCustomizer({
   useEffect(() => {
     setSelectedMetal((current) => {
       if (current && metalList.some((metal) => metal.value === current.value)) return current
-      return metalList.length === 1 ? metalList[0] : null
+      return metalList.find((metal) => metal.value === 'white_gold') || metalList[0] || null
     })
     setSelectedSize((current) => {
       if (current && sizeList.includes(current)) return current
@@ -247,7 +247,7 @@ export default function ProductCustomizer({
                 }}
               >
                 <span style={{ fontSize: '10px', fontWeight: 500, color: '#1A1014', fontFamily: 'var(--font-inter)', letterSpacing: '0.02em' }}>
-                  {metal.value === 'platinum' ? 'Pt' : '14K'}
+                  {metal.value === 'platinum' ? 'Pt' : metal.label.split(' ').map((word) => word[0]).join('')}
                 </span>
               </button>
             ))}

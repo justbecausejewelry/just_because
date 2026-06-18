@@ -1,7 +1,7 @@
 export const METALS = [
-  { value: 'white_gold', label: '14K White Gold', hex: '#E8E8E8' },
-  { value: 'yellow_gold', label: '14K Yellow Gold', hex: '#C9A961' },
-  { value: 'rose_gold', label: '14K Rose Gold', hex: '#E8B4A0' },
+  { value: 'white_gold', label: 'White Gold', hex: '#E8E8E8' },
+  { value: 'yellow_gold', label: 'Yellow Gold', hex: '#C9A961' },
+  { value: 'rose_gold', label: 'Rose Gold', hex: '#E8B4A0' },
   { value: 'platinum', label: 'Platinum', hex: '#F0F0F0' },
 ] as const
 
@@ -13,14 +13,17 @@ export type MetalValue = (typeof METALS)[number]['value']
 export const METAL_VALUES = METALS.map((metal) => metal.value)
 
 const legacyMetalAliases: Record<string, MetalValue> = {
+  '10k white gold': 'white_gold',
   '14k white gold': 'white_gold',
   '18k white gold': 'white_gold',
   'white gold': 'white_gold',
   white_gold: 'white_gold',
+  '10k yellow gold': 'yellow_gold',
   '14k yellow gold': 'yellow_gold',
   '18k yellow gold': 'yellow_gold',
   'yellow gold': 'yellow_gold',
   yellow_gold: 'yellow_gold',
+  '10k rose gold': 'rose_gold',
   '14k rose gold': 'rose_gold',
   '18k rose gold': 'rose_gold',
   'rose gold': 'rose_gold',

@@ -54,7 +54,7 @@ export const PRODUCT_SUBCATEGORIES = [
 export type DiamondShapeValue = (typeof DIAMOND_SHAPES)[number]['value']
 
 export function normalizeToken(value: string | null | undefined) {
-  return (value || '').trim().toLowerCase().replace(/^14k_?/, '').replace(/^18k_?/, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
+  return (value || '').trim().toLowerCase().replace(/^(10k|14k|18k)_?/, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
 }
 
 export function normalizeDiamondShape(value: string | null | undefined): DiamondShapeValue | undefined {

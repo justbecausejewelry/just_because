@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Gem, ShieldCheck } from 'lucide-react'
 import { useCart } from '@/context/CartContext'
 import { getMetalLabel } from '@/config/productOptions'
+import { supabase } from '@/lib/supabase'
 
 type Suggestion = {
   id: string
@@ -43,9 +44,17 @@ export default function CartPage() {
 
   const applyPromo = async () => {
     setPromoError('')
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    const headers: HeadersInit = { 'Content-Type': 'application/json' }
+    if (session?.access_token) {
+      headers.Authorization = `Bearer ${session.access_token}`
+    }
+
     const response = await fetch('/api/discounts/validate', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ code: promo, subtotal }),
     })
     const payload = (await response.json()) as {

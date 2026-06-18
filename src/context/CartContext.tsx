@@ -27,7 +27,7 @@ export interface CartItem {
   productImage: string
   selectedMetal: string
   selectedCarat: number
-  selectedShape: string
+  selectedShape?: string
   selectedColor?: string
   selectedClarity?: string
   ringSize?: string
@@ -54,7 +54,7 @@ type CartRow = {
   productImage?: string | null
   selectedMetal: string
   selectedCarat: number
-  selectedShape: string
+  selectedShape?: string | null
   selectedColor?: string | null
   selectedClarity?: string | null
   ringSize?: string | null
@@ -103,7 +103,7 @@ function mapCartRow(row: CartRow): CartItem {
     productImage: row.productImage || '',
     selectedMetal,
     selectedCarat: row.selectedCarat,
-    selectedShape: row.selectedShape,
+    selectedShape: row.selectedShape || undefined,
     selectedColor: row.selectedColor || undefined,
     selectedClarity: row.selectedClarity || undefined,
     ringSize: row.ringSize || undefined,
@@ -128,7 +128,7 @@ function guestToCartItem(item: GuestCartItem): CartItem {
     productImage: item.productImage || item.imageUrl,
     selectedMetal,
     selectedCarat: item.selectedCarat ?? item.carat ?? 0,
-    selectedShape: item.selectedShape || item.shape || 'Round',
+    selectedShape: item.selectedShape || item.shape || (item.type === 'diamond' ? 'Round' : undefined),
     selectedColor: item.selectedColor,
     selectedClarity: item.selectedClarity,
     ringSize: item.ringSize,
@@ -250,7 +250,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
 
     if (!userId) {
-      const guestId = `${itemWithLockedPrice.productId}-${itemWithLockedPrice.selectedMetal}-${itemWithLockedPrice.selectedCarat}-${itemWithLockedPrice.selectedShape}-${itemWithLockedPrice.selectedColor || ''}-${itemWithLockedPrice.selectedClarity || ''}-${itemWithLockedPrice.ringSize || ''}-${itemWithLockedPrice.engraving || ''}`
+      const guestId = `${itemWithLockedPrice.productId}-${itemWithLockedPrice.selectedMetal}-${itemWithLockedPrice.selectedCarat}-${itemWithLockedPrice.selectedShape || ''}-${itemWithLockedPrice.selectedColor || ''}-${itemWithLockedPrice.selectedClarity || ''}-${itemWithLockedPrice.ringSize || ''}-${itemWithLockedPrice.engraving || ''}`
       addGuestCartItem(cartItemToGuestItem(itemWithLockedPrice, guestId))
       setItems(getGuestCart().map(guestToCartItem))
       setIsMiniCartOpen(true)
@@ -268,7 +268,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         productImage: itemWithLockedPrice.productImage,
         selectedMetal: itemWithLockedPrice.selectedMetal,
         selectedCarat: itemWithLockedPrice.selectedCarat,
-        selectedShape: itemWithLockedPrice.selectedShape,
+        selectedShape: itemWithLockedPrice.selectedShape || null,
         selectedColor: itemWithLockedPrice.selectedColor,
         selectedClarity: itemWithLockedPrice.selectedClarity,
         ringSize: itemWithLockedPrice.ringSize,

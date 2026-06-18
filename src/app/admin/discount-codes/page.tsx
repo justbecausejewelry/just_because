@@ -14,6 +14,8 @@ type DiscountCode = {
   value: number
   minOrderAmount: number
   maxUses: number | null
+  maxUsesPerUser: number | null
+  firstTimeOnly: boolean
   usesCount: number
   isActive: boolean
   expiresAt: string | null
@@ -31,6 +33,8 @@ type FormState = {
   value: string
   minOrderAmount: string
   maxUses: string
+  maxUsesPerUser: string
+  firstTimeOnly: boolean
   expiresAt: string
   isActive: boolean
 }
@@ -41,6 +45,8 @@ const emptyForm: FormState = {
   value: '',
   minOrderAmount: '',
   maxUses: '',
+  maxUsesPerUser: '',
+  firstTimeOnly: false,
   expiresAt: '',
   isActive: true,
 }
@@ -77,6 +83,13 @@ function generateRandomCode() {
   return `JB-${suffix}`
 }
 
+function isPastDate(value: string) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const expiry = new Date(`${value}T00:00:00`)
+  return expiry < today
+}
+
 export default function AdminDiscountCodesPage() {
   const { showToast } = useToast()
   const [codes, setCodes] = useState<DiscountCode[]>([])
@@ -85,6 +98,8 @@ export default function AdminDiscountCodesPage() {
   const [showForm, setShowForm] = useState(false)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(emptyForm)
+  const todayISO = useMemo(() => new Date().toISOString().split('T')[0], [])
+  const expiresToday = form.isActive && form.expiresAt === todayISO
 
   const getAccessToken = useCallback(async () => {
     const {
@@ -158,10 +173,26 @@ export default function AdminDiscountCodesPage() {
 
   const createCode = async () => {
     const value = Number(form.value || 0)
+    const maxUses = form.maxUses ? Number(form.maxUses) : null
+    const maxUsesPerUser = form.maxUsesPerUser ? Number(form.maxUsesPerUser) : null
 
     if (!form.code.trim() || value <= 0) {
       showToast('Code and value are required', 'error')
       return
+    }
+
+    if ((maxUses !== null && maxUses < 1) || (maxUsesPerUser !== null && maxUsesPerUser < 1)) {
+      showToast('Usage limits must be at least 1 or blank', 'error')
+      return
+    }
+
+    if (form.expiresAt && isPastDate(form.expiresAt)) {
+      showToast('Expiry date must be today or in the future', 'error')
+      return
+    }
+
+    if (expiresToday) {
+      showToast('This active code will expire at midnight today', 'info')
     }
 
     setSaving(true)
@@ -177,7 +208,9 @@ export default function AdminDiscountCodesPage() {
           type: form.type,
           value,
           minOrderAmount: Number(form.minOrderAmount || 0),
-          maxUses: form.maxUses ? Number(form.maxUses) : null,
+          maxUses,
+          maxUsesPerUser,
+          firstTimeOnly: form.firstTimeOnly,
           expiresAt: form.expiresAt || null,
           isActive: form.isActive,
         }),
@@ -324,12 +357,13 @@ export default function AdminDiscountCodesPage() {
           </div>
         ) : codes.length ? (
           <>
-            <div className="discount-table-header" style={{ display: 'grid', gridTemplateColumns: '1fr 0.85fr 0.75fr 0.9fr 0.8fr 0.8fr 0.75fr 1fr', gap: '14px', padding: '14px 18px', borderBottom: '0.5px solid #EDD9AF', color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.18em', textTransform: 'uppercase' }}>
+            <div className="discount-table-header" style={{ display: 'grid', gridTemplateColumns: '1fr 0.85fr 0.75fr 0.9fr 0.8fr 0.95fr 0.8fr 0.75fr 1fr', gap: '14px', padding: '14px 18px', borderBottom: '0.5px solid #EDD9AF', color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.18em', textTransform: 'uppercase' }}>
               <span>Code</span>
               <span>Type</span>
               <span>Value</span>
               <span>Min Order</span>
               <span>Uses</span>
+              <span>Restriction</span>
               <span>Expires</span>
               <span>Status</span>
               <span>Actions</span>
@@ -347,7 +381,7 @@ export default function AdminDiscountCodesPage() {
                     borderBottom: '0.5px solid rgba(237,217,175,0.7)',
                     display: 'grid',
                     gap: '14px',
-                    gridTemplateColumns: '1fr 0.85fr 0.75fr 0.9fr 0.8fr 0.8fr 0.75fr 1fr',
+                    gridTemplateColumns: '1fr 0.85fr 0.75fr 0.9fr 0.8fr 0.95fr 0.8fr 0.75fr 1fr',
                     padding: '16px 18px',
                   }}
                 >
@@ -365,6 +399,9 @@ export default function AdminDiscountCodesPage() {
                   </span>
                   <span style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>
                     {code.usesCount} / {code.maxUses ?? 'Unlimited'}
+                  </span>
+                  <span style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>
+                    {code.firstTimeOnly ? 'First-time only' : code.maxUsesPerUser ? `${code.maxUsesPerUser} per user` : 'No per-user cap'}
                   </span>
                   <span style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>
                     {formatDate(code.expiresAt)}
@@ -498,7 +535,7 @@ export default function AdminDiscountCodesPage() {
                 <span>Max Uses</span>
                 <input
                   type="number"
-                  min="0"
+                  min="1"
                   value={form.maxUses}
                   onChange={(event) => setForm((current) => ({ ...current, maxUses: event.target.value }))}
                   placeholder="Blank = unlimited"
@@ -506,13 +543,42 @@ export default function AdminDiscountCodesPage() {
               </label>
 
               <label className="discount-field">
+                <span>Max Uses Per User</span>
+                <input
+                  type="number"
+                  min="1"
+                  value={form.maxUsesPerUser}
+                  onChange={(event) => setForm((current) => ({ ...current, maxUsesPerUser: event.target.value }))}
+                  placeholder="Blank = unlimited"
+                />
+              </label>
+
+              <label style={{ display: 'grid', gap: '6px', background: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '4px', padding: '14px' }}>
+                <span style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '12px', fontWeight: 500 }}>First-time customers only</span>
+                <span style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', lineHeight: 1.55 }}>Only customers with no previous orders can use this code.</span>
+                <input
+                  type="checkbox"
+                  checked={form.firstTimeOnly}
+                  onChange={(event) => setForm((current) => ({ ...current, firstTimeOnly: event.target.checked }))}
+                  style={{ marginTop: '4px' }}
+                />
+              </label>
+
+              <label className="discount-field">
                 <span>Expiry Date</span>
                 <input
                   type="date"
+                  min={todayISO}
                   value={form.expiresAt}
                   onChange={(event) => setForm((current) => ({ ...current, expiresAt: event.target.value }))}
                 />
               </label>
+
+              {expiresToday && (
+                <div style={{ background: '#EDD9AF', border: '0.5px solid #C9A961', borderRadius: '4px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '12px', lineHeight: 1.55, padding: '12px 14px' }}>
+                  This active code expires at midnight today.
+                </div>
+              )}
 
               <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', background: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '4px', padding: '14px' }}>
                 <span style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '12px', fontWeight: 500 }}>Active on creation</span>

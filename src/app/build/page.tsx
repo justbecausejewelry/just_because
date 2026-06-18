@@ -583,7 +583,7 @@ function BuildContent() {
                               cursor: 'pointer',
                             }}
                           >
-                            {metal.label.replace('14K ', '')}
+                            {metal.label}
                           </button>
                         ))}
                       </div>
