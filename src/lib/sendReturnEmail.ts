@@ -37,6 +37,10 @@ function formatCurrency(value: number | undefined) {
 }
 
 async function postEmail(payload: { to: string; subject: string; html: string; replyTo?: string }) {
+  if (payload.to === SUPPORT_INBOX) {
+    console.log('[email] sending support notification to:', payload.to)
+  }
+
   const result = await getResendClient().emails.send({
     from: EMAIL_SENDERS.support,
     to: payload.to,
@@ -46,7 +50,14 @@ async function postEmail(payload: { to: string; subject: string; html: string; r
   })
 
   if (result.error) {
+    if (payload.to === SUPPORT_INBOX) {
+      console.error('[email] support email FAILED:', result.error)
+    }
     throw new Error(result.error.message)
+  }
+
+  if (payload.to === SUPPORT_INBOX) {
+    console.log('[email] support email sent, id:', result.data?.id || 'unknown')
   }
 
   console.log('[resend] return email accepted:', {

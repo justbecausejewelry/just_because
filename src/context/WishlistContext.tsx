@@ -26,9 +26,9 @@ type WishlistRow = {
 
 interface WishlistContextType {
   items: WishlistItem[]
-  addItem: (item: WishlistItem) => Promise<void>
-  removeItem: (slug: string) => Promise<void>
-  toggleItem: (item: WishlistItem) => Promise<void>
+  addItem: (item: WishlistItem) => Promise<boolean>
+  removeItem: (slug: string) => Promise<boolean>
+  toggleItem: (item: WishlistItem) => Promise<boolean>
   isWishlisted: (slug: string) => boolean
   itemCount: number
   loading: boolean
@@ -43,8 +43,8 @@ function mapWishlistRow(row: WishlistRow): WishlistItem {
     productTitle: row.productTitle || '',
     productImage: row.productImage || '',
     basePrice: row.basePrice || 0,
-    category: row.category || '',
-    productType: row.productType || '',
+    category: row.category || row.productType || 'saved',
+    productType: row.productType || row.category || '',
   }
 }
 
@@ -87,9 +87,12 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
           .eq('userId', userId)
           .order('createdAt', { ascending: false })
 
-        if (!error && data) {
-          setItems((data as WishlistRow[]).map(mapWishlistRow).filter((item) => item.productSlug))
+        if (error) {
+          console.error('[wishlist] fetch failed:', error)
+          return
         }
+
+        setItems(((data || []) as WishlistRow[]).map(mapWishlistRow).filter((item) => item.productSlug))
       } finally {
         setLoading(false)
       }
@@ -99,7 +102,30 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   }, [userId])
 
   const addItem = async (item: WishlistItem) => {
-    if (!userId) return
+    if (!userId) {
+      console.error('[wishlist] add blocked: missing authenticated user')
+      return false
+    }
+
+    const { data: existing, error: existingError } = await supabase
+      .from('Wishlist')
+      .select('id')
+      .eq('userId', userId)
+      .eq('productId', item.id)
+      .maybeSingle()
+
+    if (existingError) {
+      console.error('[wishlist] existing lookup failed:', existingError)
+      return false
+    }
+
+    if (existing) {
+      setItems((prev) => {
+        if (prev.find((saved) => saved.productSlug === item.productSlug)) return prev
+        return [item, ...prev]
+      })
+      return true
+    }
 
     setItems((prev) => {
       if (prev.find((existing) => existing.productSlug === item.productSlug)) {
@@ -110,27 +136,29 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
 
     const { error } = await supabase
       .from('Wishlist')
-      .upsert(
-        {
-          userId,
-          productId: item.id,
-          productSlug: item.productSlug,
-          productTitle: item.productTitle,
-          productImage: item.productImage,
-          basePrice: item.basePrice,
-          category: item.category,
-          productType: item.productType,
-        },
-        { onConflict: 'userId,productSlug' }
-      )
+      .insert({
+        userId,
+        productId: item.id,
+        productSlug: item.productSlug,
+        productTitle: item.productTitle,
+        productImage: item.productImage,
+        basePrice: item.basePrice,
+      })
 
     if (error) {
+      console.error('[wishlist] insert failed:', error)
       setItems((prev) => prev.filter((existing) => existing.productSlug !== item.productSlug))
+      return false
     }
+
+    return true
   }
 
   const removeItem = async (slug: string) => {
-    if (!userId) return
+    if (!userId) {
+      console.error('[wishlist] remove blocked: missing authenticated user')
+      return false
+    }
 
     const previous = items
     setItems((prev) => prev.filter((item) => item.productSlug !== slug))
@@ -142,17 +170,21 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       .eq('productSlug', slug)
 
     if (error) {
+      console.error('[wishlist] delete failed:', error)
       setItems(previous)
+      return false
     }
+
+    return true
   }
 
   const toggleItem = async (item: WishlistItem) => {
     const exists = items.find((existing) => existing.productSlug === item.productSlug)
     if (exists) {
-      await removeItem(item.productSlug)
-    } else {
-      await addItem(item)
+      return removeItem(item.productSlug)
     }
+
+    return addItem(item)
   }
 
   const isWishlisted = (slug: string) =>

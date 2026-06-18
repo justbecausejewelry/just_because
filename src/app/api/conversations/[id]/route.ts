@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAuthedUserOrGuest } from '@/lib/auth/getAuthedUserOrGuest'
+import { sendSupportNotificationEmail } from '@/lib/email/supportNotification'
 import { requireAdmin, requireUser } from '@/lib/server/security'
 
 type ConversationParams = {
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest, { params }: ConversationParams)
 
   let conversationQuery = auth.admin
     .from('Conversation')
-    .select('id')
+    .select('id,customerEmail,customerName,subject,productTitle,productSlug')
     .eq('id', id)
 
   if (!adminReply) {
@@ -117,6 +118,22 @@ export async function POST(request: NextRequest, { params }: ConversationParams)
 
   if (updateError) {
     return NextResponse.json({ error: updateError.message }, { status: 500 })
+  }
+
+  if (!adminReply && identity?.authed) {
+    try {
+      await sendSupportNotificationEmail({
+        conversationId: id,
+        customerName: identity.name || identity.email,
+        customerEmail: identity.email,
+        subject: typeof conversation.subject === 'string' ? conversation.subject : 'Support reply',
+        message: parsed.data.content,
+        productTitle: typeof conversation.productTitle === 'string' ? conversation.productTitle : null,
+        productSlug: typeof conversation.productSlug === 'string' ? conversation.productSlug : null,
+      })
+    } catch (error) {
+      console.error('[support] notification email failed:', error)
+    }
   }
 
   return NextResponse.json({ success: true })

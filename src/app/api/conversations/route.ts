@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAuthedUserOrGuest } from '@/lib/auth/getAuthedUserOrGuest'
+import { sendSupportNotificationEmail } from '@/lib/email/supportNotification'
 import { checkRateLimit, rateLimitResponse } from '@/lib/server/rateLimit'
 import { requireUser } from '@/lib/server/security'
 
@@ -91,6 +92,20 @@ export async function POST(request: NextRequest) {
 
   if (msgError) {
     return NextResponse.json({ error: msgError.message }, { status: 500 })
+  }
+
+  try {
+    await sendSupportNotificationEmail({
+      conversationId: conversation.id,
+      customerName,
+      customerEmail: identity.email,
+      subject: parsed.data.subject,
+      message: parsed.data.message,
+      productTitle: parsed.data.productTitle,
+      productSlug: parsed.data.productSlug,
+    })
+  } catch (error) {
+    console.error('[support] notification email failed:', error)
   }
 
   return NextResponse.json({ conversation })

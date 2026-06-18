@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Copy, Diamond, Eye, EyeOff, Plus, Sparkles, Trash2, X } from 'lucide-react'
 import { useToast } from '@/context/ToastContext'
 import { supabase } from '@/lib/supabase'
@@ -171,27 +171,46 @@ export default function AdminDiscountCodesPage() {
     setShowForm(false)
   }
 
-  const createCode = async () => {
-    const value = Number(form.value || 0)
-    const maxUses = form.maxUses ? Number(form.maxUses) : null
-    const maxUsesPerUser = form.maxUsesPerUser ? Number(form.maxUsesPerUser) : null
+  const createCode = async (event?: FormEvent<HTMLFormElement>) => {
+    event?.preventDefault()
 
-    if (!form.code.trim() || value <= 0) {
-      showToast('Code and value are required', 'error')
+    const formData = event ? new FormData(event.currentTarget) : null
+    const codeValue = String(formData?.get('code') ?? form.code).trim().toUpperCase()
+    const rawValue = String(formData?.get('value') ?? form.value).trim()
+    const rawMinOrderAmount = String(formData?.get('minOrderAmount') ?? form.minOrderAmount).trim()
+    const rawMaxUses = String(formData?.get('maxUses') ?? form.maxUses).trim()
+    const rawMaxUsesPerUser = String(formData?.get('maxUsesPerUser') ?? form.maxUsesPerUser).trim()
+    const expiresAt = String(formData?.get('expiresAt') ?? form.expiresAt).trim()
+    const value = Number(rawValue)
+    const maxUses = rawMaxUses ? Number(rawMaxUses) : null
+    const maxUsesPerUser = rawMaxUsesPerUser ? Number(rawMaxUsesPerUser) : null
+    const firstTimeOnly = formData ? formData.has('firstTimeOnly') : form.firstTimeOnly
+    const isActive = formData ? formData.has('isActive') : form.isActive
+
+    if (!codeValue) {
+      showToast('Please enter or generate a discount code', 'error')
       return
     }
 
-    if ((maxUses !== null && maxUses < 1) || (maxUsesPerUser !== null && maxUsesPerUser < 1)) {
+    if (!rawValue || !Number.isFinite(value) || value <= 0) {
+      showToast('Please enter a valid discount value greater than 0', 'error')
+      return
+    }
+
+    if (
+      (maxUses !== null && (!Number.isFinite(maxUses) || maxUses < 1)) ||
+      (maxUsesPerUser !== null && (!Number.isFinite(maxUsesPerUser) || maxUsesPerUser < 1))
+    ) {
       showToast('Usage limits must be at least 1 or blank', 'error')
       return
     }
 
-    if (form.expiresAt && isPastDate(form.expiresAt)) {
+    if (expiresAt && isPastDate(expiresAt)) {
       showToast('Expiry date must be today or in the future', 'error')
       return
     }
 
-    if (expiresToday) {
+    if (isActive && expiresAt === todayISO) {
       showToast('This active code will expire at midnight today', 'info')
     }
 
@@ -204,15 +223,15 @@ export default function AdminDiscountCodesPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          code: form.code,
+          code: codeValue,
           type: form.type,
           value,
-          minOrderAmount: Number(form.minOrderAmount || 0),
+          minOrderAmount: Number(rawMinOrderAmount || 0),
           maxUses,
           maxUsesPerUser,
-          firstTimeOnly: form.firstTimeOnly,
-          expiresAt: form.expiresAt || null,
-          isActive: form.isActive,
+          firstTimeOnly,
+          expiresAt: expiresAt || null,
+          isActive,
         }),
       })
       const payload = await response.json() as unknown
@@ -460,11 +479,12 @@ export default function AdminDiscountCodesPage() {
               </button>
             </div>
 
-            <div style={{ display: 'grid', gap: '16px' }}>
+            <form onSubmit={createCode} style={{ display: 'grid', gap: '16px' }}>
               <label className="discount-field">
                 <span>Code</span>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <input
+                    name="code"
                     value={form.code}
                     onChange={(event) => setForm((current) => ({ ...current, code: event.target.value.toUpperCase() }))}
                     placeholder="WELCOME10"
@@ -512,6 +532,7 @@ export default function AdminDiscountCodesPage() {
               <label className="discount-field">
                 <span>Value ({form.type === 'percentage' ? '%' : '$'})</span>
                 <input
+                  name="value"
                   type="number"
                   min="0"
                   value={form.value}
@@ -523,6 +544,7 @@ export default function AdminDiscountCodesPage() {
               <label className="discount-field">
                 <span>Min Order Amount</span>
                 <input
+                  name="minOrderAmount"
                   type="number"
                   min="0"
                   value={form.minOrderAmount}
@@ -534,6 +556,7 @@ export default function AdminDiscountCodesPage() {
               <label className="discount-field">
                 <span>Max Uses</span>
                 <input
+                  name="maxUses"
                   type="number"
                   min="1"
                   value={form.maxUses}
@@ -545,6 +568,7 @@ export default function AdminDiscountCodesPage() {
               <label className="discount-field">
                 <span>Max Uses Per User</span>
                 <input
+                  name="maxUsesPerUser"
                   type="number"
                   min="1"
                   value={form.maxUsesPerUser}
@@ -557,6 +581,7 @@ export default function AdminDiscountCodesPage() {
                 <span style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '12px', fontWeight: 500 }}>First-time customers only</span>
                 <span style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', lineHeight: 1.55 }}>Only customers with no previous orders can use this code.</span>
                 <input
+                  name="firstTimeOnly"
                   type="checkbox"
                   checked={form.firstTimeOnly}
                   onChange={(event) => setForm((current) => ({ ...current, firstTimeOnly: event.target.checked }))}
@@ -567,6 +592,7 @@ export default function AdminDiscountCodesPage() {
               <label className="discount-field">
                 <span>Expiry Date</span>
                 <input
+                  name="expiresAt"
                   type="date"
                   min={todayISO}
                   value={form.expiresAt}
@@ -583,6 +609,7 @@ export default function AdminDiscountCodesPage() {
               <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', background: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '4px', padding: '14px' }}>
                 <span style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '12px', fontWeight: 500 }}>Active on creation</span>
                 <input
+                  name="isActive"
                   type="checkbox"
                   checked={form.isActive}
                   onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.checked }))}
@@ -591,20 +618,21 @@ export default function AdminDiscountCodesPage() {
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
                 <button
-                  onClick={createCode}
+                  type="submit"
                   disabled={saving}
                   style={{ flex: 1, background: '#1A1014', border: '0.5px solid #1A1014', borderRadius: '4px', color: '#FBF5F0', cursor: saving ? 'wait' : 'pointer', fontFamily: 'var(--font-inter)', fontSize: '11px', fontWeight: 500, letterSpacing: '0.16em', padding: '13px 14px', textTransform: 'uppercase' }}
                 >
                   {saving ? 'Creating...' : 'Create Code'}
                 </button>
                 <button
+                  type="button"
                   onClick={resetForm}
                   style={{ background: 'transparent', border: '0.5px solid #EDD9AF', borderRadius: '4px', color: '#B8A090', cursor: 'pointer', fontFamily: 'var(--font-inter)', fontSize: '11px', fontWeight: 500, letterSpacing: '0.16em', padding: '13px 14px', textTransform: 'uppercase' }}
                 >
                   Cancel
                 </button>
               </div>
-            </div>
+            </form>
           </aside>
         </div>
       )}

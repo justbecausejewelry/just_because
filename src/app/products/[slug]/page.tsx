@@ -468,7 +468,7 @@ export default function ProductDetailPage() {
       return
     }
 
-    await toggleItem({
+    const saved = await toggleItem({
       id: product.id,
       productSlug: product.slug,
       productTitle: product.title,
@@ -477,6 +477,11 @@ export default function ProductDetailPage() {
       category: product.category,
       productType: product.productType,
     })
+
+    if (!saved) {
+      showToast('Failed to update wishlist - please try again', 'error')
+      return
+    }
 
     showToast(wishlisted ? 'Removed from wishlist' : 'Saved to wishlist', wishlisted ? 'info' : 'wishlist')
   }
