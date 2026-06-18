@@ -293,7 +293,7 @@ export default function CheckoutPage() {
             productTitle: item.productTitle,
             productImage: item.productImage,
             selectedMetal: item.selectedMetal,
-            selectedCarat: item.selectedCarat,
+            selectedCarat: item.selectedCarat > 0 ? item.selectedCarat : undefined,
             selectedShape: item.selectedShape,
             selectedColor: item.selectedColor,
             selectedClarity: item.selectedClarity,
@@ -529,7 +529,7 @@ export default function CheckoutPage() {
           {summaryItems.map((item) => (
             <div key={item.id} className="flex gap-3 py-3" style={{ borderBottom: '0.5px solid #EDD9AF' }}>
               <div style={{ width: '56px', height: '56px', background: '#F5E8ED', position: 'relative' }}>{item.productImage ? <Image src={item.productImage} alt={item.productTitle} fill sizes="56px" style={{ objectFit: 'cover' }} /> : <Gem color="#C9A961" size={20} />}</div>
-              <div className="min-w-0 flex-1"><p style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '13px' }}>{item.productTitle}</p><p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>{item.selectedMetal} · {item.selectedCarat}ct</p></div>
+              <div className="min-w-0 flex-1"><p style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '13px' }}>{item.productTitle}</p><p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>{[item.selectedMetal, item.selectedCarat > 0 ? `${item.selectedCarat}ct` : null].filter(Boolean).join(' · ')}</p></div>
               <p style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '14px' }}>{formatPrice(item.unitPrice * item.quantity)}</p>
             </div>
           ))}

@@ -47,6 +47,35 @@ type CreatedOrder = {
   createdAt?: string | null
 }
 
+function normalizePersonName(value?: string | null) {
+  return (value || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ')
+}
+
+function firstNameFromEmail(email?: string | null) {
+  return normalizePersonName(
+    email
+      ?.split('@')[0]
+      ?.split(/[._+-]/)[0]
+  )
+}
+
+function normalizeCheckoutName(value: string, email?: string | null) {
+  const normalized = normalizePersonName(value)
+  const parts = normalized.split(/\s+/).filter(Boolean)
+  if (parts.length >= 2 && parts[0].toLowerCase() === parts[parts.length - 1].toLowerCase()) {
+    const emailFirstName = firstNameFromEmail(email)
+    if (emailFirstName && emailFirstName.toLowerCase() !== parts[0].toLowerCase()) {
+      return [emailFirstName, ...parts.slice(1)].join(' ')
+    }
+  }
+  return normalized
+}
+
 export async function POST(request: NextRequest) {
   const auth = await requireUser(request)
   if ('error' in auth) return auth.error
@@ -143,19 +172,31 @@ export async function POST(request: NextRequest) {
   const taxAmount = Math.round(taxableSubtotal * 0.08)
   const total = taxableSubtotal + shippingAmount + taxAmount
   const orderNumber = `JB-${Date.now().toString().slice(-6)}`
+  const normalizedCustomerName = normalizeCheckoutName(parsed.data.customerName, userEmail)
+  const normalizedShippingName = normalizeCheckoutName(
+    `${parsed.data.shippingAddress.firstName || ''} ${parsed.data.shippingAddress.lastName || ''}`,
+    userEmail
+  )
+  const [normalizedShippingFirstName = '', ...normalizedShippingLastNameParts] = normalizedShippingName.split(/\s+/).filter(Boolean)
+  const normalizedShippingLastName = normalizedShippingLastNameParts.join(' ')
+  const normalizedShippingAddress = {
+    ...parsed.data.shippingAddress,
+    firstName: normalizedShippingFirstName || undefined,
+    lastName: normalizedShippingLastName || undefined,
+  }
 
   const { data: order, error: orderError } = await auth.admin
     .from('Order')
     .insert({
       orderNumber,
-      customerName: parsed.data.customerName,
+      customerName: normalizedCustomerName,
       customerEmail: userEmail,
       customerPhone: parsed.data.customerPhone || null,
       userId: auth.user.id,
       isGuest: false,
       guestEmail: null,
       guestName: null,
-      shippingAddress: parsed.data.shippingAddress,
+      shippingAddress: normalizedShippingAddress,
       subtotal: computed.subtotal,
       shippingAmount,
       taxAmount,
@@ -210,12 +251,12 @@ export async function POST(request: NextRequest) {
       taxAmount,
       total,
       paymentStatus: 'paid',
-      shippingAddress: parsed.data.shippingAddress,
+      shippingAddress: normalizedShippingAddress,
     },
     customer: {
-      fullName: parsed.data.customerName,
+      fullName: normalizedCustomerName,
       email: userEmail,
-      firstName: parsed.data.shippingAddress.firstName,
+      firstName: normalizedCustomerName.split(/\s+/)[0],
     },
     items: computed.lines.map((item) => ({
       title: item.productTitle,

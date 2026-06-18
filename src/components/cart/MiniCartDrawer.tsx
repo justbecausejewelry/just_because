@@ -233,7 +233,7 @@ export function MiniCartDrawer({
                           marginBottom: '2px',
                         }}
                       >
-                        {item.selectedMetal} · {item.selectedCarat}ct · {item.selectedShape}
+                        {[item.selectedMetal, item.selectedCarat > 0 ? `${item.selectedCarat}ct` : null, item.selectedShape].filter(Boolean).join(' · ')}
                       </p>
                       {item.engraving && (
                         <p

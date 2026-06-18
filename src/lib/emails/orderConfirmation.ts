@@ -1,4 +1,4 @@
-import { getMetalLabel } from '@/config/productOptions'
+import { LOOSE_DIAMOND_VALUE, getMetalLabel, normalizeMetalSelection } from '@/config/productOptions'
 import { resend, resendFromEmail } from '@/lib/email/resend'
 
 const BRAND = {
@@ -117,18 +117,40 @@ function formatDate(value?: string | Date | null) {
   }).format(date)
 }
 
+function normalizePersonName(value?: string | null) {
+  return (value || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ')
+}
+
 function customerFirstName(customer: OrderConfirmationCustomer) {
-  const first = customer.firstName?.trim()
-  if (first) return first
-  return customer.fullName.trim().split(/\s+/)[0] || 'there'
+  const normalizedFullName = normalizePersonName(customer.fullName)
+  const nameParts = normalizedFullName.split(/\s+/).filter(Boolean)
+  const firstName = nameParts[0]
+  const lastName = nameParts[nameParts.length - 1]
+
+  if (firstName && (!lastName || firstName.toLowerCase() !== lastName.toLowerCase())) {
+    return firstName
+  }
+
+  const emailFirstName = customer.email
+    .split('@')[0]
+    ?.split(/[._+-]/)[0]
+  const normalizedEmailFirstName = normalizePersonName(emailFirstName)
+  if (normalizedEmailFirstName) return normalizedEmailFirstName
+
+  return normalizePersonName(customer.firstName) || firstName || 'there'
 }
 
 function addressFullName(customer: OrderConfirmationCustomer, address?: OrderConfirmationAddress | null) {
-  const fromAddress = address?.fullName?.trim()
+  const fromAddress = normalizePersonName(address?.fullName)
   if (fromAddress) return fromAddress
 
-  const joined = `${address?.firstName || ''} ${address?.lastName || ''}`.trim()
-  return joined || customer.fullName
+  const joined = normalizePersonName(`${address?.firstName || ''} ${address?.lastName || ''}`)
+  return joined || normalizePersonName(customer.fullName)
 }
 
 function itemTitle(item: OrderConfirmationItem) {
@@ -141,6 +163,20 @@ function itemUnitPrice(item: OrderConfirmationItem) {
 
 function itemLinePrice(item: OrderConfirmationItem) {
   return item.totalPrice ?? itemUnitPrice(item) * item.quantity
+}
+
+function formatCaratValue(value?: number | null) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return null
+  const formatted = value.toFixed(2).replace(/\.?0+$/, '')
+  return `${formatted} ct`
+}
+
+function shouldShowCarat(item: OrderConfirmationItem) {
+  if (!item.selectedCarat) return false
+  const selectedMetal = normalizeMetalSelection(item.selectedMetal)
+  if (selectedMetal === LOOSE_DIAMOND_VALUE) return true
+  if (item.selectedColor || item.selectedClarity) return true
+  return item.selectedCarat < 6
 }
 
 function orderSubtotal(order: OrderConfirmationOrder, items: OrderConfirmationItem[]) {
@@ -185,7 +221,7 @@ function variantRows(item: OrderConfirmationItem) {
     ? explicitVariants.map(([label, value]) => [label, String(value)] as const)
     : [
         ['Metal', getMetalLabel(item.selectedMetal)],
-        ['Carat', item.selectedCarat ? `${item.selectedCarat} ct` : null],
+        ['Carat', shouldShowCarat(item) ? formatCaratValue(item.selectedCarat) : null],
         ['Shape', item.selectedShape],
         ['Color', item.selectedColor],
         ['Clarity', item.selectedClarity],
@@ -244,6 +280,7 @@ function summaryRow(label: string, value: string, color = BRAND.noir, weight = '
 export function buildOrderConfirmationEmailHtml({ order, customer, items }: SendOrderConfirmationEmailInput) {
   const orderNumber = normalizeOrderNumber(order)
   const safeFirstName = escapeHtml(customerFirstName(customer))
+  const copyrightYear = new Date().getFullYear()
   const subtotal = orderSubtotal(order, items)
   const discount = orderDiscount(order)
   const shipping = orderShipping(order)
@@ -372,15 +409,8 @@ export function buildOrderConfirmationEmailHtml({ order, customer, items }: Send
             <tr>
               <td align="center" style="padding:28px;background:${BRAND.noir};">
                 <p style="margin:0 0 10px;color:${BRAND.pearl};font-family:Georgia,serif;font-size:16px;word-break:break-word;overflow-wrap:anywhere;">Just Because Jewelry &middot; justbecausejewelry.com</p>
-                <p style="margin:0 0 18px;color:${BRAND.gold};font-family:Arial,sans-serif;font-size:12px;">
-                  <a href="${SITE_URL}" style="color:${BRAND.gold};text-decoration:none;">Instagram</a>
-                  <span style="color:${BRAND.taupe};"> &middot; </span>
-                  <a href="${SITE_URL}" style="color:${BRAND.gold};text-decoration:none;">Pinterest</a>
-                  <span style="color:${BRAND.taupe};"> &middot; </span>
-                  <a href="${SITE_URL}" style="color:${BRAND.gold};text-decoration:none;">TikTok</a>
-                </p>
                 <p style="margin:0 0 8px;color:${BRAND.taupe};font-family:Arial,sans-serif;font-size:11px;line-height:1.6;">You're receiving this because you placed an order with us.</p>
-                <p style="margin:0;color:${BRAND.taupe};font-family:Arial,sans-serif;font-size:11px;line-height:1.6;">&copy; 2025 Just Because Jewelry. All rights reserved.</p>
+                <p style="margin:0;color:${BRAND.taupe};font-family:Arial,sans-serif;font-size:11px;line-height:1.6;">&copy; ${copyrightYear} Just Because Jewelry. All rights reserved.</p>
               </td>
             </tr>
           </table>

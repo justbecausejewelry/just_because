@@ -1,37 +1,28 @@
-import Image from 'next/image'
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 import { PromoBar } from '@/components/layout/PromoBar'
 import { BestSellers } from '@/components/home/BestSellers'
 import { Categories } from '@/components/home/Categories'
 import { EditorialSplit } from '@/components/home/EditorialSplit'
+import { GalleryTileImage } from '@/components/home/GalleryTileImage'
 import { Hero } from '@/components/home/Hero'
 import { Reviews } from '@/components/home/Reviews'
 import { ShopByShape } from '@/components/home/ShopByShape'
 import StatsCounter from '@/components/home/StatsCounter'
 import { VideoStory } from '@/components/home/VideoStory'
 
-const galleryRowOne = [
-  'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=320&q=85',
-  'https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?w=320&q=85',
-  'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=320&q=85',
-  'https://images.unsplash.com/photo-1573408301185-9519f94816b5?w=320&q=85',
-  'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=320&q=85',
-  'https://images.unsplash.com/photo-1596944924616-7b38e7cfac36?w=320&q=85',
-  'https://images.unsplash.com/photo-1611955167811-4711904bb9f8?w=320&q=85',
-  'https://images.unsplash.com/photo-1599643477877-530eb83abc8e?w=320&q=85',
-  'https://images.unsplash.com/photo-1602173574767-37ac01994b2a?w=320&q=85',
-]
+const galleryFiles = Array.from({ length: 20 }, (_, index) => {
+  const imageNumber = String(index + 1).padStart(2, '0')
+  return `gallery-${imageNumber}.jpg`
+}).filter((filename) => existsSync(join(process.cwd(), 'public', 'images', 'gallery', filename)))
 
-const galleryRowTwo = [
-  'https://images.unsplash.com/photo-1589674781759-c21c37956a44?w=320&q=85',
-  'https://images.unsplash.com/photo-1630019852942-f89202989a59?w=320&q=85',
-  'https://images.unsplash.com/photo-1584302179602-e4c3d3fd629d?w=320&q=85',
-  'https://images.unsplash.com/photo-1611085583191-a3b181a88401?w=320&q=85',
-  'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=320&q=85',
-  'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=320&q=85',
-  'https://images.unsplash.com/photo-1596944924616-7b38e7cfac36?w=320&q=85',
-  'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=320&q=85',
-  'https://images.unsplash.com/photo-1573408301185-9519f94816b5?w=320&q=85',
-]
+const galleryRowOne = galleryFiles
+  .filter((filename) => Number(filename.match(/\d+/)?.[0] || 0) <= 10)
+  .map((filename) => `/images/gallery/${filename}`)
+
+const galleryRowTwo = galleryFiles
+  .filter((filename) => Number(filename.match(/\d+/)?.[0] || 0) > 10)
+  .map((filename) => `/images/gallery/${filename}`)
 
 function InfiniteJewelryGallery() {
   const rows = [
@@ -41,6 +32,7 @@ function InfiniteJewelryGallery() {
 
   return (
     <section
+      id="infinite-gallery"
       style={{
         padding: '80px 0 40px',
         background: '#FBF5F0',
@@ -97,13 +89,7 @@ function InfiniteJewelryGallery() {
                   transition: 'transform 400ms cubic-bezier(0.4,0,0.2,1), border-color 400ms cubic-bezier(0.4,0,0.2,1), box-shadow 400ms cubic-bezier(0.4,0,0.2,1)',
                 }}
               >
-                <Image
-                  src={src}
-                  alt="Just Because jewelry as worn"
-                  fill
-                  style={{ objectFit: 'cover' }}
-                  sizes="200px"
-                />
+                <GalleryTileImage src={src} />
               </div>
             ))}
           </div>

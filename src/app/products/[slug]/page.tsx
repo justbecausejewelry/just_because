@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Gem, Heart, RotateCcw, Share2, ShieldCheck, Sparkles, Star } from 'lucide-react'
-import DiamondVisualizer from '@/components/diamonds/DiamondVisualizer'
 import ProductCustomizer, { productNeedsRingSize } from '@/components/products/ProductCustomizer'
 import { useCart } from '@/context/CartContext'
 import { useToast } from '@/context/ToastContext'
@@ -262,12 +261,10 @@ export default function ProductDetailPage() {
 
   const ringProduct = isRingProduct(product?.productType, product?.category)
   const availableCarats = useMemo(() => normalizeCaratOptions(product?.availableCarats), [product?.availableCarats])
-  const productDefaultCarat = availableCarats[0] || product?.defaultCarat || 1
-  const visualizerCarat = selectedCarat ?? productDefaultCarat
-  const caratLivePrice = selectedCarat
-    ? getModifier(product?.caratPricing, selectedCarat) || Math.max(0, selectedCarat - productDefaultCarat) * (product?.pricePerCarat || 300)
+  const caratPrice = !ringProduct && selectedCarat
+    ? getModifier(product?.caratPricing, selectedCarat) || selectedCarat * (product?.pricePerCarat || 300)
     : 0
-  const livePrice = (calculatedPrice || product?.basePrice || 0) + caratLivePrice
+  const livePrice = calculatedPrice || product?.basePrice || 0
   const currentPrice = formatPrice(livePrice)
   const imagePosition = product?.productType?.includes('necklace') || product?.productType?.includes('pendant')
     ? 'center top'
@@ -275,7 +272,7 @@ export default function ProductDetailPage() {
   const cartItem = items.find((item) => item.productSlug === product?.slug)
   const isInCart = Boolean(cartItem)
   const needsRingSize = productNeedsRingSize(product?.productType, product?.category)
-  const needsCarat = Boolean(availableCarats.length)
+  const needsCarat = !ringProduct && Boolean(availableCarats.length)
   const missingSelections = [
     !selectedMetal ? 'Metal' : null,
     needsCarat && !selectedCarat ? 'Carat' : null,
@@ -285,7 +282,7 @@ export default function ProductDetailPage() {
   const priceBreakdown = {
     base: product?.basePrice || 0,
     metal: 0,
-    carat: caratLivePrice,
+    carat: caratPrice,
     shape: 0,
     color: 0,
     clarity: 0,
@@ -299,11 +296,11 @@ export default function ProductDetailPage() {
   }) => {
     setSelectedMetal(selections.metal)
     setSelectedSize(selections.size || null)
-    setSelectedCarat((current) => ringProduct ? current : selections.caratWeight || null)
+    setSelectedCarat(selections.caratWeight || null)
     setCalculatedPrice(selections.totalPrice)
     setSelectedImage(0)
     setIsZoomed(false)
-  }, [ringProduct])
+  }, [])
 
   if (isLoading) {
     return (
@@ -350,7 +347,7 @@ export default function ProductDetailPage() {
       productTitle: product.title,
       productImage: primaryImage,
       selectedMetal,
-      selectedCarat: ringProduct ? visualizerCarat : selectedCarat || 0,
+      selectedCarat: selectedCarat || 0,
       selectedShape: ringProduct ? product.diamondShape || 'Round' : product.category,
       selectedColor: undefined,
       selectedClarity: undefined,
@@ -374,7 +371,7 @@ export default function ProductDetailPage() {
       productTitle: product.title,
       productImage: primaryImage,
       selectedMetal,
-      selectedCarat: ringProduct ? visualizerCarat : selectedCarat || 0,
+      selectedCarat: selectedCarat || 0,
       selectedShape: ringProduct ? product.diamondShape || 'Round' : product.category,
       selectedColor: undefined,
       selectedClarity: undefined,
@@ -816,55 +813,6 @@ export default function ProductDetailPage() {
               product={product}
               onSelectionChange={handleCustomizerChange}
             />
-
-            {ringProduct ? (
-              <div
-                style={{
-                  backgroundColor: '#FDF8F2',
-                  border: '0.5px solid #EDD9AF',
-                  borderRadius: '4px',
-                  padding: '20px',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '16px', marginBottom: '14px' }}>
-                  <div>
-                    <p style={{ color: '#C9A961', fontFamily: 'var(--font-jost)', fontSize: '10px', fontWeight: 500, letterSpacing: '0.18em', marginBottom: '6px' }}>
-                      DIAMOND SIZE
-                    </p>
-                    <h2 style={{ color: '#1A1014', fontFamily: 'var(--font-cormorant)', fontSize: '22px', fontWeight: 500, margin: 0 }}>
-                      Preview on hand
-                    </h2>
-                  </div>
-                  <div style={{ color: '#1A1014', fontFamily: 'var(--font-cormorant)', fontSize: '2.5rem', fontWeight: 400, whiteSpace: 'nowrap' }}>
-                    {selectedCarat ? `${selectedCarat.toFixed(1)} ct` : 'Select'}
-                  </div>
-                </div>
-
-                <DiamondVisualizer
-                  initialShape={product.diamondShape || 'Round'}
-                  initialCarat={visualizerCarat}
-                  availableCarats={availableCarats}
-                  diamondSelected={Boolean(selectedCarat)}
-                  onCaratChange={setSelectedCarat}
-                  showShapeSelector={false}
-                />
-
-                <div style={{ borderTop: '0.5px solid #EDD9AF', display: 'grid', gap: '8px', marginTop: '16px', paddingTop: '14px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '13px' }}>
-                    <span>Base setting</span>
-                    <span>{formatPrice(calculatedPrice || product.basePrice)}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '13px' }}>
-                    <span>Carat upgrade</span>
-                    <span>{caratLivePrice > 0 ? `+ ${formatPrice(caratLivePrice)}` : 'Included'}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', fontWeight: 500 }}>
-                    <span>Live price</span>
-                    <span>{formatPrice(livePrice)}</span>
-                  </div>
-                </div>
-              </div>
-            ) : null}
 
             {isInCart && (
               <div style={{

@@ -1,46 +1,189 @@
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 import Image from 'next/image'
 import Link from 'next/link'
+import { unstable_noStore as noStore } from 'next/cache'
+import { createClient } from '@supabase/supabase-js'
+import { ArrowRight } from 'lucide-react'
 
-const categories = [
+type ProductSummary = {
+  productType?: string | null
+  basePrice?: number | null
+}
+
+type CategoryConfig = {
+  name: string
+  href: string
+  image: string
+  alt: string
+  productTypes: string[]
+  dark?: boolean
+}
+
+type CategoryCard = CategoryConfig & {
+  minPrice: number | null
+  priority: boolean
+  imageExists: boolean
+}
+
+const CATEGORY_CONFIGS: CategoryConfig[] = [
   {
     name: 'Rings',
-    count: '120',
-    price: 'From $980',
     href: '/products?type=ring',
-    image: '/images/category/Rings.webp',
-    alt: 'Rings collection',
-    dark: false,
+    image: '/images/category/rings.jpg',
+    alt: 'Diamond rings collection',
+    productTypes: ['ring', 'wedding_ring', 'engagement_ring'],
   },
   {
     name: 'Bracelets',
-    count: '48',
-    price: 'From $1,400',
     href: '/products?type=bracelet',
-    image: '/images/category/Bracelets.webp',
-    alt: 'Bracelets collection',
-    dark: false,
+    image: '/images/category/bracelets.jpg',
+    alt: 'Diamond bracelets collection',
+    productTypes: ['bracelet', 'tennis_bracelet', 'bangle'],
   },
   {
     name: 'Necklaces',
-    count: '76',
-    price: 'From $620',
     href: '/products?type=necklace',
-    image: '/images/category/Necklaces.webp',
-    alt: 'Necklaces collection',
-    dark: false,
+    image: '/images/category/necklaces.jpg',
+    alt: 'Diamond necklaces collection',
+    productTypes: ['necklace', 'tennis_necklace', 'pendant'],
+  },
+  {
+    name: 'Earrings',
+    href: '/products?type=earring',
+    image: '/images/category/earrings.jpg',
+    alt: 'Diamond earrings collection',
+    productTypes: ['earring', 'stud'],
   },
   {
     name: 'Shop all',
-    count: '244 pieces',
-    price: '244 pieces',
     href: '/products',
-    image: null,
-    alt: '',
+    image: '/images/category/shopall.jpg',
+    alt: 'Just Because jewelry collection',
+    productTypes: [],
     dark: true,
   },
 ]
 
-export function Categories() {
+function formatPrice(price: number) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  }).format(price)
+}
+
+function publicImageExists(src: string) {
+  return existsSync(join(process.cwd(), 'public', src.replace(/^\//, '')))
+}
+
+async function getProductSummaries() {
+  noStore()
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    return { products: [] as ProductSummary[], count: 0 }
+  }
+
+  const supabase = createClient(supabaseUrl, serviceRoleKey)
+  const { data, count, error } = await supabase
+    .from('Product')
+    .select('productType,basePrice', { count: 'exact' })
+    .eq('isActive', true)
+
+  if (error) {
+    console.error('[home-categories] Failed to load Product category stats:', error)
+    return { products: [] as ProductSummary[], count: 0 }
+  }
+
+  return {
+    products: (data || []) as ProductSummary[],
+    count: count || 0,
+  }
+}
+
+function getCategoryMinPrice(products: ProductSummary[], productTypes: string[]) {
+  const matchingPrices = products
+    .filter((product) => product.productType && productTypes.includes(product.productType))
+    .map((product) => Number(product.basePrice))
+    .filter((price) => Number.isFinite(price) && price > 0)
+
+  if (!matchingPrices.length) return null
+  return Math.min(...matchingPrices)
+}
+
+function CategoryImage({
+  category,
+}: {
+  category: CategoryCard
+}) {
+  if (!category.imageExists) {
+    return (
+      <div
+        className="relative flex items-center justify-center"
+        style={{
+          backgroundColor: '#EDD9AF',
+          height: 'clamp(150px, 18vw, 220px)',
+          overflow: 'hidden',
+        }}
+      >
+        <span
+          style={{
+            color: '#C9A961',
+            fontFamily: 'Georgia, serif',
+            fontSize: 'clamp(24px, 3vw, 38px)',
+            fontStyle: 'italic',
+            lineHeight: 1,
+            textAlign: 'center',
+          }}
+        >
+          {category.name}
+        </span>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      style={{
+        background: category.dark ? '#1A1014' : '#FDF8F2',
+        position: 'relative',
+        height: 'clamp(150px, 18vw, 220px)',
+        overflow: 'hidden',
+      }}
+    >
+      <Image
+        src={category.image}
+        alt={category.alt}
+        fill
+        sizes="(max-width: 768px) 50vw, 25vw"
+        priority={category.priority}
+        style={{ objectFit: 'cover' }}
+      />
+      {category.dark ? (
+        <div
+          style={{
+            background: 'linear-gradient(180deg, rgba(26,16,20,0.1) 0%, rgba(26,16,20,0.72) 100%)',
+            inset: 0,
+            position: 'absolute',
+          }}
+        />
+      ) : null}
+    </div>
+  )
+}
+
+export async function Categories() {
+  const { products, count } = await getProductSummaries()
+  const categories = CATEGORY_CONFIGS.map((category, index): CategoryCard => ({
+    ...category,
+    minPrice: category.productTypes.length ? getCategoryMinPrice(products, category.productTypes) : null,
+    priority: index < 2,
+    imageExists: publicImageExists(category.image),
+  }))
+
   return (
     <section
       className="px-6 py-12 md:px-10 md:py-[60px] lg:px-20 lg:py-[72px]"
@@ -69,82 +212,79 @@ export function Categories() {
         </h2>
       </div>
 
-      <div className="mt-10 grid grid-cols-2 gap-[10px] md:grid-cols-4 md:gap-4">
-        {categories.map((category) => (
-          <Link
-            key={category.name}
-            href={category.href}
-            className="relative overflow-hidden rounded-[4px] border transition-transform duration-500 hover:-translate-y-1"
-            style={{
-              backgroundColor: category.dark ? '#1A1014' : '#FDF8F2',
-              borderColor: category.dark ? '#1A1014' : '#EDD9AF',
-              boxShadow: '0 4px 20px rgba(26,16,20,0.06)',
-            }}
-          >
-            <div
+      <div className="mt-10 grid grid-cols-2 gap-[10px] md:grid-cols-3 md:gap-4 lg:grid-cols-5">
+        {categories.map((category) => {
+          const shopAllLabel = `${count} ${count === 1 ? 'piece' : 'pieces'}`
+          const priceLabel = category.minPrice ? `From ${formatPrice(category.minPrice)}` : ''
+
+          return (
+            <Link
+              key={category.name}
+              href={category.href}
+              className="group relative overflow-hidden rounded-[4px] border transition-transform duration-500 hover:-translate-y-1"
               style={{
-                position: 'absolute',
-                top: '10px',
-                right: '10px',
-                background: '#C9A961',
-                color: '#3A2810',
-                fontSize: '9px',
-                padding: '3px 8px',
-                letterSpacing: '0.1em',
-                zIndex: 1,
+                backgroundColor: category.dark ? '#1A1014' : '#FDF8F2',
+                borderColor: category.dark ? '#1A1014' : '#EDD9AF',
+                boxShadow: '0 4px 20px rgba(26,16,20,0.06)',
               }}
             >
-              {category.count}
-            </div>
-            {category.image ? (
-              <div
-                style={{
-                  background: '#FFFFFF',
-                  position: 'relative',
-                  height: 'clamp(120px, 18vw, 200px)',
-                  overflow: 'hidden',
-                }}
-              >
-                <Image
-                  src={category.image}
-                  alt={category.alt}
-                  fill
-                  sizes="(max-width: 768px) 50vw, 25vw"
-                  style={{ objectFit: 'cover', objectPosition: 'center' }}
-                />
-              </div>
-            ) : (
-              <div
-                className="relative flex h-[120px] items-center justify-center md:h-[160px] lg:h-[200px]"
-                style={{ backgroundColor: '#1A1014' }}
-              >
-                <span style={{ fontSize: 36, color: '#C9A961' }}>-&gt;</span>
-              </div>
-            )}
+              <CategoryImage category={category} />
 
-            <div className="p-4">
-              <h3
-                className="text-[16px]"
+              {category.dark ? (
+                <div
+                  style={{
+                    alignItems: 'center',
+                    background: '#C9A961',
+                    color: '#1A1014',
+                    display: 'flex',
+                    height: '34px',
+                    justifyContent: 'center',
+                    position: 'absolute',
+                    right: '12px',
+                    top: '12px',
+                    width: '34px',
+                    zIndex: 2,
+                  }}
+                >
+                  <ArrowRight size={17} strokeWidth={1.4} />
+                </div>
+              ) : null}
+
+              <div
+                className="p-4"
                 style={{
-                  color: category.dark ? '#FBF5F0' : '#1A1014',
-                  fontFamily: 'var(--font-playfair)',
-                  fontWeight: 400,
+                  position: category.dark ? 'absolute' : 'relative',
+                  bottom: category.dark ? 0 : 'auto',
+                  left: 0,
+                  right: 0,
+                  zIndex: 2,
                 }}
               >
-                {category.name}
-              </h3>
-              <p
-                className="mt-1 text-[10px]"
-                style={{
-                  color: category.dark ? '#C9A961' : 'var(--color-muted-text)',
-                  fontFamily: 'var(--font-inter)',
-                }}
-              >
-                {category.price}
-              </p>
-            </div>
-          </Link>
-        ))}
+                <h3
+                  className="text-[16px]"
+                  style={{
+                    color: category.dark ? '#FBF5F0' : '#1A1014',
+                    fontFamily: 'var(--font-playfair)',
+                    fontWeight: 400,
+                  }}
+                >
+                  {category.name}
+                </h3>
+                {(category.dark ? shopAllLabel : priceLabel) ? (
+                  <p
+                    className="mt-1 text-[10px]"
+                    style={{
+                      color: category.dark ? '#C9A961' : 'var(--color-muted-text)',
+                      fontFamily: 'var(--font-inter)',
+                    }}
+                  >
+                    {category.dark ? shopAllLabel : priceLabel}
+                  </p>
+                ) : null}
+              </div>
+            </Link>
+          )
+        })}
       </div>
     </section>
   )

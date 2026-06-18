@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 
 export function Hero() {
@@ -8,16 +9,13 @@ export function Hero() {
     >
       <div className="hero-image order-1 h-[60vw] min-h-[280px] max-h-[400px] w-full md:order-2 md:h-full md:max-h-none">
         <div className="relative w-full h-full overflow-hidden">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/images/necklace.jpg"
-            alt="Just Because pearl necklace"
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              objectPosition: 'center 65%',
-            }}
+          <Image
+            src="/images/hero/hero-necklace.jpg"
+            alt="Just Because diamond necklace in luxury jewelry box"
+            fill
+            sizes="(max-width: 768px) 100vw, 50vw"
+            priority={true}
+            style={{ objectFit: 'cover', objectPosition: 'center top' }}
           />
           <div
             className="absolute inset-0"

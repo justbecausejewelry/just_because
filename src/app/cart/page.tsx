@@ -112,7 +112,7 @@ export default function CartPage() {
                     <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.16em', margin: '7px 0 10px' }}>LAB-GROWN DIAMOND</p>
                     {[
                       ['Metal', getMetalLabel(item.selectedMetal)],
-                      ['Carat', `${item.selectedCarat}ct`],
+                      ['Carat', item.selectedCarat > 0 ? `${item.selectedCarat}ct` : null],
                       ['Shape', item.selectedShape],
                       ['Size', item.ringSize],
                     ].map(([label, value]) => value && <p key={label} style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px', marginBottom: '3px' }}>{label}: {value}</p>)}

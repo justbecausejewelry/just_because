@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { Heart, Menu, Search, ShoppingBag, User, X } from 'lucide-react'
@@ -78,12 +79,12 @@ const megaMenuData: Record<string, MegaMenuEntry> = {
     ],
     images: [
       {
-        src: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=400&q=85',
+        src: '/images/navbar/best-sellers.jpg',
         label: 'BEST SELLERS',
         href: '/products?sort=featured&type=engagement_ring',
       },
       {
-        src: 'https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?w=400&q=85',
+        src: '/images/navbar/new-arrivals.jpg',
         label: 'NEW ARRIVALS',
         href: '/products?sort=new&type=engagement_ring',
       },
@@ -122,7 +123,7 @@ const megaMenuData: Record<string, MegaMenuEntry> = {
     ],
     images: [
       {
-        src: 'https://images.unsplash.com/photo-1611955167811-4711904bb9f8?w=400&q=85',
+        src: '/images/navbar/wedding-bands.jpg',
         label: 'WEDDING BANDS',
         href: '/products?type=wedding_ring',
       },
@@ -151,7 +152,7 @@ const megaMenuData: Record<string, MegaMenuEntry> = {
     ],
     images: [
       {
-        src: 'https://images.unsplash.com/photo-1635767798638-3e25273a8236?w=400&q=85',
+        src: '/images/navbar/diamond-studs.jpg',
         label: 'DIAMOND STUDS',
         href: '/products?type=earring',
       },
@@ -179,7 +180,7 @@ const megaMenuData: Record<string, MegaMenuEntry> = {
     ],
     images: [
       {
-        src: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=400&q=85',
+        src: '/images/navbar/pendants.jpg',
         label: 'PENDANTS',
         href: '/products?type=necklace',
       },
@@ -199,7 +200,7 @@ const megaMenuData: Record<string, MegaMenuEntry> = {
     ],
     images: [
       {
-        src: 'https://images.unsplash.com/photo-1573408301185-9519f94816b5?w=400&q=85',
+        src: '/images/navbar/tennis-bracelet.jpg',
         label: 'TENNIS BRACELETS',
         href: '/products?type=bracelet',
       },
@@ -239,7 +240,7 @@ const megaMenuData: Record<string, MegaMenuEntry> = {
     ],
     images: [
       {
-        src: 'https://images.unsplash.com/photo-1616418195576-4b5ab01efb6d?w=400&q=85',
+        src: '/images/navbar/loose-diamonds.jpg',
         label: 'LOOSE DIAMONDS',
         href: '/diamonds',
       },
@@ -360,11 +361,12 @@ export function Navbar() {
           flex: 1;
           min-width: 160px;
           max-width: 220px;
+          aspect-ratio: 3 / 4;
         }
 
         .mega-image-card img {
           width: 100%;
-          aspect-ratio: 3 / 4;
+          height: 100%;
           object-fit: cover;
           display: block;
           transition: transform 0.5s ease;
@@ -621,8 +623,16 @@ export function Navbar() {
               <div style={{ display: 'flex', gap: '12px', flexShrink: 0 }}>
                 {activeEntry.images.map((image) => (
                   <Link key={image.href} href={image.href} className="mega-image-card" onClick={() => setActiveMenu(null)} style={{ textDecoration: 'none' }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={image.src} alt={image.label} />
+                    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                      <Image
+                        src={image.src}
+                        alt={image.label}
+                        fill
+                        sizes="200px"
+                        priority={false}
+                        style={{ objectFit: 'cover' }}
+                      />
+                    </div>
                     <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(to top, rgba(26,16,20,0.7) 0%, transparent 100%)', padding: '20px 12px 12px' }}>
                       <div style={{ fontSize: '11px', letterSpacing: '0.2em', color: '#FBF5F0', fontFamily: 'var(--font-jost)', fontWeight: 500 }}>
                         {image.label}

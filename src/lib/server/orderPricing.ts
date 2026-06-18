@@ -53,6 +53,8 @@ export type ComputedLine = {
 
 type ProductRow = {
   id: string
+  productType?: string | null
+  category?: string | null
   title?: string | null
   images?: string[] | null
   basePrice?: number | null
@@ -92,6 +94,13 @@ type DiscountRow = {
   isActive?: boolean | null
   expiresAt?: string | null
 }
+
+const RING_SIZES = [
+  '3', '3.5', '4', '4.5', '5', '5.5',
+  '6', '6.5', '7', '7.5', '8', '8.5',
+  '9', '9.5', '10', '10.5', '11', '11.5',
+  '12', '12.5', '13',
+]
 
 export class CheckoutValidationError extends Error {
   code: string
@@ -140,6 +149,12 @@ function productImage(product: ProductRow) {
   return Array.isArray(product.images) ? product.images[0] || null : null
 }
 
+function isRingProduct(product: ProductRow) {
+  const type = (product.productType || '').toLowerCase()
+  const category = (product.category || '').toLowerCase()
+  return ['engagement_ring', 'wedding_ring', 'ring'].includes(type) || category === 'engagement' || category === 'wedding'
+}
+
 function itemField(index: number, field: string) {
   return `cart_items[${index}].${field}`
 }
@@ -147,7 +162,7 @@ function itemField(index: number, field: string) {
 async function computeProductLine(admin: SupabaseClient, item: CheckoutLineInput, index: number): Promise<ComputedLine> {
   const { data, error } = await admin
     .from('Product')
-    .select('id,title,images,basePrice,pricePerCarat,defaultCarat,metalPricing,caratPricing,shapePricing,colorPricing,clarityPricing,availableMetals,availableCarats,availableShapes,availableColors,availableClarities,availableSizes')
+    .select('id,productType,category,title,images,basePrice,pricePerCarat,defaultCarat,metalPricing,caratPricing,shapePricing,colorPricing,clarityPricing,availableMetals,availableCarats,availableShapes,availableColors,availableClarities,availableSizes')
     .eq('id', item.productId)
     .maybeSingle()
 
@@ -158,20 +173,22 @@ async function computeProductLine(admin: SupabaseClient, item: CheckoutLineInput
   const selectedShape = normalizeDiamondShape(item.selectedShape) || item.selectedShape
   const selectedColor = normalizeDiamondColor(item.selectedColor) || item.selectedColor
   const selectedClarity = normalizeDiamondClarity(item.selectedClarity) || item.selectedClarity
+  const ringProduct = isRingProduct(product)
+  const selectedCarat = ringProduct ? undefined : item.selectedCarat
 
   assertAllowed(Boolean(selectedMetal), 'INVALID_METAL', itemField(index, 'selectedMetal'), 'Selected metal is not available')
   assertAllowed(includesValue(product.availableMetals, selectedMetal, metalMatches), 'INVALID_METAL', itemField(index, 'selectedMetal'), 'Selected metal is not available')
-  assertAllowed(!product.availableCarats?.length || item.selectedCarat !== undefined, 'INVALID_CARAT', itemField(index, 'selectedCarat'), 'Please select a carat for this product')
-  assertAllowed(includesValue(product.availableCarats, item.selectedCarat), 'INVALID_CARAT', itemField(index, 'selectedCarat'), `${item.selectedCarat}ct is not available for this product`)
+  assertAllowed(ringProduct || !product.availableCarats?.length || selectedCarat !== undefined, 'INVALID_CARAT', itemField(index, 'selectedCarat'), 'Please select a carat for this product')
+  assertAllowed(ringProduct || includesValue(product.availableCarats, selectedCarat), 'INVALID_CARAT', itemField(index, 'selectedCarat'), `${selectedCarat}ct is not available for this product`)
   assertAllowed(includesValue(product.availableShapes, selectedShape, optionMatches), 'INVALID_SHAPE', itemField(index, 'selectedShape'), 'Selected shape is not available')
   assertAllowed(includesValue(product.availableColors, selectedColor, (left, right) => left.toUpperCase() === right.toUpperCase()), 'INVALID_COLOR', itemField(index, 'selectedColor'), 'Selected color is not available')
   assertAllowed(includesValue(product.availableClarities, selectedClarity, (left, right) => left.toUpperCase() === right.toUpperCase()), 'INVALID_CLARITY', itemField(index, 'selectedClarity'), 'Selected clarity is not available')
-  assertAllowed(includesValue(product.availableSizes, item.ringSize), 'INVALID_SIZE', itemField(index, 'ringSize'), 'Selected size is not available')
+  assertAllowed(includesValue(ringProduct ? RING_SIZES : product.availableSizes, item.ringSize), 'INVALID_SIZE', itemField(index, 'ringSize'), 'Selected size is not available')
 
   const base = Number(product.basePrice || 0)
-  const configuredCaratModifier = getModifier(product.caratPricing, item.selectedCarat)
-  const caratDelta = item.selectedCarat && !configuredCaratModifier
-    ? Math.max(0, item.selectedCarat - Number(product.defaultCarat || 0)) * Number(product.pricePerCarat || 300)
+  const configuredCaratModifier = ringProduct ? 0 : getModifier(product.caratPricing, selectedCarat)
+  const caratDelta = !ringProduct && selectedCarat && !configuredCaratModifier
+    ? Math.max(0, selectedCarat - Number(product.defaultCarat || 0)) * Number(product.pricePerCarat || 300)
     : configuredCaratModifier
 
   const breakdown = {
@@ -189,7 +206,7 @@ async function computeProductLine(admin: SupabaseClient, item: CheckoutLineInput
     productTitle: product.title || item.productTitle || 'Just Because piece',
     productImage: productImage(product) || item.productImage || null,
     selectedMetal,
-    selectedCarat: item.selectedCarat,
+    selectedCarat,
     selectedShape,
     selectedColor,
     selectedClarity,
