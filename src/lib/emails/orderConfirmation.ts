@@ -1,5 +1,6 @@
 import { LOOSE_DIAMOND_VALUE, getMetalLabel, normalizeMetalSelection } from '@/config/productOptions'
-import { getResendClient, resendFromEmail } from '@/lib/email/resend'
+import { getResendClient } from '@/lib/email/resend'
+import { ADMIN_INBOX, EMAIL_SENDERS, SUPPORT_INBOX } from '@/lib/email/senders'
 
 const BRAND = {
   pearl: '#FBF5F0',
@@ -11,8 +12,6 @@ const BRAND = {
   taupe: '#B8A090',
 }
 
-const DEFAULT_FROM = 'Just Because <admin@justbecausejewelry.com>'
-const ADMIN_EMAIL = 'admin@justbecausejewelry.com'
 const SITE_URL = 'https://justbecausejewelry.com'
 
 export type OrderConfirmationAddress = {
@@ -396,7 +395,7 @@ export function buildOrderConfirmationEmailHtml({ order, customer, items }: Send
                   <tr>
                     <td style="padding:22px;">
                       <h2 style="margin:0 0 10px;color:${BRAND.noir};font-family:Georgia,serif;font-size:22px;font-weight:400;">Need help?</h2>
-                      <p style="margin:0 0 12px;color:${BRAND.taupe};font-family:Arial,sans-serif;font-size:13px;line-height:1.7;">Questions? Reply to this email or visit our Help Center.</p>
+                      <p style="margin:0 0 12px;color:${BRAND.taupe};font-family:Arial,sans-serif;font-size:13px;line-height:1.7;">Questions? Email <a href="mailto:${SUPPORT_INBOX}" style="color:${BRAND.gold};text-decoration:none;">${SUPPORT_INBOX}</a> or visit our Contact page.</p>
                       <p style="margin:0;color:${BRAND.gold};font-family:Arial,sans-serif;font-size:12px;line-height:1.7;">
                         <a href="${SITE_URL}/contact" style="color:${BRAND.gold};text-decoration:none;">Contact Us</a>
                       </p>
@@ -439,8 +438,8 @@ function buildAdminText({ order, customer, items }: SendOrderConfirmationEmailIn
   ].join('\n')
 }
 
-async function postResendEmail(payload: { to: string; subject: string; html?: string; text?: string }) {
-  const from = cleanEnvSecret(resendFromEmail) || DEFAULT_FROM
+async function postResendEmail(payload: { to: string; subject: string; from: string; html?: string; text?: string; replyTo?: string }) {
+  const from = cleanEnvSecret(payload.from) || EMAIL_SENDERS.noreply
   const resend = getResendClient()
   const { data, error } = payload.html
     ? await resend.emails.send({
@@ -448,12 +447,14 @@ async function postResendEmail(payload: { to: string; subject: string; html?: st
         to: payload.to,
         subject: payload.subject,
         html: payload.html,
+        replyTo: payload.replyTo,
       })
     : await resend.emails.send({
         from,
         to: payload.to,
         subject: payload.subject,
         text: payload.text || '',
+        replyTo: payload.replyTo,
       })
 
   if (error) {
@@ -470,6 +471,8 @@ async function postResendEmail(payload: { to: string; subject: string; html?: st
 export async function sendOrderConfirmationEmail(input: SendOrderConfirmationEmailInput) {
   await postResendEmail({
     to: input.customer.email,
+    from: EMAIL_SENDERS.orders,
+    replyTo: SUPPORT_INBOX,
     subject: `Your Just Because order #${normalizeOrderNumber(input.order)}`,
     html: buildOrderConfirmationEmailHtml(input),
   })
@@ -477,7 +480,8 @@ export async function sendOrderConfirmationEmail(input: SendOrderConfirmationEma
 
 export async function sendAdminOrderNotificationEmail(input: SendOrderConfirmationEmailInput) {
   await postResendEmail({
-    to: ADMIN_EMAIL,
+    to: ADMIN_INBOX,
+    from: EMAIL_SENDERS.orders,
     subject: `New Order #${normalizeOrderNumber(input.order)} \u2014 ${formatCurrency(orderTotal(input.order, input.items))}`,
     text: buildAdminText(input),
   })

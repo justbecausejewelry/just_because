@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { sendAdminOrderNotificationEmail } from '@/lib/email/templates/adminOrderNotification'
 import { sendOrderConfirmationEmail } from '@/lib/email/templates/orderConfirmation'
+import { ADMIN_INBOX } from '@/lib/email/senders'
 import { CheckoutValidationError, computeCheckoutLines, computeDiscount } from '@/lib/server/orderPricing'
 import { checkRateLimit, rateLimitResponse } from '@/lib/server/rateLimit'
 import { requireUser } from '@/lib/server/security'
@@ -316,14 +317,14 @@ export async function POST(request: NextRequest) {
   console.log('[order-create] sending admin order notification email:', {
     orderId,
     orderNumber: emailPayload.order.orderNumber,
-    to: 'admin@justbecausejewelry.com',
+    to: ADMIN_INBOX,
   })
   try {
     await sendAdminOrderNotificationEmail(emailPayload)
     console.log('[order-create] admin order notification email sent:', {
       orderId,
       orderNumber: emailPayload.order.orderNumber,
-      to: 'admin@justbecausejewelry.com',
+      to: ADMIN_INBOX,
     })
   } catch (error) {
     console.error('[order-create] admin order notification email failed:', error)

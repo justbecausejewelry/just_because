@@ -1,4 +1,5 @@
 import { Resend } from 'resend'
+import { ADMIN_INBOX, EMAIL_SENDERS } from '@/lib/email/senders'
 
 function cleanEnvSecret(value?: string) {
   return value?.replace(/^[\s\u00a0\ufeff\u00c2]+/, '').trim()
@@ -19,5 +20,5 @@ export function getResendClient(): Resend {
   return resendClient
 }
 
-export const resendFromEmail = process.env.RESEND_FROM_EMAIL || 'Just Because <admin@justbecausejewelry.com>'
-export const adminNotificationEmail = 'admin@justbecausejewelry.com'
+export const resendFromEmail = process.env.RESEND_FROM_EMAIL || EMAIL_SENDERS.noreply
+export const adminNotificationEmail = ADMIN_INBOX

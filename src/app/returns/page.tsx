@@ -289,7 +289,7 @@ export default function ReturnsPage() {
         </p>
         <p style={{ ...bodyTextStyle, marginBottom: '12px' }}>Our team is available at:</p>
         <a
-          href="mailto:team@justbecausejewelry.com"
+          href="mailto:support@justbecausejewelry.com"
           style={{
             color: '#C9A961',
             display: 'inline-block',
@@ -299,7 +299,7 @@ export default function ReturnsPage() {
             textDecoration: 'none',
           }}
         >
-          team@justbecausejewelry.com
+          support@justbecausejewelry.com
         </a>
         <div>
           <PolicyButton href="/contact">Contact Us</PolicyButton>

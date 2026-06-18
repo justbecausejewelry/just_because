@@ -1,5 +1,6 @@
 import { getCarrierLabel } from '@/lib/tracking'
-import { getResendClient, resendFromEmail } from '@/lib/email/resend'
+import { getResendClient } from '@/lib/email/resend'
+import { EMAIL_SENDERS, SUPPORT_INBOX } from '@/lib/email/senders'
 
 type EmailItem = {
   productTitle?: string | null
@@ -160,10 +161,11 @@ export function deliveryEmailHtml({ customerName, orderNumber, items }: Delivery
 
 async function sendTransactionalEmail(payload: { to: string; subject: string; html: string }) {
   const result = await getResendClient().emails.send({
-    from: resendFromEmail,
+    from: EMAIL_SENDERS.orders,
     to: payload.to,
     subject: payload.subject,
     html: payload.html,
+    replyTo: SUPPORT_INBOX,
   })
 
   if (result.error) {

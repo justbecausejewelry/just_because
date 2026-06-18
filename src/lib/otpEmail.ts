@@ -1,4 +1,5 @@
-import { getResendClient, resendFromEmail } from '@/lib/email/resend'
+import { getResendClient } from '@/lib/email/resend'
+import { EMAIL_SENDERS } from '@/lib/email/senders'
 
 export const OTP_WINDOW_MINUTES = 10
 
@@ -77,7 +78,7 @@ function brandedOtpEmailHtml({
 
 export async function sendBrandedOtpEmail(options: SendBrandedOtpEmailOptions) {
   const { data, error } = await getResendClient().emails.send({
-    from: resendFromEmail,
+    from: EMAIL_SENDERS.noreply,
     to: options.to,
     subject: options.subject,
     html: brandedOtpEmailHtml(options),

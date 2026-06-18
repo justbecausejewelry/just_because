@@ -1,7 +1,8 @@
 'use server'
 
 import { returnReasonLabel } from '@/lib/returnEligibility'
-import { getResendClient, resendFromEmail } from '@/lib/email/resend'
+import { getResendClient } from '@/lib/email/resend'
+import { EMAIL_SENDERS, SUPPORT_INBOX } from '@/lib/email/senders'
 
 type ReturnEmailType = 'requested' | 'approved' | 'rejected' | 'refunded'
 
@@ -35,12 +36,13 @@ function formatCurrency(value: number | undefined) {
   }).format(value)
 }
 
-async function postEmail(payload: { to: string; subject: string; html: string }) {
+async function postEmail(payload: { to: string; subject: string; html: string; replyTo?: string }) {
   const result = await getResendClient().emails.send({
-    from: resendFromEmail,
+    from: EMAIL_SENDERS.support,
     to: payload.to,
     subject: payload.subject,
     html: payload.html,
+    replyTo: payload.replyTo,
   })
 
   if (result.error) {
@@ -65,7 +67,6 @@ export async function sendReturnRequestEmail({
   refundAmount,
   type,
 }: ReturnEmailInput) {
-  const teamEmail = process.env.NOTIFICATION_EMAIL || 'team@justbecausejewelry.com'
   const safeCustomerEmail = escapeHtml(customerEmail)
   const safeCustomerName = escapeHtml(customerName || customerEmail)
   const safeOrderNumber = escapeHtml(orderNumber)
@@ -84,8 +85,9 @@ export async function sendReturnRequestEmail({
 
   if (type === 'requested') {
     await postEmail({
-      to: teamEmail,
+      to: SUPPORT_INBOX,
       subject: subjects.requested,
+      replyTo: customerEmail,
       html: `
         <h2>New Return Request</h2>
         <p><strong>Customer:</strong> ${safeCustomerName}</p>
@@ -105,7 +107,7 @@ export async function sendReturnRequestEmail({
       <p>We have received your return request for Order ${safeOrderNumber}.</p>
       <p>Our team will review your request within 1-2 business days and send return instructions.</p>
       <p><strong>Return Reference:</strong> ${safeReturnId}</p>
-      <p>Questions? Email us at team@justbecausejewelry.com.</p>
+      <p>Questions? Email us at ${SUPPORT_INBOX}.</p>
     `,
     approved: `
       <h2>Your return has been approved</h2>
@@ -119,7 +121,7 @@ export async function sendReturnRequestEmail({
       <p>Hi ${safeCustomerName},</p>
       <p>We are unable to process your return for Order ${safeOrderNumber} at this time.</p>
       ${safeRejectionReason ? `<p><strong>Reason:</strong> ${safeRejectionReason}</p>` : ''}
-      <p>Please contact us at team@justbecausejewelry.com if you have any questions.</p>
+      <p>Please contact us at ${SUPPORT_INBOX} if you have any questions.</p>
     `,
     refunded: `
       <h2>Your refund has been processed</h2>
@@ -133,6 +135,7 @@ export async function sendReturnRequestEmail({
   await postEmail({
     to: customerEmail,
     subject: subjects[type],
+    replyTo: SUPPORT_INBOX,
     html: customerMessages[type],
   })
 }
