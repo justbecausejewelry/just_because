@@ -148,18 +148,11 @@ function drawDivider(page: PDFPage, y: number) {
 }
 
 function drawLogo(page: PDFPage, fonts: { serifItalic: PDFFont; sans: PDFFont }) {
-  drawText(page, 'just', {
+  drawText(page, 'Just Because', {
     font: fonts.serifItalic,
-    size: 28,
+    size: 30,
     x: MARGIN,
-    y: PAGE_HEIGHT - 74,
-    color: GOLD,
-  })
-  drawText(page, '-- BECAUSE --', {
-    font: fonts.sans,
-    size: 10,
-    x: MARGIN + 2,
-    y: PAGE_HEIGHT - 88,
+    y: PAGE_HEIGHT - 78,
     color: GOLD,
   })
 }

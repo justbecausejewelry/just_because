@@ -238,7 +238,7 @@ export default function AdminSupportThreadPage() {
 
           <form onSubmit={sendReply} style={{ background: '#FBF5F0', border: '0.5px solid #EDD9AF', padding: '20px' }}>
             <label>
-              <span className="eyebrow-luxury" style={{ display: 'block', marginBottom: '10px' }}>REPLY AS JUST BECAUSE TEAM</span>
+              <span style={{ color: '#C9A961', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '12px', letterSpacing: '0.08em', marginBottom: '10px' }}>Reply as Just Because Team</span>
               <textarea className="textarea-luxury" rows={4} value={reply} onChange={(event) => setReply(event.target.value)} />
             </label>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '14px', flexWrap: 'wrap' }}>

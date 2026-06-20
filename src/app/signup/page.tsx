@@ -9,6 +9,7 @@ import { Eye, EyeOff } from 'lucide-react'
 import { supabaseAuth } from '@/lib/auth'
 import { useToast } from '@/context/ToastContext'
 import { useFormPersistence } from '@/hooks/useFormPersistence'
+import { BrandLogo } from '@/components/ui/BrandLogo'
 
 function strengthFor(password: string) {
   let score = 0
@@ -462,29 +463,7 @@ export default function SignupPage() {
           display: 'none',
           marginBottom: '36px',
         }}>
-          <Link href="/" style={{ textDecoration: 'none' }}>
-            <div style={{
-              fontFamily: 'var(--font-italianno)',
-              fontSize: '40px',
-              color: '#1A1014',
-              lineHeight: 0.85,
-            }}>just</div>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-              marginTop: '3px',
-            }}>
-              <div style={{ width: '12px', height: '0.5px', background: '#1A1014' }} />
-              <span style={{
-                fontFamily: 'Inter, sans-serif',
-                fontSize: '9px',
-                letterSpacing: '0.4em',
-                color: '#1A1014',
-              }}>BECAUSE</span>
-              <div style={{ width: '12px', height: '0.5px', background: '#1A1014' }} />
-            </div>
-          </Link>
+          <BrandLogo size="lg" href="/" />
         </div>
 
         {showVerifyScreen ? (
@@ -967,49 +946,5 @@ const inputStyle: CSSProperties = {
 }
 
 function AuthLogo() {
-  return (
-    <Link href="/" style={{
-      textDecoration: 'none',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '0px',
-    }}>
-      <div style={{
-        display: 'flex',
-        alignItems: 'baseline',
-        gap: '0px',
-      }}>
-        <span style={{
-          fontFamily: 'var(--font-italianno)',
-          fontSize: '42px',
-          color: '#FBF5F0',
-          lineHeight: 0.9,
-          letterSpacing: '-0.01em',
-        }}>just</span>
-      </div>
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-      }}>
-        <div style={{
-          width: '20px',
-          height: '0.5px',
-          background: '#C9A961',
-        }} />
-        <span style={{
-          fontFamily: 'var(--font-inter)',
-          fontSize: '11px',
-          letterSpacing: '0.45em',
-          color: '#C9A961',
-          fontWeight: 400,
-        }}>BECAUSE</span>
-        <div style={{
-          width: '20px',
-          height: '0.5px',
-          background: '#C9A961',
-        }} />
-      </div>
-    </Link>
-  )
+  return <BrandLogo size="lg" href="/" />
 }

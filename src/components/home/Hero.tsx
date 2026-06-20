@@ -24,8 +24,8 @@ export function Hero() {
         </div>
       </div>
 
-      <div className="hero-copy order-2 flex items-center px-6 py-10 text-center md:order-1 md:px-10 md:py-[60px] md:text-left lg:px-20 lg:py-20">
-        <div>
+      <div className="hero-copy order-2 flex items-center justify-center px-6 py-10 text-center md:order-1 md:justify-start md:px-10 md:py-[60px] md:text-left lg:px-20 lg:py-20">
+        <div className="flex w-full max-w-[520px] flex-col items-center md:items-start">
           <p
             className="mb-5 uppercase"
             style={{ color: '#C9A961', fontFamily: 'var(--font-jost)', fontSize: '11px', fontWeight: 500, letterSpacing: '0.2em' }}
@@ -56,7 +56,7 @@ export function Hero() {
             that don&apos;t ask for an occasion.
           </p>
 
-          <div className="flex flex-col gap-[10px] sm:flex-row">
+          <div className="flex w-full flex-col items-center justify-center gap-[10px] sm:w-auto sm:flex-row md:justify-start">
             <Link
               href="/products"
               className="w-full px-8 py-[14px] text-center uppercase sm:w-auto"
@@ -90,7 +90,7 @@ export function Hero() {
           </div>
 
           <div
-            className="mt-12 grid grid-cols-2 gap-x-4 gap-y-2 sm:flex sm:flex-wrap"
+            className="mt-12 flex flex-wrap justify-center gap-x-3 gap-y-2 md:justify-start"
             style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-jost)', fontSize: '14px', letterSpacing: '0.06em' }}
           >
             <span>IGI Certified</span>

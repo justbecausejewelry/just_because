@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { BrandLogo } from '@/components/ui/BrandLogo'
 
 export function EditorialSplit() {
   return (
@@ -223,7 +224,7 @@ export function EditorialSplit() {
               marginBottom: '20px',
             }}
           >
-            JUST BECAUSE
+            <BrandLogo size="sm" />
           </div>
 
           <h2

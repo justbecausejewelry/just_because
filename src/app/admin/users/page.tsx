@@ -6,6 +6,7 @@ import { Shield, ShieldCheck, UserRound } from 'lucide-react'
 import { useToast } from '@/context/ToastContext'
 import { supabase } from '@/lib/supabase'
 import { useRole } from '@/hooks/useRole'
+import { BrandLogo } from '@/components/ui/BrandLogo'
 
 type AdminRole = 'user' | 'admin' | 'super_admin'
 
@@ -138,7 +139,7 @@ export default function AdminUsersPage() {
     return (
       <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FBF5F0' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontFamily: 'var(--font-italianno)', fontSize: '48px', color: '#C9A961' }}>just</div>
+          <BrandLogo size="lg" />
           <div style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.3em', marginTop: '8px' }}>
             LOADING USERS...
           </div>

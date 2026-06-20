@@ -5,18 +5,38 @@ import { Copy, Diamond, Eye, EyeOff, Plus, Sparkles, Trash2, X } from 'lucide-re
 import { useToast } from '@/context/ToastContext'
 import { supabase } from '@/lib/supabase'
 
-type DiscountType = 'percentage' | 'fixed'
+type DiscountType = 'percentage' | 'fixed' | 'free_shipping' | 'free_gift'
+type AppliesTo = 'all' | 'specific_products' | 'specific_categories' | 'specific_types'
+type CustomerSegment = 'all' | 'new' | 'returning' | 'vip' | 'win_back' | 'specific_emails'
+type DiscountTab = 'basics' | 'limits' | 'applies' | 'customers' | 'schedule' | 'tiers' | 'reporting'
 
 type DiscountCode = {
   id: string
   code: string
   type: DiscountType
   value: number
+  maxDiscountAmount: number | null
   minOrderAmount: number
+  minItemCount: number
   maxUses: number | null
   maxUsesPerUser: number | null
   firstTimeOnly: boolean
+  canStackWithOthers: boolean
+  excludeSaleItems: boolean
+  appliesTo: AppliesTo
+  applicableProductIds: string[]
+  applicableCategories: string[]
+  applicableTypes: string[]
+  excludedProductIds: string[]
+  customerSegment: CustomerSegment
+  specificEmails: string[]
+  minCustomerLifetimeValue: number | null
+  countryRestrictions: string[]
+  campaignSource: string
+  internalNotes: string
+  startDate: string | null
   usesCount: number
+  totalRevenueImpact?: number
   isActive: boolean
   expiresAt: string | null
   createdAt: string | null
@@ -31,10 +51,28 @@ type FormState = {
   code: string
   type: DiscountType
   value: string
+  maxDiscountAmount: string
+  internalNotes: string
+  campaignSource: string
   minOrderAmount: string
+  minItemCount: string
   maxUses: string
   maxUsesPerUser: string
   firstTimeOnly: boolean
+  canStackWithOthers: boolean
+  excludeSaleItems: boolean
+  appliesTo: AppliesTo
+  applicableProductIds: string
+  applicableCategories: string
+  applicableTypes: string
+  excludedProductIds: string
+  customerSegment: CustomerSegment
+  specificEmails: string
+  minCustomerLifetimeValue: string
+  countryRestrictions: string
+  startDate: string
+  timezone: string
+  tierThresholds: Array<{ threshold: string; type: 'percentage' | 'fixed'; value: string }>
   expiresAt: string
   isActive: boolean
 }
@@ -43,13 +81,41 @@ const emptyForm: FormState = {
   code: '',
   type: 'percentage',
   value: '',
+  maxDiscountAmount: '',
+  internalNotes: '',
+  campaignSource: '',
   minOrderAmount: '',
+  minItemCount: '1',
   maxUses: '',
   maxUsesPerUser: '',
   firstTimeOnly: false,
+  canStackWithOthers: false,
+  excludeSaleItems: true,
+  appliesTo: 'all',
+  applicableProductIds: '',
+  applicableCategories: '',
+  applicableTypes: '',
+  excludedProductIds: '',
+  customerSegment: 'all',
+  specificEmails: '',
+  minCustomerLifetimeValue: '',
+  countryRestrictions: '',
+  startDate: '',
+  timezone: 'America/Chicago',
+  tierThresholds: [],
   expiresAt: '',
   isActive: true,
 }
+
+const discountTabs: Array<{ id: DiscountTab; label: string }> = [
+  { id: 'basics', label: 'Basics' },
+  { id: 'limits', label: 'Usage Limits' },
+  { id: 'applies', label: 'Applies To' },
+  { id: 'customers', label: 'Customers' },
+  { id: 'schedule', label: 'Schedule' },
+  { id: 'tiers', label: 'Tiers' },
+  { id: 'reporting', label: 'Reporting' },
+]
 
 function isDiscountCodesResponse(value: unknown): value is DiscountCodesResponse {
   return typeof value === 'object' && value !== null
@@ -90,6 +156,20 @@ function isPastDate(value: string) {
   return expiry < today
 }
 
+function parseList(value: string) {
+  return value
+    .split(/[\n,]/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+function discountTypeLabel(value: DiscountType) {
+  if (value === 'free_shipping') return 'Free Shipping'
+  if (value === 'free_gift') return 'Free Gift'
+  if (value === 'fixed') return 'Fixed Amount $'
+  return 'Percentage %'
+}
+
 export default function AdminDiscountCodesPage() {
   const { showToast } = useToast()
   const [codes, setCodes] = useState<DiscountCode[]>([])
@@ -97,6 +177,7 @@ export default function AdminDiscountCodesPage() {
   const [saving, setSaving] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<DiscountTab>('basics')
   const [form, setForm] = useState<FormState>(emptyForm)
   const todayISO = useMemo(() => new Date().toISOString().split('T')[0], [])
   const expiresToday = form.isActive && form.expiresAt === todayISO
@@ -168,49 +249,107 @@ export default function AdminDiscountCodesPage() {
 
   const resetForm = () => {
     setForm(emptyForm)
+    setActiveTab('basics')
     setShowForm(false)
   }
 
   const createCode = async (event?: FormEvent<HTMLFormElement>) => {
     event?.preventDefault()
 
-    const formData = event ? new FormData(event.currentTarget) : null
-    const codeValue = String(formData?.get('code') ?? form.code).trim().toUpperCase()
-    const rawValue = String(formData?.get('value') ?? form.value).trim()
-    const rawMinOrderAmount = String(formData?.get('minOrderAmount') ?? form.minOrderAmount).trim()
-    const rawMaxUses = String(formData?.get('maxUses') ?? form.maxUses).trim()
-    const rawMaxUsesPerUser = String(formData?.get('maxUsesPerUser') ?? form.maxUsesPerUser).trim()
-    const expiresAt = String(formData?.get('expiresAt') ?? form.expiresAt).trim()
+    const codeValue = form.code.trim().toUpperCase()
+    const rawValue = form.value.trim()
+    const rawMinOrderAmount = form.minOrderAmount.trim()
+    const rawMaxDiscountAmount = form.maxDiscountAmount.trim()
+    const rawMinItemCount = form.minItemCount.trim()
+    const rawMaxUses = form.maxUses.trim()
+    const rawMaxUsesPerUser = form.maxUsesPerUser.trim()
+    const expiresAt = form.expiresAt.trim()
+    const startDate = form.startDate.trim()
     const value = Number(rawValue)
+    const maxDiscountAmount = rawMaxDiscountAmount ? Number(rawMaxDiscountAmount) : null
+    const minItemCount = Number(rawMinItemCount || 1)
     const maxUses = rawMaxUses ? Number(rawMaxUses) : null
     const maxUsesPerUser = rawMaxUsesPerUser ? Number(rawMaxUsesPerUser) : null
-    const firstTimeOnly = formData ? formData.has('firstTimeOnly') : form.firstTimeOnly
-    const isActive = formData ? formData.has('isActive') : form.isActive
+    const minCustomerLifetimeValue = form.minCustomerLifetimeValue ? Number(form.minCustomerLifetimeValue) : null
+    const tierThresholds = form.tierThresholds
+      .map((tier) => ({
+        threshold: Number(tier.threshold),
+        type: tier.type,
+        value: Number(tier.value),
+      }))
+      .filter((tier) => Number.isFinite(tier.threshold) && tier.threshold >= 0 && Number.isFinite(tier.value) && tier.value > 0)
 
     if (!codeValue) {
       showToast('Please enter or generate a discount code', 'error')
+      setActiveTab('basics')
       return
     }
 
-    if (!rawValue || !Number.isFinite(value) || value <= 0) {
+    if (form.type !== 'free_shipping' && form.type !== 'free_gift' && (!rawValue || !Number.isFinite(value) || value <= 0)) {
       showToast('Please enter a valid discount value greater than 0', 'error')
+      setActiveTab('basics')
+      return
+    }
+
+    if (form.type === 'percentage' && value > 100) {
+      showToast('Percentage discounts cannot exceed 100%', 'error')
+      setActiveTab('basics')
+      return
+    }
+
+    if (maxDiscountAmount !== null && (!Number.isFinite(maxDiscountAmount) || maxDiscountAmount <= 0)) {
+      showToast('Max discount amount must be greater than 0 or blank', 'error')
+      setActiveTab('basics')
       return
     }
 
     if (
       (maxUses !== null && (!Number.isFinite(maxUses) || maxUses < 1)) ||
-      (maxUsesPerUser !== null && (!Number.isFinite(maxUsesPerUser) || maxUsesPerUser < 1))
+      (maxUsesPerUser !== null && (!Number.isFinite(maxUsesPerUser) || maxUsesPerUser < 1)) ||
+      (!Number.isFinite(minItemCount) || minItemCount < 1)
     ) {
       showToast('Usage limits must be at least 1 or blank', 'error')
+      setActiveTab('limits')
+      return
+    }
+
+    if (startDate && expiresAt && new Date(`${startDate}T00:00:00`).getTime() > new Date(`${expiresAt}T23:59:59`).getTime()) {
+      showToast('Start date cannot be after end date', 'error')
+      setActiveTab('schedule')
       return
     }
 
     if (expiresAt && isPastDate(expiresAt)) {
       showToast('Expiry date must be today or in the future', 'error')
+      setActiveTab('schedule')
       return
     }
 
-    if (isActive && expiresAt === todayISO) {
+    if (form.appliesTo === 'specific_products' && parseList(form.applicableProductIds).length === 0) {
+      showToast('Choose at least one product id', 'error')
+      setActiveTab('applies')
+      return
+    }
+
+    if (form.appliesTo === 'specific_categories' && parseList(form.applicableCategories).length === 0) {
+      showToast('Choose at least one category', 'error')
+      setActiveTab('applies')
+      return
+    }
+
+    if (form.appliesTo === 'specific_types' && parseList(form.applicableTypes).length === 0) {
+      showToast('Choose at least one product type', 'error')
+      setActiveTab('applies')
+      return
+    }
+
+    if (form.customerSegment === 'specific_emails' && parseList(form.specificEmails).length === 0) {
+      showToast('Add at least one eligible email', 'error')
+      setActiveTab('customers')
+      return
+    }
+
+    if (form.isActive && expiresAt === todayISO) {
       showToast('This active code will expire at midnight today', 'info')
     }
 
@@ -225,13 +364,33 @@ export default function AdminDiscountCodesPage() {
         body: JSON.stringify({
           code: codeValue,
           type: form.type,
-          value,
+          value: form.type === 'free_shipping' || form.type === 'free_gift' ? 0 : value,
+          maxDiscountAmount,
+          internalNotes: form.internalNotes,
+          campaignSource: form.campaignSource,
           minOrderAmount: Number(rawMinOrderAmount || 0),
+          minItemCount,
           maxUses,
           maxUsesPerUser,
-          firstTimeOnly,
+          firstTimeOnly: form.firstTimeOnly,
+          canStackWithOthers: form.canStackWithOthers,
+          excludeSaleItems: form.excludeSaleItems,
+          appliesTo: form.appliesTo,
+          applicableProductIds: parseList(form.applicableProductIds),
+          applicableCategories: parseList(form.applicableCategories),
+          applicableTypes: parseList(form.applicableTypes),
+          excludedProductIds: parseList(form.excludedProductIds),
+          customerSegment: form.customerSegment,
+          specificEmails: parseList(form.specificEmails),
+          minCustomerLifetimeValue,
+          countryRestrictions: parseList(form.countryRestrictions),
+          startDate: startDate || null,
           expiresAt: expiresAt || null,
-          isActive,
+          timezone: form.timezone,
+          isActive: form.isActive,
+          freeShipping: form.type === 'free_shipping',
+          freeGift: form.type === 'free_gift' ? { label: 'Complimentary gift' } : null,
+          tierThresholds,
         }),
       })
       const payload = await response.json() as unknown
@@ -313,6 +472,177 @@ export default function AdminDiscountCodesPage() {
     } finally {
       setUpdatingId(null)
     }
+  }
+
+  const addTier = () => {
+    setForm((current) => ({
+      ...current,
+      tierThresholds: [...current.tierThresholds, { threshold: '', type: 'percentage', value: '' }],
+    }))
+  }
+
+  const updateTier = (index: number, patch: Partial<FormState['tierThresholds'][number]>) => {
+    setForm((current) => ({
+      ...current,
+      tierThresholds: current.tierThresholds.map((tier, tierIndex) => (
+        tierIndex === index ? { ...tier, ...patch } : tier
+      )),
+    }))
+  }
+
+  const removeTier = (index: number) => {
+    setForm((current) => ({
+      ...current,
+      tierThresholds: current.tierThresholds.filter((_, tierIndex) => tierIndex !== index),
+    }))
+  }
+
+  const renderTabFields = () => {
+    if (activeTab === 'basics') {
+      return (
+        <>
+          <label className="discount-field">
+            <span>Code</span>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input value={form.code} onChange={(event) => setForm((current) => ({ ...current, code: event.target.value.toUpperCase() }))} placeholder="WELCOME10" style={{ flex: 1 }} />
+              <button type="button" onClick={() => setForm((current) => ({ ...current, code: generateRandomCode() }))} aria-label="Generate random discount code" className="discount-generate-button">
+                <Sparkles size={14} strokeWidth={1.5} />
+              </button>
+            </div>
+          </label>
+
+          <div className="discount-field">
+            <span>Type</span>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              {(['percentage', 'fixed', 'free_shipping', 'free_gift'] as DiscountType[]).map((value) => (
+                <button key={value} type="button" onClick={() => setForm((current) => ({ ...current, type: value }))} className="discount-choice-button" data-active={form.type === value}>
+                  {discountTypeLabel(value)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {form.type !== 'free_shipping' && form.type !== 'free_gift' && (
+            <label className="discount-field">
+              <span>Value ({form.type === 'percentage' ? '%' : '$'})</span>
+              <input type="number" min="0" value={form.value} onChange={(event) => setForm((current) => ({ ...current, value: event.target.value }))} placeholder={form.type === 'percentage' ? '10' : '500'} />
+            </label>
+          )}
+
+          <label className="discount-field">
+            <span>Max Discount Amount</span>
+            <input type="number" min="0" value={form.maxDiscountAmount} onChange={(event) => setForm((current) => ({ ...current, maxDiscountAmount: event.target.value }))} placeholder="Optional cap for percentage codes" />
+          </label>
+          <label className="discount-field">
+            <span>Campaign Source</span>
+            <input value={form.campaignSource} onChange={(event) => setForm((current) => ({ ...current, campaignSource: event.target.value }))} placeholder="Instagram Campaign Q4 2026" />
+          </label>
+          <label className="discount-field">
+            <span>Internal Notes</span>
+            <textarea value={form.internalNotes} onChange={(event) => setForm((current) => ({ ...current, internalNotes: event.target.value }))} placeholder="Admin-only context" />
+          </label>
+        </>
+      )
+    }
+
+    if (activeTab === 'limits') {
+      return (
+        <>
+          <label className="discount-field"><span>Max Total Uses</span><input type="number" min="1" value={form.maxUses} onChange={(event) => setForm((current) => ({ ...current, maxUses: event.target.value }))} placeholder="Blank = unlimited" /></label>
+          <label className="discount-field"><span>Max Uses Per User</span><input type="number" min="1" value={form.maxUsesPerUser} onChange={(event) => setForm((current) => ({ ...current, maxUsesPerUser: event.target.value }))} placeholder="Blank = unlimited" /></label>
+          <label className="discount-field"><span>Min Order Amount</span><input type="number" min="0" value={form.minOrderAmount} onChange={(event) => setForm((current) => ({ ...current, minOrderAmount: event.target.value }))} placeholder="0" /></label>
+          <label className="discount-field"><span>Min Item Count</span><input type="number" min="1" value={form.minItemCount} onChange={(event) => setForm((current) => ({ ...current, minItemCount: event.target.value }))} /></label>
+          <label className="discount-checkbox"><input type="checkbox" checked={form.firstTimeOnly} onChange={(event) => setForm((current) => ({ ...current, firstTimeOnly: event.target.checked, customerSegment: event.target.checked ? 'new' : current.customerSegment }))} /> First-time customers only</label>
+          <label className="discount-checkbox"><input type="checkbox" checked={form.canStackWithOthers} onChange={(event) => setForm((current) => ({ ...current, canStackWithOthers: event.target.checked }))} /> Can stack with other codes</label>
+          <label className="discount-checkbox"><input type="checkbox" checked={!form.excludeSaleItems} onChange={(event) => setForm((current) => ({ ...current, excludeSaleItems: !event.target.checked }))} /> Apply to sale/discounted items</label>
+        </>
+      )
+    }
+
+    if (activeTab === 'applies') {
+      return (
+        <>
+          <div className="discount-field">
+            <span>Applies To</span>
+            {([
+              ['all', 'All products'],
+              ['specific_products', 'Specific products'],
+              ['specific_categories', 'Specific categories'],
+              ['specific_types', 'Specific product types'],
+            ] as Array<[AppliesTo, string]>).map(([value, label]) => (
+              <label key={value} className="discount-radio"><input type="radio" checked={form.appliesTo === value} onChange={() => setForm((current) => ({ ...current, appliesTo: value }))} /> {label}</label>
+            ))}
+          </div>
+          {form.appliesTo === 'specific_products' && <label className="discount-field"><span>Product IDs</span><textarea value={form.applicableProductIds} onChange={(event) => setForm((current) => ({ ...current, applicableProductIds: event.target.value }))} placeholder="One UUID per line or comma-separated" /></label>}
+          {form.appliesTo === 'specific_categories' && <label className="discount-field"><span>Categories</span><textarea value={form.applicableCategories} onChange={(event) => setForm((current) => ({ ...current, applicableCategories: event.target.value }))} placeholder="ring, earring, necklace" /></label>}
+          {form.appliesTo === 'specific_types' && <label className="discount-field"><span>Product Types</span><textarea value={form.applicableTypes} onChange={(event) => setForm((current) => ({ ...current, applicableTypes: event.target.value }))} placeholder="engagement_ring, bracelet" /></label>}
+          <label className="discount-field"><span>Exclude Product IDs</span><textarea value={form.excludedProductIds} onChange={(event) => setForm((current) => ({ ...current, excludedProductIds: event.target.value }))} placeholder="Products that should never receive this code" /></label>
+        </>
+      )
+    }
+
+    if (activeTab === 'customers') {
+      return (
+        <>
+          <div className="discount-field">
+            <span>Customer Targeting</span>
+            {([
+              ['all', 'All customers'],
+              ['new', 'New customers'],
+              ['returning', 'Returning customers'],
+              ['vip', 'VIP customers'],
+              ['win_back', 'Win-back customers'],
+              ['specific_emails', 'Specific emails'],
+            ] as Array<[CustomerSegment, string]>).map(([value, label]) => (
+              <label key={value} className="discount-radio"><input type="radio" checked={form.customerSegment === value} onChange={() => setForm((current) => ({ ...current, customerSegment: value, firstTimeOnly: value === 'new' ? true : current.firstTimeOnly }))} /> {label}</label>
+            ))}
+          </div>
+          {form.customerSegment === 'vip' && <label className="discount-field"><span>Minimum Lifetime Value</span><input type="number" min="0" value={form.minCustomerLifetimeValue} onChange={(event) => setForm((current) => ({ ...current, minCustomerLifetimeValue: event.target.value }))} placeholder="5000" /></label>}
+          {form.customerSegment === 'specific_emails' && <label className="discount-field"><span>Specific Emails</span><textarea value={form.specificEmails} onChange={(event) => setForm((current) => ({ ...current, specificEmails: event.target.value }))} placeholder="customer@example.com" /></label>}
+          <label className="discount-field"><span>Country Restrictions</span><textarea value={form.countryRestrictions} onChange={(event) => setForm((current) => ({ ...current, countryRestrictions: event.target.value }))} placeholder="Blank = all countries" /></label>
+        </>
+      )
+    }
+
+    if (activeTab === 'schedule') {
+      const preview = `This code will be ${form.isActive ? 'active' : 'inactive'}${form.startDate ? ` from ${form.startDate}` : ''}${form.expiresAt ? ` to ${form.expiresAt}` : ''}.`
+      return (
+        <>
+          <label className="discount-field"><span>Start Date</span><input type="date" min={todayISO} value={form.startDate} onChange={(event) => setForm((current) => ({ ...current, startDate: event.target.value }))} /></label>
+          <label className="discount-field"><span>End Date</span><input type="date" min={todayISO} value={form.expiresAt} onChange={(event) => setForm((current) => ({ ...current, expiresAt: event.target.value }))} /></label>
+          <label className="discount-field"><span>Time Zone</span><input value={form.timezone} onChange={(event) => setForm((current) => ({ ...current, timezone: event.target.value }))} /></label>
+          <label className="discount-checkbox"><input type="checkbox" checked={form.isActive} onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.checked }))} /> Active on creation</label>
+          <div style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '4px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '12px', lineHeight: 1.6, padding: '12px' }}>{preview}</div>
+        </>
+      )
+    }
+
+    if (activeTab === 'tiers') {
+      return (
+        <>
+          <button type="button" onClick={addTier} className="discount-secondary-button">Add tier</button>
+          {form.tierThresholds.length === 0 && <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', lineHeight: 1.6 }}>Tier discounts are optional. Add a tier to override the base value at spend thresholds.</p>}
+          {form.tierThresholds.map((tier, index) => (
+            <div key={index} style={{ display: 'grid', gap: '8px', background: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '4px', padding: '12px' }}>
+              <label className="discount-field"><span>Spend Threshold</span><input type="number" min="0" value={tier.threshold} onChange={(event) => updateTier(index, { threshold: event.target.value })} /></label>
+              <label className="discount-field"><span>Tier Type</span><select value={tier.type} onChange={(event) => updateTier(index, { type: event.target.value as 'percentage' | 'fixed' })}><option value="percentage">Percentage</option><option value="fixed">Fixed</option></select></label>
+              <label className="discount-field"><span>Tier Value</span><input type="number" min="0" value={tier.value} onChange={(event) => updateTier(index, { value: event.target.value })} /></label>
+              <button type="button" onClick={() => removeTier(index)} className="discount-secondary-button">Remove tier</button>
+            </div>
+          ))}
+        </>
+      )
+    }
+
+    return (
+      <div style={{ display: 'grid', gap: '12px' }}>
+        <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', lineHeight: 1.6 }}>Reporting appears for saved codes in the list and analytics page.</p>
+        <div style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '4px', padding: '14px' }}>
+          <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.16em', textTransform: 'uppercase' }}>Tracked Metrics</p>
+          <p style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '12px', lineHeight: 1.7, margin: '8px 0 0' }}>Total uses, revenue impact, AOV, validation conversion rate, top customers, products, geography, timing, and suspicious IPs.</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -408,10 +738,10 @@ export default function AdminDiscountCodesPage() {
                     {code.code}
                   </span>
                   <span style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>
-                    {code.type === 'percentage' ? `${code.value}% off` : `${formatCurrency(code.value)} off`}
+                    {code.type === 'percentage' ? `${code.value}% off` : code.type === 'fixed' ? `${formatCurrency(code.value)} off` : discountTypeLabel(code.type)}
                   </span>
                   <span style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>
-                    {code.type === 'percentage' ? `${code.value}%` : formatCurrency(code.value)}
+                    {code.type === 'percentage' ? `${code.value}%` : code.type === 'fixed' ? formatCurrency(code.value) : 'Included'}
                   </span>
                   <span style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>
                     {code.minOrderAmount > 0 ? `Min ${formatCurrency(code.minOrderAmount)}` : 'No minimum'}
@@ -480,141 +810,21 @@ export default function AdminDiscountCodesPage() {
             </div>
 
             <form onSubmit={createCode} style={{ display: 'grid', gap: '16px' }}>
-              <label className="discount-field">
-                <span>Code</span>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    name="code"
-                    value={form.code}
-                    onChange={(event) => setForm((current) => ({ ...current, code: event.target.value.toUpperCase() }))}
-                    placeholder="WELCOME10"
-                    style={{ flex: 1 }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setForm((current) => ({ ...current, code: generateRandomCode() }))}
-                    aria-label="Generate random discount code"
-                    className="discount-generate-button"
-                  >
-                    <Sparkles size={14} strokeWidth={1.5} />
+              <div className="discount-tabs">
+                {discountTabs.map((tab) => (
+                  <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} data-active={activeTab === tab.id}>
+                    {tab.label}
                   </button>
-                </div>
-              </label>
-
-              <div className="discount-field">
-                <span>Type</span>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                  {[
-                    ['percentage', 'Percentage %'],
-                    ['fixed', 'Fixed Amount $'],
-                  ].map(([value, label]) => (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => setForm((current) => ({ ...current, type: value as DiscountType }))}
-                      style={{
-                        background: form.type === value ? '#1A1014' : '#FDF8F2',
-                        border: '0.5px solid #EDD9AF',
-                        borderRadius: '4px',
-                        color: form.type === value ? '#FBF5F0' : '#1A1014',
-                        cursor: 'pointer',
-                        fontFamily: 'var(--font-inter)',
-                        fontSize: '11px',
-                        padding: '11px 10px',
-                      }}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
+                ))}
               </div>
 
-              <label className="discount-field">
-                <span>Value ({form.type === 'percentage' ? '%' : '$'})</span>
-                <input
-                  name="value"
-                  type="number"
-                  min="0"
-                  value={form.value}
-                  onChange={(event) => setForm((current) => ({ ...current, value: event.target.value }))}
-                  placeholder={form.type === 'percentage' ? '10' : '500'}
-                />
-              </label>
+              {renderTabFields()}
 
-              <label className="discount-field">
-                <span>Min Order Amount</span>
-                <input
-                  name="minOrderAmount"
-                  type="number"
-                  min="0"
-                  value={form.minOrderAmount}
-                  onChange={(event) => setForm((current) => ({ ...current, minOrderAmount: event.target.value }))}
-                  placeholder="0"
-                />
-              </label>
-
-              <label className="discount-field">
-                <span>Max Uses</span>
-                <input
-                  name="maxUses"
-                  type="number"
-                  min="1"
-                  value={form.maxUses}
-                  onChange={(event) => setForm((current) => ({ ...current, maxUses: event.target.value }))}
-                  placeholder="Blank = unlimited"
-                />
-              </label>
-
-              <label className="discount-field">
-                <span>Max Uses Per User</span>
-                <input
-                  name="maxUsesPerUser"
-                  type="number"
-                  min="1"
-                  value={form.maxUsesPerUser}
-                  onChange={(event) => setForm((current) => ({ ...current, maxUsesPerUser: event.target.value }))}
-                  placeholder="Blank = unlimited"
-                />
-              </label>
-
-              <label style={{ display: 'grid', gap: '6px', background: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '4px', padding: '14px' }}>
-                <span style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '12px', fontWeight: 500 }}>First-time customers only</span>
-                <span style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', lineHeight: 1.55 }}>Only customers with no previous orders can use this code.</span>
-                <input
-                  name="firstTimeOnly"
-                  type="checkbox"
-                  checked={form.firstTimeOnly}
-                  onChange={(event) => setForm((current) => ({ ...current, firstTimeOnly: event.target.checked }))}
-                  style={{ marginTop: '4px' }}
-                />
-              </label>
-
-              <label className="discount-field">
-                <span>Expiry Date</span>
-                <input
-                  name="expiresAt"
-                  type="date"
-                  min={todayISO}
-                  value={form.expiresAt}
-                  onChange={(event) => setForm((current) => ({ ...current, expiresAt: event.target.value }))}
-                />
-              </label>
-
-              {expiresToday && (
+              {expiresToday && activeTab !== 'schedule' && (
                 <div style={{ background: '#EDD9AF', border: '0.5px solid #C9A961', borderRadius: '4px', color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '12px', lineHeight: 1.55, padding: '12px 14px' }}>
                   This active code expires at midnight today.
                 </div>
               )}
-
-              <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', background: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '4px', padding: '14px' }}>
-                <span style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '12px', fontWeight: 500 }}>Active on creation</span>
-                <input
-                  name="isActive"
-                  type="checkbox"
-                  checked={form.isActive}
-                  onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.checked }))}
-                />
-              </label>
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
                 <button
@@ -701,8 +911,76 @@ export default function AdminDiscountCodesPage() {
           width: 100%;
         }
 
-        .discount-field input:focus {
+        .discount-field textarea,
+        .discount-field select {
+          background: #FDF8F2;
+          border: 0.5px solid #EDD9AF;
+          border-radius: 4px;
+          color: #1A1014;
+          font-family: var(--font-inter);
+          font-size: 13px;
+          min-height: 86px;
+          outline: none;
+          padding: 12px 12px;
+          resize: vertical;
+          width: 100%;
+        }
+
+        .discount-field select {
+          min-height: 44px;
+        }
+
+        .discount-field input:focus,
+        .discount-field textarea:focus,
+        .discount-field select:focus {
           border-color: #C9A961;
+        }
+
+        .discount-tabs {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+
+        .discount-tabs button,
+        .discount-choice-button,
+        .discount-secondary-button {
+          background: #FDF8F2;
+          border: 0.5px solid #EDD9AF;
+          border-radius: 4px;
+          color: #1A1014;
+          cursor: pointer;
+          font-family: var(--font-inter);
+          font-size: 10px;
+          letter-spacing: 0.1em;
+          padding: 10px 11px;
+          text-transform: uppercase;
+        }
+
+        .discount-tabs button[data-active="true"],
+        .discount-choice-button[data-active="true"] {
+          background: #1A1014;
+          border-color: #1A1014;
+          color: #FBF5F0;
+        }
+
+        .discount-checkbox,
+        .discount-radio {
+          align-items: center;
+          background: #FDF8F2;
+          border: 0.5px solid #EDD9AF;
+          border-radius: 4px;
+          color: #1A1014;
+          display: flex;
+          font-family: var(--font-inter);
+          font-size: 12px;
+          gap: 8px;
+          padding: 12px;
+        }
+
+        .discount-checkbox input,
+        .discount-radio input {
+          accent-color: #1A1014;
         }
 
         @media (max-width: 1040px) {

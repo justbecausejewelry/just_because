@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Gem } from 'lucide-react'
 import { CheckoutAuthWall } from '@/components/checkout/CheckoutAuthWall'
+import { BrandLogo } from '@/components/ui/BrandLogo'
 import { useCart } from '@/context/CartContext'
 import { getMetalLabel, normalizeMetalSelection } from '@/config/productOptions'
 import { useFormPersistence } from '@/hooks/useFormPersistence'
@@ -104,6 +105,10 @@ export default function CheckoutPage() {
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([])
   const [selectedAddressId, setSelectedAddressId] = useState('')
   const [saveAddress, setSaveAddress] = useState(false)
+  const [promo, setPromo] = useState('')
+  const [promoError, setPromoError] = useState('')
+  const [promoSuccess, setPromoSuccess] = useState('')
+  const [appliedDiscount, setAppliedDiscount] = useState({ code: '', amount: 0, freeShipping: false })
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
@@ -121,9 +126,10 @@ export default function CheckoutPage() {
     cardName: '',
   })
   const clearPersistedCheckout = useFormPersistence('checkout_form_v1', form, setForm)
-  const shippingAmount = shippingMethod === 'express' ? 25 : 0
-  const tax = Math.round(subtotal * 0.08)
-  const total = subtotal + shippingAmount + tax
+  const shippingAmount = appliedDiscount.freeShipping ? 0 : shippingMethod === 'express' ? 25 : 0
+  const discountedSubtotal = Math.max(0, subtotal - appliedDiscount.amount)
+  const tax = Math.round(discountedSubtotal * 0.08)
+  const total = Math.max(0, discountedSubtotal + shippingAmount + tax)
   const maskedCard = useMemo(() => {
     const digits = form.cardNumber.replace(/\D/g, '').slice(-4) || '4242'
     return `•••• •••• •••• ${digits}`
@@ -217,6 +223,84 @@ export default function CheckoutPage() {
     }))
   }
 
+  const discountCartItems = useMemo(() => items.map((item) => ({
+    productId: item.productId,
+    productSlug: item.productSlug,
+    productTitle: item.productTitle,
+    productImage: item.productImage,
+    selectedMetal: item.selectedMetal,
+    selectedCarat: item.selectedCarat > 0 ? item.selectedCarat : undefined,
+    selectedShape: item.selectedShape,
+    selectedColor: item.selectedColor,
+    selectedClarity: item.selectedClarity,
+    ringSize: item.ringSize,
+    engraving: item.engraving,
+    quantity: item.quantity,
+  })), [items])
+
+  const applyPromo = async () => {
+    setPromoError('')
+    setPromoSuccess('')
+    const normalizedPromo = promo.trim()
+    if (!normalizedPromo) {
+      setPromoError('Enter a discount code')
+      return
+    }
+
+    const {
+      data: { session },
+    } = await supabaseAuth.auth.getSession()
+    const headers: HeadersInit = { 'Content-Type': 'application/json' }
+    if (session?.access_token) {
+      headers.Authorization = `Bearer ${session.access_token}`
+    }
+
+    const response = await fetch(session?.access_token ? '/api/discount/apply' : '/api/discount/validate', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(session?.access_token
+        ? { code: normalizedPromo, country: form.country }
+        : { code: normalizedPromo, cartItems: discountCartItems, country: form.country }),
+    })
+    const payload = await response.json() as {
+      code?: string
+      discountAmount?: number
+      freeShipping?: boolean
+      error?: string
+    }
+
+    if (!response.ok) {
+      setPromoError(payload.error || 'Invalid code')
+      setAppliedDiscount({ code: '', amount: 0, freeShipping: false })
+      return
+    }
+
+    const nextDiscount = {
+      code: payload.code || normalizedPromo.toUpperCase(),
+      amount: payload.discountAmount || 0,
+      freeShipping: Boolean(payload.freeShipping),
+    }
+    setAppliedDiscount(nextDiscount)
+    setPromo(nextDiscount.code)
+    setPromoSuccess(`Saved ${formatPrice(nextDiscount.amount)} with ${nextDiscount.code}`)
+  }
+
+  const removePromo = async () => {
+    setPromoError('')
+    setPromoSuccess('')
+    const {
+      data: { session },
+    } = await supabaseAuth.auth.getSession()
+    if (session?.access_token) {
+      await fetch('/api/discount/remove', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+    }
+    setAppliedDiscount({ code: '', amount: 0, freeShipping: false })
+    setPromo('')
+  }
+
   const placeOrder = async (event: FormEvent) => {
     event.preventDefault()
     setError('')
@@ -301,6 +385,7 @@ export default function CheckoutPage() {
             engraving: item.engraving,
             quantity: item.quantity,
           })),
+          discountCode: appliedDiscount.code || undefined,
           orderNumber,
         }),
       })
@@ -501,7 +586,7 @@ export default function CheckoutPage() {
               <div className="grid gap-5">
                 <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.3em' }}>PAYMENT</p>
                 <div style={{ background: 'linear-gradient(135deg, #1A1014, #2A1E24)', borderRadius: '12px', padding: '24px', aspectRatio: '1.6', color: '#FBF5F0', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                  <p><span style={{ color: '#C9A961', fontFamily: 'var(--font-italianno)', fontSize: '28px' }}>just</span> <span style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '12px', letterSpacing: '0.2em' }}>BECAUSE</span></p>
+                  <p style={{ margin: 0 }}><BrandLogo size="sm" /></p>
                   <p style={{ fontFamily: 'var(--font-inter)', fontSize: '24px', letterSpacing: '0.08em' }}>{maskedCard}</p>
                   <div className="flex justify-between"><span>{form.cardName || 'CARDHOLDER NAME'}</span><span>{form.expiry || 'MM/YY'}</span></div>
                 </div>
@@ -535,9 +620,19 @@ export default function CheckoutPage() {
           ))}
           {[
             ['Subtotal', formatPrice(subtotal)],
+            ...(appliedDiscount.amount ? [[appliedDiscount.code, `-${formatPrice(appliedDiscount.amount)}`]] : []),
             ['Shipping', shippingAmount ? formatPrice(shippingAmount) : 'FREE'],
             ['Tax', formatPrice(tax)],
           ].map(([label, value]) => <div key={label} className="flex justify-between py-2" style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '13px' }}><span>{label}</span><span>{value}</span></div>)}
+          <div style={{ display: 'grid', gap: '8px', marginTop: '16px' }}>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input value={promo} onChange={(event) => setPromo(event.target.value)} placeholder="DISCOUNT CODE" style={{ background: '#FBF5F0', border: '0.5px solid #EDD9AF', color: '#1A1014', flex: 1, fontFamily: 'var(--font-inter)', fontSize: '12px', padding: '11px 12px' }} />
+              <button type="button" onClick={applyPromo} style={{ background: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.14em', padding: '0 14px' }}>APPLY</button>
+            </div>
+            {appliedDiscount.code && <button type="button" onClick={removePromo} style={{ color: '#A85C6A', fontFamily: 'var(--font-inter)', fontSize: '11px', textAlign: 'left' }}>Remove {appliedDiscount.code}</button>}
+            {promoError && <p style={{ color: '#A85C6A', fontFamily: 'var(--font-inter)', fontSize: '12px', margin: 0 }}>{promoError}</p>}
+            {promoSuccess && <p style={{ color: '#7A8F72', fontFamily: 'var(--font-inter)', fontSize: '12px', margin: 0 }}>{promoSuccess}</p>}
+          </div>
           <div className="mt-3 flex justify-between" style={{ borderTop: '0.5px solid #EDD9AF', paddingTop: '14px' }}><span style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.2em' }}>TOTAL</span><span style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '28px' }}>{formatPrice(total)}</span></div>
           <Link href="/cart" style={{ color: '#C9A961', display: 'inline-block', fontFamily: 'var(--font-inter)', fontSize: '11px', marginTop: '16px', textDecoration: 'none' }}>← Edit cart</Link>
         </aside>

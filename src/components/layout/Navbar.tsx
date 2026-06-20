@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { Heart, Menu, Search, ShoppingBag, User, X } from 'lucide-react'
 import { MiniCartDrawer } from '@/components/cart/MiniCartDrawer'
+import { BrandLogo } from '@/components/ui/BrandLogo'
 import { useCart } from '@/context/CartContext'
 import { useWishlist } from '@/context/WishlistContext'
 import { useRole } from '@/hooks/useRole'
@@ -330,14 +331,6 @@ export function Navbar() {
   return (
     <>
       <style>{`
-        .nav-logo-script {
-          font-family: var(--font-italianno), cursive !important;
-          font-size: 1.7rem !important;
-          color: #1A1014 !important;
-          line-height: 0.85 !important;
-          display: block !important;
-        }
-
         .mega-link {
           font-size: 13.5px;
           color: #1A1014;
@@ -460,40 +453,7 @@ export function Navbar() {
             position: 'relative',
           }}
         >
-          <Link href="/" className="shrink-0 select-none" style={{ textDecoration: 'none' }}>
-            <div style={{
-              display: 'flex',
-              flexDirection: 'row',
-              alignItems: 'baseline',
-              gap: '0px',
-              whiteSpace: 'nowrap',
-            }}>
-              <span style={{
-                fontFamily: "'Italianno', cursive",
-                fontSize: '1.7rem',
-                fontStyle: 'italic',
-                color: '#C9A961',
-                lineHeight: '1',
-                letterSpacing: '0.01em',
-              }}>
-                Just
-              </span>
-
-              <span style={{
-                fontFamily: "'Cormorant Garamond', serif",
-                fontSize: '0.85rem',
-                fontStyle: 'italic',
-                color: '#C9A961',
-                lineHeight: '1',
-                fontWeight: 500,
-                letterSpacing: '0.08em',
-                marginLeft: '6px',
-                alignSelf: 'center',
-              }}>
-                Because
-              </span>
-            </div>
-          </Link>
+          <BrandLogo size="md" href="/" />
 
           <nav className="desktop-nav-center desktop-mega-nav" style={{ gap: '28px', alignItems: 'center', minWidth: 0, overflow: 'hidden', position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
             {menuLabels.map((label) => (
@@ -668,40 +628,9 @@ export function Navbar() {
               borderBottom: '0.5px solid rgba(201,169,97,0.15)',
             }}
           >
-            <Link href="/" onClick={() => setMobileOpen(false)} className="shrink-0 select-none" style={{ textDecoration: 'none' }}>
-              <div style={{
-                display: 'flex',
-                flexDirection: 'row',
-                alignItems: 'baseline',
-                gap: '0px',
-                whiteSpace: 'nowrap',
-              }}>
-                <span style={{
-                  fontFamily: "'Italianno', cursive",
-                  fontSize: '1.7rem',
-                  fontStyle: 'italic',
-                  color: '#C9A961',
-                  lineHeight: '1',
-                  letterSpacing: '0.01em',
-                }}>
-                  Just
-                </span>
-
-                <span style={{
-                  fontFamily: "'Cormorant Garamond', serif",
-                  fontSize: '0.85rem',
-                  fontStyle: 'italic',
-                  color: '#C9A961',
-                  lineHeight: '1',
-                  fontWeight: 500,
-                  letterSpacing: '0.08em',
-                  marginLeft: '6px',
-                  alignSelf: 'center',
-                }}>
-                  Because
-                </span>
-              </div>
-            </Link>
+            <span onClick={() => setMobileOpen(false)}>
+              <BrandLogo size="md" href="/" />
+            </span>
 
             <button
               onClick={() => setMobileOpen(false)}

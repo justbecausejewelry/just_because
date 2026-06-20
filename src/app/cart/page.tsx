@@ -27,11 +27,13 @@ function formatPrice(value: number) {
 export default function CartPage() {
   const { itemCount, items, removeItem, subtotal, updateQuantity } = useCart()
   const [promo, setPromo] = useState('')
-  const [discount, setDiscount] = useState({ code: '', amount: 0 })
+  const [discount, setDiscount] = useState({ code: '', amount: 0, freeShipping: false })
   const [promoError, setPromoError] = useState('')
+  const [promoSuccess, setPromoSuccess] = useState('')
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
-  const tax = Math.round((subtotal - discount.amount) * 0.08)
-  const total = subtotal - discount.amount + tax
+  const discountedSubtotal = Math.max(0, subtotal - discount.amount)
+  const tax = Math.round(discountedSubtotal * 0.08)
+  const total = Math.max(0, discountedSubtotal + tax)
 
   useEffect(() => {
     const load = async () => {
@@ -44,6 +46,13 @@ export default function CartPage() {
 
   const applyPromo = async () => {
     setPromoError('')
+    setPromoSuccess('')
+    const normalizedPromo = promo.trim()
+    if (!normalizedPromo) {
+      setPromoError('Enter a discount code')
+      return
+    }
+
     const {
       data: { session },
     } = await supabase.auth.getSession()
@@ -52,22 +61,66 @@ export default function CartPage() {
       headers.Authorization = `Bearer ${session.access_token}`
     }
 
-    const response = await fetch('/api/discounts/validate', {
+    const body = session?.access_token
+      ? { code: normalizedPromo }
+      : {
+          code: normalizedPromo,
+          cartItems: items.map((item) => ({
+            productId: item.productId,
+            productSlug: item.productSlug,
+            productTitle: item.productTitle,
+            productImage: item.productImage,
+            selectedMetal: item.selectedMetal,
+            selectedCarat: item.selectedCarat > 0 ? item.selectedCarat : undefined,
+            selectedShape: item.selectedShape,
+            selectedColor: item.selectedColor,
+            selectedClarity: item.selectedClarity,
+            ringSize: item.ringSize,
+            engraving: item.engraving,
+            quantity: item.quantity,
+          })),
+        }
+
+    const response = await fetch(session?.access_token ? '/api/discount/apply' : '/api/discount/validate', {
       method: 'POST',
       headers,
-      body: JSON.stringify({ code: promo, subtotal }),
+      body: JSON.stringify(body),
     })
     const payload = (await response.json()) as {
       code?: string
       discountAmount?: number
+      freeShipping?: boolean
       error?: string
     }
     if (!response.ok) {
       setPromoError(payload.error || 'Invalid code')
-      setDiscount({ code: '', amount: 0 })
+      setDiscount({ code: '', amount: 0, freeShipping: false })
       return
     }
-    setDiscount({ code: payload.code || promo, amount: payload.discountAmount || 0 })
+    const nextDiscount = {
+      code: payload.code || normalizedPromo.toUpperCase(),
+      amount: payload.discountAmount || 0,
+      freeShipping: Boolean(payload.freeShipping),
+    }
+    setDiscount(nextDiscount)
+    setPromo(nextDiscount.code)
+    setPromoSuccess(`Saved ${formatPrice(nextDiscount.amount)} with ${nextDiscount.code}`)
+  }
+
+  const removePromo = async () => {
+    setPromoError('')
+    setPromoSuccess('')
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    if (session?.access_token) {
+      await fetch('/api/discount/remove', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+    }
+    setDiscount({ code: '', amount: 0, freeShipping: false })
+    setPromo('')
   }
 
   const emptyActions = useMemo(
@@ -146,13 +199,14 @@ export default function CartPage() {
                 <button onClick={applyPromo} style={{ background: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.15em', padding: '12px 20px' }}>APPLY</button>
               </div>
               {promoError && <p style={{ color: '#A85C6A', fontFamily: 'var(--font-inter)', fontSize: '12px', marginTop: '8px' }}>{promoError}</p>}
+              {promoSuccess && <p style={{ color: '#7A8F72', fontFamily: 'var(--font-inter)', fontSize: '12px', marginTop: '8px' }}>✓ {promoSuccess}</p>}
             </section>
 
             <aside className="lg:sticky lg:top-[100px]" style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '2px', padding: '28px' }}>
               <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.3em', marginBottom: '16px' }}>ORDER SUMMARY</p>
               {[
                 ['Subtotal', formatPrice(subtotal), '#1A1014'],
-                ...(discount.amount ? [['Discount', `-${formatPrice(discount.amount)}`, '#C9A961']] : []),
+                ...(discount.amount ? [[discount.code, `-${formatPrice(discount.amount)}`, '#C9A961']] : []),
                 ['Shipping', 'FREE', '#7A8F72'],
                 ['Est. Tax', formatPrice(tax), 'var(--color-muted-text)'],
               ].map(([label, value, color]) => (
@@ -162,6 +216,11 @@ export default function CartPage() {
                 </div>
               ))}
               <div style={{ paddingTop: '16px' }}>
+                {discount.code && (
+                  <button onClick={removePromo} style={{ color: '#A85C6A', fontFamily: 'var(--font-inter)', fontSize: '11px', marginBottom: '12px', textDecoration: 'underline' }}>
+                    Remove {discount.code}
+                  </button>
+                )}
                 <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.2em' }}>TOTAL</p>
                 <p style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '32px' }}>{formatPrice(total)}</p>
               </div>

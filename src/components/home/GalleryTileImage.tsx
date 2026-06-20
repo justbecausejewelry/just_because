@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
+import { BrandLogo } from '@/components/ui/BrandLogo'
 
 type GalleryTileImageProps = {
   src: string
@@ -28,7 +29,7 @@ export function GalleryTileImage({ src }: GalleryTileImageProps) {
           width: '100%',
         }}
       >
-        Just Because
+        <BrandLogo size="sm" />
       </div>
     )
   }

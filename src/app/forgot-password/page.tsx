@@ -3,6 +3,7 @@
 import { FormEvent, useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, ArrowRight, Mail, Sparkles } from 'lucide-react'
+import { BrandLogo } from '@/components/ui/BrandLogo'
 
 async function readApiError(response: Response, fallback: string) {
   const body: unknown = await response.json().catch(() => null)
@@ -161,48 +162,9 @@ export default function ForgotPasswordPage() {
 
       <div className="password-page-shell">
         <div className="password-page-card">
-          <Link
-            href="/"
-            style={{
-              textDecoration: 'none',
-              display: 'block',
-              textAlign: 'center',
-              marginBottom: '40px',
-            }}
-          >
-            <div
-              style={{
-                fontFamily: 'var(--font-italianno)',
-                fontSize: '44px',
-                color: '#C9A961',
-                lineHeight: 0.85,
-              }}
-            >
-              just
-            </div>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-                marginTop: '4px',
-              }}
-            >
-              <div style={{ width: '14px', height: '0.5px', background: '#1A1014' }} />
-              <span
-                style={{
-                  fontFamily: 'var(--font-inter)',
-                  fontSize: '10px',
-                  letterSpacing: '0.38em',
-                  color: '#1A1014',
-                }}
-              >
-                BECAUSE
-              </span>
-              <div style={{ width: '14px', height: '0.5px', background: '#1A1014' }} />
-            </div>
-          </Link>
+          <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+            <BrandLogo size="lg" href="/" />
+          </div>
 
           <div className="password-panel">
             {!sent ? (

@@ -7,6 +7,7 @@ import { Eye, EyeOff } from 'lucide-react'
 import { supabaseAuth } from '@/lib/auth'
 import { clearCart, getCart } from '@/lib/cart'
 import { mergeGuestCart } from '@/lib/mergeGuestCart'
+import { BrandLogo } from '@/components/ui/BrandLogo'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -81,6 +82,27 @@ export default function LoginPage() {
         return
       }
 
+      const accessToken = data.session?.access_token
+      if (!accessToken) {
+        setError('Unable to create a secure session. Please try again.')
+        setLoading(false)
+        return
+      }
+
+      const cookieResponse = await fetch('/api/auth/session-cookie', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+
+      if (!cookieResponse.ok) {
+        await supabaseAuth.auth.signOut()
+        setError('Unable to create a secure session. Please try again.')
+        setLoading(false)
+        return
+      }
+
       const guestCart = getCart()
       if (guestCart.length > 0) {
         await mergeGuestCart(data.user.id, guestCart)
@@ -95,20 +117,6 @@ export default function LoginPage() {
   return (
     <>
       <style>{`
-        .logo-script {
-          font-family: var(--font-italianno), cursive !important;
-          font-size: 44px !important;
-          color: #FBF5F0 !important;
-          line-height: 0.85 !important;
-        }
-
-        .logo-script-dark {
-          font-family: var(--font-italianno), cursive !important;
-          font-size: 36px !important;
-          color: #1A1014 !important;
-          line-height: 0.85 !important;
-        }
-
         .playfair-heading {
           font-family: var(--font-playfair), Georgia, serif !important;
           font-weight: 400 !important;
@@ -223,33 +231,7 @@ export default function LoginPage() {
             top: '36px', left: '44px',
             zIndex: 3,
           }}>
-            <Link href="/" style={{ textDecoration: 'none' }}>
-              <div>
-                <span className="logo-script">just</span>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  marginTop: '2px',
-                }}>
-                  <div style={{
-                    width: '16px', height: '0.5px',
-                    background: 'rgba(251,245,240,0.5)',
-                  }} />
-                  <span style={{
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: '10px',
-                    letterSpacing: '0.42em',
-                    color: 'rgba(251,245,240,0.75)',
-                    fontWeight: 400,
-                  }}>BECAUSE</span>
-                  <div style={{
-                    width: '16px', height: '0.5px',
-                    background: 'rgba(251,245,240,0.5)',
-                  }} />
-                </div>
-              </div>
-            </Link>
+            <BrandLogo size="lg" href="/" />
           </div>
 
           <div style={{
@@ -345,29 +327,7 @@ export default function LoginPage() {
             display: 'none',
             marginBottom: '36px',
           }}>
-            <Link href="/" style={{ textDecoration: 'none' }}>
-              <div style={{
-                fontFamily: 'var(--font-italianno)',
-                fontSize: '40px',
-                color: '#1A1014',
-                lineHeight: 0.85,
-              }}>just</div>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px',
-                marginTop: '3px',
-              }}>
-                <div style={{ width: '12px', height: '0.5px', background: '#1A1014' }} />
-                <span style={{
-                  fontFamily: 'Inter, sans-serif',
-                  fontSize: '9px',
-                  letterSpacing: '0.4em',
-                  color: '#1A1014',
-                }}>BECAUSE</span>
-                <div style={{ width: '12px', height: '0.5px', background: '#1A1014' }} />
-              </div>
-            </Link>
+            <BrandLogo size="lg" href="/" />
           </div>
 
           <div className="login-form-inner" style={{

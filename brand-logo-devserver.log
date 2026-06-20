@@ -1,0 +1,10 @@
+
+> just-because@0.1.0 dev
+> next dev --turbopack --port 3015
+
+▲ Next.js 16.2.9 (Turbopack)
+- Local:         http://localhost:3015
+- Network:       http://10.187.99.212:3015
+- Environments: .env.local, .env
+✓ Ready in 506ms
+[?25h

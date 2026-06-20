@@ -3,8 +3,9 @@ import { z } from 'zod'
 import { sendAdminOrderNotificationEmail } from '@/lib/email/templates/adminOrderNotification'
 import { sendOrderConfirmationEmail } from '@/lib/email/templates/orderConfirmation'
 import { ADMIN_INBOX } from '@/lib/email/senders'
-import { CheckoutValidationError, computeCheckoutLines, computeDiscount } from '@/lib/server/orderPricing'
-import { checkRateLimit, rateLimitResponse } from '@/lib/server/rateLimit'
+import { validateDiscountCode, type DiscountCartItem } from '@/lib/discountValidation'
+import { CheckoutValidationError, computeCheckoutLines } from '@/lib/server/orderPricing'
+import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/server/rateLimit'
 import { requireUser } from '@/lib/server/security'
 import { getAuthedUserOrGuest } from '@/lib/auth/getAuthedUserOrGuest'
 
@@ -46,6 +47,15 @@ type CreatedOrder = {
   id: string
   orderNumber?: string | null
   createdAt?: string | null
+}
+
+type AppliedDiscount = {
+  id: string | null
+  code: string | null
+  amount: number
+  freeShipping: boolean
+  freeGift: unknown | null
+  snapshot: Record<string, unknown> | null
 }
 
 function normalizePersonName(value?: string | null) {
@@ -144,10 +154,67 @@ export async function POST(request: NextRequest) {
   }
 
   let computed
-  let discount
+  let discount: AppliedDiscount = {
+    id: null,
+    code: null,
+    amount: 0,
+    freeShipping: false,
+    freeGift: null,
+    snapshot: null,
+  }
   try {
     computed = await computeCheckoutLines(auth.admin, parsed.data.items)
-    discount = await computeDiscount(auth.admin, parsed.data.discountCode, computed.subtotal, auth.user.id)
+
+    let discountCode = parsed.data.discountCode?.trim()
+    if (!discountCode) {
+      const { data: cartDiscount } = await auth.admin
+        .from('CartDiscount')
+        .select('code')
+        .eq('userId', auth.user.id)
+        .maybeSingle()
+
+      discountCode = typeof cartDiscount?.code === 'string' ? cartDiscount.code : ''
+    }
+
+    if (discountCode) {
+      const validationItems: DiscountCartItem[] = computed.lines.map((line, index) => ({
+        sourceProductId: parsed.data.items[index]?.productId || line.productId || '',
+        productId: line.productId,
+        productTitle: line.productTitle,
+        quantity: line.quantity,
+        unitPrice: line.unitPrice,
+        totalPrice: line.totalPrice,
+      }))
+      const validation = await validateDiscountCode({
+        supabase: auth.admin,
+        code: discountCode,
+        userId: auth.user.id,
+        userEmail,
+        cartItems: validationItems,
+        subtotal: computed.subtotal,
+        ipAddress: getClientIp(request),
+        country: parsed.data.shippingAddress.country,
+      })
+
+      if (!validation.valid) {
+        return NextResponse.json({
+          error: {
+            code: validation.code,
+            field: 'discountCode',
+            message: validation.error,
+          },
+        }, { status: validation.code === 'RATE_LIMITED' ? 429 : 400 })
+      }
+
+      discount = {
+        id: validation.discount.id,
+        code: validation.discount.code,
+        amount: validation.discount.discountAmount,
+        freeShipping: validation.discount.freeShipping,
+        freeGift: validation.discount.freeGift,
+        snapshot: validation.discount.snapshot,
+      }
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to price checkout'
     if (error instanceof CheckoutValidationError) {
@@ -168,10 +235,10 @@ export async function POST(request: NextRequest) {
     }, { status: 400 })
   }
 
-  const shippingAmount = parsed.data.shippingAddress.method === 'express' ? 25 : 0
+  const shippingAmount = discount.freeShipping ? 0 : parsed.data.shippingAddress.method === 'express' ? 25 : 0
   const taxableSubtotal = Math.max(0, computed.subtotal - discount.amount)
   const taxAmount = Math.round(taxableSubtotal * 0.08)
-  const total = taxableSubtotal + shippingAmount + taxAmount
+  const total = Math.max(0, taxableSubtotal + shippingAmount + taxAmount)
   const orderNumber = `JB-${Date.now().toString().slice(-6)}`
   const normalizedCustomerName = normalizeCheckoutName(parsed.data.customerName, userEmail)
   const normalizedShippingName = normalizeCheckoutName(
@@ -202,6 +269,9 @@ export async function POST(request: NextRequest) {
       shippingAmount,
       taxAmount,
       discountAmount: discount.amount,
+      discountCode: discount.code,
+      discountCodeId: discount.id,
+      discountSnapshot: discount.snapshot,
       total,
       status: 'confirmed',
       paymentMethod: 'pending',
@@ -241,26 +311,34 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: itemsError.message }, { status: 500 })
   }
 
-  if (discount.id && discount.amount > 0) {
-    const { error: usageError } = await auth.admin
-      .from('DiscountCodeUsage')
-      .insert({
-        discountCodeId: discount.id,
-        userId: auth.user.id,
-        orderId,
-        discountAmount: discount.amount,
-      })
-
-    if (usageError) {
-      console.error('[order-create] discount usage insert failed:', usageError)
-    }
-
-    const { error: incrementError } = await auth.admin.rpc('increment_discount_usage', {
+  if (discount.id) {
+    const { data: incremented, error: incrementError } = await auth.admin.rpc('increment_discount_usage', {
       code_id: discount.id,
+      user_id: auth.user.id,
+      order_id: orderId,
+      amount: discount.amount,
     })
 
-    if (incrementError) {
+    if (incrementError || incremented !== true) {
       console.error('[order-create] discount usage increment failed:', incrementError)
+      await auth.admin.from('OrderItem').delete().eq('orderId', orderId)
+      await auth.admin.from('Order').delete().eq('id', orderId)
+      return NextResponse.json({
+        error: {
+          code: 'DISCOUNT_USAGE_LIMIT_REACHED',
+          field: 'discountCode',
+          message: 'This code has reached its usage limit',
+        },
+      }, { status: 400 })
+    }
+
+    const { error: cartDiscountDeleteError } = await auth.admin
+      .from('CartDiscount')
+      .delete()
+      .eq('userId', auth.user.id)
+
+    if (cartDiscountDeleteError) {
+      console.error('[order-create] cart discount cleanup failed:', cartDiscountDeleteError)
     }
   }
 

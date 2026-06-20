@@ -73,7 +73,7 @@ function emailShell(content: string) {
     <html>
       <body style="font-family: Arial, sans-serif; background: #FBF5F0; padding: 40px 0; margin: 0;">
         <div style="max-width: 600px; margin: 0 auto; background: #FDF8F2; padding: 40px; border: 1px solid #EDD9AF;">
-          <h1 style="font-family: Georgia, serif; color: #C9A961; font-size: 28px; font-weight: 400; margin: 0 0 4px;">
+          <h1 style="font-family: Georgia, serif; color: #C9A961; font-size: 32px; font-weight: 400; font-style: italic; letter-spacing: 0.02em; line-height: 1.2; margin: 0 0 4px; white-space: nowrap;">
             Just Because
           </h1>
           ${content}

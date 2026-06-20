@@ -4,6 +4,7 @@ import { FormEvent, Suspense, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, Sparkles } from 'lucide-react'
+import { BrandLogo } from '@/components/ui/BrandLogo'
 
 function getStrength(password: string) {
   if (password.length === 0) {
@@ -207,48 +208,9 @@ function ResetPasswordContent() {
 
       <div className="reset-page-shell">
         <div className="reset-page-card">
-          <Link
-            href="/"
-            style={{
-              textDecoration: 'none',
-              display: 'block',
-              textAlign: 'center',
-              marginBottom: '40px',
-            }}
-          >
-            <div
-              style={{
-                fontFamily: 'var(--font-italianno)',
-                fontSize: '44px',
-                color: '#C9A961',
-                lineHeight: 0.85,
-              }}
-            >
-              just
-            </div>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-                marginTop: '4px',
-              }}
-            >
-              <div style={{ width: '14px', height: '0.5px', background: '#1A1014' }} />
-              <span
-                style={{
-                  fontFamily: 'var(--font-inter)',
-                  fontSize: '10px',
-                  letterSpacing: '0.38em',
-                  color: '#1A1014',
-                }}
-              >
-                BECAUSE
-              </span>
-              <div style={{ width: '14px', height: '0.5px', background: '#1A1014' }} />
-            </div>
-          </Link>
+          <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+            <BrandLogo size="lg" href="/" />
+          </div>
 
           <div className="reset-panel">
             {!done ? (

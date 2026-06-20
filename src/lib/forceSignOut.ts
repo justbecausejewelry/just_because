@@ -6,6 +6,7 @@ export async function forceSignOut() {
     clearAdminCache()
 
     if (typeof window !== 'undefined') {
+      await fetch('/api/auth/session-cookie', { method: 'DELETE' }).catch(() => null)
       window.localStorage.clear()
       window.sessionStorage.clear()
 

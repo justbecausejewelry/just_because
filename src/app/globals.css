@@ -2940,3 +2940,34 @@ footer.site-footer .footer-grid > div:first-child p.footer-tagline {
   font-style: italic !important;
   line-height: 1.6 !important;
 }
+
+@media (max-width: 767px) {
+  footer.site-footer .footer-grid {
+    grid-template-columns: 1fr !important;
+    text-align: center !important;
+  }
+
+  footer.site-footer .footer-grid > div {
+    align-items: center !important;
+    text-align: center !important;
+  }
+
+  footer.site-footer .footer-grid > div:first-child {
+    grid-column: auto !important;
+  }
+
+  footer.site-footer .footer-tagline {
+    margin-left: auto !important;
+    margin-right: auto !important;
+    text-align: center !important;
+  }
+
+  footer.site-footer .footer-grid > div > div {
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  footer.site-footer a {
+    text-align: center !important;
+  }
+}

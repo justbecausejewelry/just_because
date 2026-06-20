@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { supabaseAuth } from '@/lib/auth'
 import { forceSignOut } from '@/lib/forceSignOut'
 import { useRole } from '@/hooks/useRole'
+import { BrandLogo } from '@/components/ui/BrandLogo'
 import {
   LayoutDashboard,
   Package,
@@ -39,6 +40,7 @@ const sidebarLinks: SidebarLink[] = [
   { href: '/admin/customers', label: 'Customers', icon: Users },
   { href: '/admin/diamonds', label: 'Diamonds', icon: Diamond },
   { href: '/admin/discount-codes', label: 'Discount Codes', icon: Tag },
+  { href: '/admin/discount-codes/analytics', label: 'Discount Analytics', icon: BarChart2 },
   { href: '/admin/support', label: 'Support', icon: MessageSquare },
 ]
 
@@ -132,7 +134,7 @@ export default function AdminLayout({
     return (
       <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FBF5F0' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontFamily: 'var(--font-italianno)', fontSize: '48px', color: '#C9A961' }}>just</div>
+          <BrandLogo size="lg" />
           <div style={{ fontSize: '10px', letterSpacing: '0.3em', color: '#B8A090', fontFamily: 'var(--font-inter)', marginTop: '8px' }}>LOADING...</div>
         </div>
       </div>
@@ -175,47 +177,7 @@ export default function AdminLayout({
         }}
       >
         <Link href="/" className="shrink-0 select-none" style={{ textDecoration: 'none' }}>
-          <div style={{
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'baseline',
-            gap: '0px',
-            whiteSpace: 'nowrap',
-            textDecoration: 'none',
-          }}>
-            <span style={{
-              fontFamily: "'Italianno', cursive",
-              fontSize: '2.2rem',
-              fontStyle: 'italic',
-              color: '#C9A961',
-              lineHeight: '1',
-              letterSpacing: '0.02em',
-            }}>
-              just
-            </span>
-
-            <span style={{
-              color: '#C9A961',
-              fontSize: '0.65rem',
-              letterSpacing: '3px',
-              margin: '0 4px 0 2px',
-              opacity: 0.7,
-            }}>
-              ─
-            </span>
-
-            <span style={{
-              fontFamily: "'Cormorant Garamond', 'Didact Gothic', serif",
-              fontSize: '0.6rem',
-              letterSpacing: '0.38em',
-              color: '#FBF5F0',
-              fontWeight: '600',
-              textTransform: 'uppercase',
-              lineHeight: '1',
-            }}>
-              BECAUSE
-            </span>
-          </div>
+          <BrandLogo size="sm" />
           <div style={{ fontSize: '9px', color: 'rgba(184,160,144,0.5)', fontFamily: 'var(--font-inter)', letterSpacing: '0.2em', marginTop: '8px' }}>
             ADMIN PANEL
           </div>

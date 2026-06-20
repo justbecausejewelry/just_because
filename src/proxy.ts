@@ -16,6 +16,11 @@ type AdminUserRow = {
   role?: string | null
 }
 
+type AdminCheck = {
+  isAdmin: boolean
+  role: string | null
+}
+
 function getSupabaseEnv(): SupabaseEnv | null {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -138,7 +143,7 @@ async function getUser(token: string, env: SupabaseEnv) {
   return (await response.json()) as SupabaseUser
 }
 
-async function isAdminUser(email: string, env: SupabaseEnv) {
+async function checkAdminUser(email: string, env: SupabaseEnv): Promise<AdminCheck> {
   const response = await fetch(
     `${env.supabaseUrl}/rest/v1/AdminUser?select=role&email=eq.${encodeURIComponent(email.toLowerCase())}&limit=1`,
     {
@@ -149,11 +154,14 @@ async function isAdminUser(email: string, env: SupabaseEnv) {
     }
   )
 
-  if (!response.ok) return false
+  if (!response.ok) return { isAdmin: false, role: null }
 
   const rows = (await response.json()) as AdminUserRow[]
   const role = rows[0]?.role
-  return role === 'admin' || role === 'super_admin'
+  return {
+    isAdmin: role === 'admin' || role === 'super_admin',
+    role: role || null,
+  }
 }
 
 export async function proxy(request: NextRequest) {
@@ -161,6 +169,10 @@ export async function proxy(request: NextRequest) {
   const adminPath = pathname === '/admin' || pathname.startsWith('/admin/')
   const accountPath = pathname === '/account' || pathname.startsWith('/account/')
   const checkoutPath = pathname === '/checkout'
+
+  if (adminPath) {
+    console.log('[proxy] path:', pathname)
+  }
 
   if (!adminPath && !accountPath && !checkoutPath) {
     return NextResponse.next()
@@ -181,8 +193,14 @@ export async function proxy(request: NextRequest) {
     return redirectToLogin(request)
   }
 
-  if (adminPath && !(await isAdminUser(user.email, env))) {
-    return new NextResponse('Admin access required', { status: 403 })
+  if (adminPath) {
+    const adminCheck = await checkAdminUser(user.email, env)
+    console.log('[proxy] user:', user.email)
+    console.log('[proxy] role check result:', adminCheck.role)
+
+    if (!adminCheck.isAdmin) {
+      return new NextResponse('Admin access required', { status: 403 })
+    }
   }
 
   return NextResponse.next()

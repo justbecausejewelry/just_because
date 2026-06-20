@@ -1,6 +1,7 @@
 'use client'
 
 import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { BrandLogo } from '@/components/ui/BrandLogo'
 
 type ErrorBoundaryProps = {
   children: ReactNode
@@ -26,9 +27,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       return (
         <main style={{ alignItems: 'center', background: '#FBF5F0', color: '#1A1014', display: 'flex', minHeight: '70vh', padding: '48px 24px' }}>
           <section style={{ margin: '0 auto', maxWidth: '560px', textAlign: 'center' }}>
-            <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.3em', margin: '0 0 14px', textTransform: 'uppercase' }}>
-              Just Because
-            </p>
+            <div style={{ marginBottom: '14px' }}>
+              <BrandLogo size="md" />
+            </div>
             <h1 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '40px', fontWeight: 400, margin: '0 0 14px' }}>
               Something went wrong.
             </h1>

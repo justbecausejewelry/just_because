@@ -1,3 +1,5 @@
+import { BrandLogo } from '@/components/ui/BrandLogo'
+
 export default function Loading() {
   return (
     <div style={{
@@ -9,23 +11,7 @@ export default function Loading() {
       justifyContent: 'center',
       gap: '8px',
     }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-        <span style={{
-          fontFamily: 'var(--font-italianno)',
-          fontSize: '64px',
-          color: '#C9A961',
-          lineHeight: 0.85,
-          animation: 'breathe 1.5s ease-in-out infinite',
-        }}>just</span>
-        <span style={{
-          fontFamily: 'var(--font-inter)',
-          fontSize: '18px',
-          letterSpacing: '0.35em',
-          color: 'rgba(201,169,97,0.7)',
-          fontWeight: 400,
-          marginLeft: '4px',
-        }}>BECAUSE</span>
-      </div>
+      <BrandLogo size="xl" className="loading-brand-logo" />
       <div style={{
         width: '40px',
         height: '1px',
@@ -34,6 +20,10 @@ export default function Loading() {
         marginTop: '8px',
       }} />
       <style>{`
+        .loading-brand-logo {
+          animation: breathe 1.5s ease-in-out infinite;
+        }
+
         @keyframes breathe {
           0%, 100% { opacity: 0.5; transform: scale(1); }
           50% { opacity: 1; transform: scale(1.05); }

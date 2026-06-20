@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { BrandLogo } from '@/components/ui/BrandLogo'
 
 const columns = [
   {
@@ -60,43 +61,9 @@ function FacebookIcon() {
 export function Footer() {
   return (
     <footer className="site-footer px-6 pb-7 pt-12 md:px-10 md:py-[60px] lg:px-20" style={{ backgroundColor: '#1A1014', color: '#B8A090' }}>
-      <div className="footer-grid grid gap-10 md:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">
+      <div className="footer-grid grid gap-10 text-center md:grid-cols-2 md:text-left lg:grid-cols-[1.5fr_1fr_1fr_1fr]">
         <div className="text-center md:text-left">
-          <Link href="/" className="shrink-0 select-none" style={{ textDecoration: 'none' }}>
-            <div style={{
-              display: 'flex',
-              flexDirection: 'row',
-              alignItems: 'baseline',
-              gap: '0px',
-              whiteSpace: 'nowrap',
-              justifyContent: 'center',
-            }}>
-            <span style={{
-              fontFamily: "'Italianno', cursive",
-              fontSize: '2.4rem',
-              fontStyle: 'italic',
-              color: '#C9A961',
-              lineHeight: '1',
-              letterSpacing: '0.01em',
-            }}>
-              Just
-            </span>
-
-            <span style={{
-              fontFamily: "'Cormorant Garamond', serif",
-              fontSize: '1.1rem',
-              fontStyle: 'italic',
-              color: '#C9A961',
-              lineHeight: '1',
-              fontWeight: 500,
-              letterSpacing: '0.08em',
-              marginLeft: '6px',
-              alignSelf: 'center',
-            }}>
-              Because
-            </span>
-            </div>
-          </Link>
+          <BrandLogo size="md" href="/" />
           <p className="footer-tagline mx-auto mt-3 max-w-[260px] md:mx-0" style={{ color: 'rgba(253,248,242,0.72)', fontFamily: 'var(--font-cormorant)', fontSize: '16px', fontStyle: 'italic', lineHeight: 1.6 }}>
             Lab-grown diamonds and recycled gold, crafted for every moment that
             does not need a name.
@@ -115,11 +82,11 @@ export function Footer() {
         </div>
 
         {columns.map((column) => (
-          <div key={column.title}>
+          <div key={column.title} className="flex flex-col items-center text-center md:items-start md:text-left">
             <h3 className="mb-4 text-[12px] tracking-[0.22em]" style={{ color: '#C9A961', fontFamily: 'var(--font-jost)', fontWeight: 600 }}>
               {column.title}
             </h3>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col items-center gap-2 md:items-start">
               {column.links.map((link) => (
                 <Link key={link.label} href={link.href} className="leading-[2.4]" style={{ color: 'rgba(251,245,240,0.75)', fontFamily: 'var(--font-jost)', fontSize: '15px', fontWeight: 300 }}>
                   {link.label}

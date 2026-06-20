@@ -47,7 +47,7 @@ function brandedOtpEmailHtml({
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#FDF8F2;border:1px solid #EDD9AF;">
             <tr>
               <td style="padding:34px 34px 10px;text-align:center;">
-                <div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:30px;line-height:1;color:#C9A961;font-style:italic;">Just Because</div>
+                <div style="font-family:Georgia,serif;font-size:32px;line-height:1.2;color:#C9A961;font-style:italic;letter-spacing:0.02em;white-space:nowrap;">Just Because</div>
                 <div style="margin:12px auto 0;width:42px;height:1px;background:#C9A961;"></div>
               </td>
             </tr>

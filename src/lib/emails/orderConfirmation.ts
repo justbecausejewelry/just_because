@@ -205,8 +205,8 @@ function paymentLabel(order: OrderConfirmationOrder) {
 
 function brandLogoHtml() {
   return `
-    <div style="text-align:center;margin:0 0 24px;line-height:1;">
-      <span style="font-family:Georgia,serif;font-style:italic;font-size:28px;color:${BRAND.gold};letter-spacing:1px;line-height:1;">just</span><br style="line-height:1;" /><span style="font-family:Arial,sans-serif;font-size:10px;color:${BRAND.gold};letter-spacing:5px;font-variant:small-caps;text-transform:uppercase;line-height:1;">&#9472;&#9472; BECAUSE &#9472;&#9472;</span>
+    <div style="text-align:center;margin-bottom:24px;">
+      <span style="font-family:Georgia,serif;font-style:italic;font-size:32px;color:${BRAND.gold};letter-spacing:0.02em;white-space:nowrap;line-height:1.2;">Just Because</span>
     </div>
   `
 }

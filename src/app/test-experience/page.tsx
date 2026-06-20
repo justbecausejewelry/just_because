@@ -7,6 +7,7 @@ import { Gem, Heart, Search, ShoppingBag, Sparkles } from 'lucide-react'
 import { gsap } from 'gsap'
 import Lenis from 'lenis'
 import * as THREE from 'three'
+import { BrandLogo } from '@/components/ui/BrandLogo'
 
 const palette = {
   pearl: '#FBF5F0',
@@ -381,10 +382,7 @@ export default function TestExperience() {
     <main className="experience-page">
       {!loaded && (
         <div className="loader">
-          <div className="loader-logo">
-            <span>just</span>
-            <strong>BECAUSE</strong>
-          </div>
+          <BrandLogo size="lg" className="loader-logo" />
           <div className="loader-line" />
         </div>
       )}
@@ -392,10 +390,7 @@ export default function TestExperience() {
       <canvas ref={canvasRef} className="diamond-canvas" aria-hidden="true" />
 
       <header className="topbar scene-reveal">
-        <Link href="/" className="logo-lockup" aria-label="Just Because home">
-          <span>just</span>
-          <strong>BECAUSE</strong>
-        </Link>
+        <BrandLogo size="md" href="/" className="logo-lockup" />
         <nav className="desktop-nav" aria-label="Test experience navigation">
           {['Collection', 'Diamonds', 'Build', 'Story'].map((item) => (
             <a key={item} href="#collection">
@@ -561,7 +556,9 @@ export default function TestExperience() {
       </section>
 
       <section className="manifesto-section">
-        <p className="eyebrow scene-reveal">JUST BECAUSE</p>
+        <div className="scene-reveal" style={{ marginBottom: '18px' }}>
+          <BrandLogo size="sm" />
+        </div>
         <h2 className="scene-reveal">
           You do not need a reason.
           <span>That is exactly the point.</span>
@@ -579,10 +576,7 @@ export default function TestExperience() {
       <footer className="experience-footer">
         <div className="footer-grid">
           <div>
-            <Link href="/" className="logo-lockup">
-              <span>just</span>
-              <strong>BECAUSE</strong>
-            </Link>
+            <BrandLogo size="md" href="/" className="logo-lockup" />
             <p>Lab-grown diamonds and recycled gold, for every moment that does not need a name.</p>
           </div>
           {[
@@ -644,26 +638,8 @@ export default function TestExperience() {
 
         .loader-logo,
         .logo-lockup {
-          align-items: baseline;
           color: ${palette.gold};
-          display: inline-flex;
-          gap: 8px;
           text-decoration: none;
-        }
-
-        .loader-logo span,
-        .logo-lockup span {
-          font-family: var(--font-italianno), cursive;
-          font-size: 42px;
-          line-height: 0.8;
-        }
-
-        .loader-logo strong,
-        .logo-lockup strong {
-          color: ${palette.pearl};
-          font-size: 11px;
-          font-weight: 500;
-          letter-spacing: 0.34em;
         }
 
         .loader-line {
@@ -1345,15 +1321,6 @@ export default function TestExperience() {
 
           .icon-row {
             gap: 12px;
-          }
-
-          .logo-lockup span {
-            font-size: 34px;
-          }
-
-          .logo-lockup strong {
-            font-size: 9px;
-            letter-spacing: 0.26em;
           }
 
           .hero {
