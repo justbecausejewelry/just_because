@@ -33,21 +33,54 @@ const italianno = Italianno({
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://justbecausejewelry.com'),
-  title: 'Just Because - Lab-Grown Diamond Jewelry',
-  description: "Lab-grown diamonds and 18k recycled gold, crafted for every moment that doesn't ask for an occasion.",
+  title: {
+    default: 'Just Because - Lab-Grown Diamond Jewelry',
+    template: '%s | Just Because',
+  },
+  description: "Lab-grown diamonds and recycled gold, crafted for the moments that don't ask for an occasion. IGI certified, free shipping over $200, lifetime warranty.",
+  keywords: [
+    'lab grown diamonds',
+    'engagement rings',
+    'diamond jewelry',
+    'sustainable jewelry',
+    'IGI certified diamonds',
+  ],
+  authors: [{ name: 'Just Because Jewelry' }],
   alternates: {
     canonical: '/',
   },
   openGraph: {
-    title: 'Just Because - Lab-Grown Diamond Jewelry',
-    description: "Lab-grown diamonds and 18k recycled gold, crafted for every moment that doesn't ask for an occasion.",
-    url: 'https://justbecausejewelry.com',
-    siteName: 'Just Because Jewelry',
-    images: ['/apple-touch-icon.png'],
     type: 'website',
+    locale: 'en_US',
+    url: 'https://justbecausejewelry.com',
+    siteName: 'Just Because',
+    title: 'Just Because - Lab-Grown Diamond Jewelry',
+    description: "Lab-grown diamonds and recycled gold, crafted for the moments that don't ask for an occasion.",
+    images: [
+      {
+        url: '/images/og-image.jpg',
+        width: 1200,
+        height: 630,
+        alt: 'Just Because Jewelry',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Just Because - Lab-Grown Diamond Jewelry',
+    description: "Lab-grown diamonds and recycled gold, crafted for the moments that don't ask for an occasion.",
+    images: ['/images/og-image.jpg'],
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
   icons: {
-    icon: '/favicon.ico',
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
     apple: '/apple-touch-icon.png',
   },
 }
