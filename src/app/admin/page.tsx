@@ -60,7 +60,7 @@ export default function AdminDashboardPage() {
     const load = async () => {
       const [productsResponse, diamondsResponse, ordersResponse] = await Promise.all([
         adminFetch('/api/admin/products'),
-        fetch('/api/products?limit=1'),
+        adminFetch('/api/products?limit=1'),
         adminFetch('/api/admin/stats').catch(() => null),
       ])
       const productPayload = (await productsResponse.json()) as { products?: Product[] }

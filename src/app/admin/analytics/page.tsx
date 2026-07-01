@@ -18,7 +18,7 @@ import {
   YAxis,
 } from 'recharts'
 import { Diamond as DiamondIcon } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+import { adminFetch } from '@/lib/adminSession'
 import { formatCurrency, groupByDay } from '@/lib/analyticsHelpers'
 import { normalizeOrderStatus, orderStatusLabel } from '@/lib/tracking'
 
@@ -187,46 +187,21 @@ export default function AdminAnalyticsPage() {
     setLoadError(null)
 
     try {
-      const [
-        profilesResponse,
-        adminsResponse,
-        ordersResponse,
-        cartEventsResponse,
-        pageViewsResponse,
-        productsResponse,
-        diamondsResponse,
-      ] = await Promise.all([
-        supabase.from('UserProfile').select('id,userId,email,createdAt'),
-        supabase.from('AdminUser').select('email,role'),
-        supabase.from('Order').select('id,customerEmail,total,status,createdAt').order('createdAt', { ascending: true }),
-        supabase.from('cart_events').select('*').order('created_at', { ascending: true }),
-        supabase.from('page_views').select('*').order('created_at', { ascending: true }),
-        supabase.from('Product').select('id,title,basePrice,productType,images'),
-        supabase.from('Diamond').select('id,shape,carat,price,imageUrl'),
-      ])
+      const response = await adminFetch('/api/admin/analytics')
+      const payload = (await response.json()) as Partial<Metrics> & { error?: string }
 
-      const failed = [
-        profilesResponse.error,
-        adminsResponse.error,
-        ordersResponse.error,
-        cartEventsResponse.error,
-        pageViewsResponse.error,
-        productsResponse.error,
-        diamondsResponse.error,
-      ].filter(Boolean)
-
-      if (failed.length) {
-        setLoadError(failed.map((error) => error?.message).join(' | '))
+      if (!response.ok) {
+        setLoadError(payload.error || 'Unable to load analytics')
       }
 
       setMetrics({
-        profiles: (profilesResponse.data || []) as UserProfileRow[],
-        admins: (adminsResponse.data || []) as AdminUserRow[],
-        orders: (ordersResponse.data || []) as OrderRow[],
-        cartEvents: (cartEventsResponse.data || []) as CartEventRow[],
-        pageViews: (pageViewsResponse.data || []) as PageViewRow[],
-        products: (productsResponse.data || []) as ProductRow[],
-        diamonds: (diamondsResponse.data || []) as DiamondRow[],
+        admins: payload.admins || [],
+        cartEvents: payload.cartEvents || [],
+        diamonds: payload.diamonds || [],
+        orders: payload.orders || [],
+        pageViews: payload.pageViews || [],
+        products: payload.products || [],
+        profiles: payload.profiles || [],
       })
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : 'Unable to load analytics')
