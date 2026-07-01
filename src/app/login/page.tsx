@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { Eye, EyeOff } from 'lucide-react'
 import { supabaseAuth } from '@/lib/auth'
 import { clearCart, getCart } from '@/lib/cart'
-import { getAuthErrorMessage, getGeneralErrorMessage } from '@/lib/errors'
+import { getAuthErrorMessage } from '@/lib/errors'
 import { mergeGuestCart } from '@/lib/mergeGuestCart'
 import { BrandLogo } from '@/components/ui/BrandLogo'
 import ErrorMessage from '@/components/ui/ErrorMessage'
@@ -82,12 +82,15 @@ export default function LoginPage() {
       )
 
       if (signInError) {
-        console.error('[login] signInWithPassword failed:', signInError)
         const message = signInError.message.toLowerCase()
         if (message.includes('email not confirmed') || message.includes('not confirmed')) {
           setError('Please verify your email first.')
           setUnverifiedEmail(normalizedEmail)
           return
+        }
+
+        if (!message.includes('invalid login credentials') && !message.includes('invalid credentials')) {
+          console.error('[login] signInWithPassword failed:', signInError)
         }
 
         setError(getAuthErrorMessage(signInError))
@@ -96,28 +99,6 @@ export default function LoginPage() {
 
       if (!data.user) {
         setError('The email or password you entered is incorrect. Please try again.')
-        return
-      }
-
-      const { data: profile, error: profileError } = await withTimeout(
-        supabaseAuth
-          .from('UserProfile')
-          .select('email_verified')
-          .eq('userId', data.user.id)
-          .maybeSingle(),
-        'Account verification check timed out. Please try again.'
-      )
-
-      if (profileError) {
-        console.error('[login] profile lookup failed:', profileError)
-        setError(getGeneralErrorMessage(profileError))
-        return
-      }
-
-      if (!profile || (profile as { email_verified?: boolean | null }).email_verified !== true) {
-        window.localStorage.setItem('pendingVerifyEmail', normalizedEmail)
-        setIsRedirecting(true)
-        router.replace(`/verify?email=${encodeURIComponent(normalizedEmail)}`)
         return
       }
 
