@@ -128,5 +128,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: getGeneralErrorMessage(profileError) }, { status: 500 })
   }
 
-  return NextResponse.json({ ok: true, userId: profile.userId || null })
+  const { data: magicData, error: magicError } = await supabaseAdmin.auth.admin.generateLink({
+    type: 'magiclink',
+    email,
+  })
+
+  if (magicError || !magicData.properties?.email_otp) {
+    console.error('[verify-otp] magic token generation failed:', magicError || 'Missing email_otp')
+    return NextResponse.json({ error: getGeneralErrorMessage(magicError) }, { status: 500 })
+  }
+
+  return NextResponse.json({
+    ok: true,
+    userId: profile.userId || null,
+    email,
+    magicToken: magicData.properties.email_otp,
+    magicType: 'magiclink',
+  })
 }

@@ -11,7 +11,7 @@ import { mergeGuestCart } from '@/lib/mergeGuestCart'
 import { BrandLogo } from '@/components/ui/BrandLogo'
 import ErrorMessage from '@/components/ui/ErrorMessage'
 
-const AUTH_TIMEOUT_MS = 10000
+const AUTH_TIMEOUT_MS = 8000
 
 function delay(ms: number) {
   return new Promise((resolve) => globalThis.setTimeout(resolve, ms))
@@ -40,6 +40,7 @@ export default function LoginPage() {
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
   const [resendLoading, setResendLoading] = useState(false)
+  const [isRedirecting, setIsRedirecting] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [unverifiedEmail, setUnverifiedEmail] = useState('')
@@ -57,6 +58,8 @@ export default function LoginPage() {
   }, [])
 
   const handleSignIn = async () => {
+    if (loading || isRedirecting) return
+
     const normalizedEmail = email.trim().toLowerCase()
 
     if (!normalizedEmail || !password) {
@@ -82,7 +85,7 @@ export default function LoginPage() {
         console.error('[login] signInWithPassword failed:', signInError)
         const message = signInError.message.toLowerCase()
         if (message.includes('email not confirmed') || message.includes('not confirmed')) {
-          setError('Please verify your email with the 4-digit code we sent you.')
+          setError('Please verify your email first.')
           setUnverifiedEmail(normalizedEmail)
           return
         }
@@ -115,7 +118,7 @@ export default function LoginPage() {
         await withTimeout(supabaseAuth.auth.signOut(), 'Sign out timed out. Please refresh and try again.').catch((caught: unknown) => {
           console.error('[login] signOut after unverified profile failed:', caught)
         })
-        setError('Please verify your email with the 4-digit code we sent you.')
+        setError('Please verify your email first.')
         setUnverifiedEmail(normalizedEmail)
         return
       }
@@ -165,6 +168,7 @@ export default function LoginPage() {
       }
 
       const redirect = new URLSearchParams(window.location.search).get('redirect')
+      setIsRedirecting(true)
       router.replace(redirect || '/account')
     } catch (caught) {
       console.error('[login] sign in failed:', caught)
@@ -204,13 +208,23 @@ export default function LoginPage() {
       }
 
       setUnverifiedEmail(targetEmail)
-      setNotice('Verification code resent. Please check your inbox and spam folder.')
+      setNotice('Code sent!')
     } catch (caught) {
       console.error('[login] resend verification code failed:', caught)
       setError(caught instanceof Error ? caught.message : getAuthErrorMessage(caught))
     } finally {
       setResendLoading(false)
     }
+  }
+
+  const handleGoToVerification = () => {
+    const targetEmail = (unverifiedEmail || email).trim().toLowerCase()
+
+    if (!targetEmail || isRedirecting) return
+
+    window.localStorage.setItem('pendingVerifyEmail', targetEmail)
+    setIsRedirecting(true)
+    router.replace(`/verify?email=${encodeURIComponent(targetEmail)}`)
   }
 
   return (
@@ -441,7 +455,7 @@ export default function LoginPage() {
               marginBottom: '8px',
               lineHeight: 1.0,
             }}>
-              Sign in
+              {unverifiedEmail ? 'Your email is not verified yet.' : 'Sign in'}
             </h1>
             <p style={{
               fontFamily: 'Inter, sans-serif',
@@ -449,56 +463,83 @@ export default function LoginPage() {
               color: '#1A1014',
               marginBottom: '36px',
             }}>
-              Don&apos;t have an account?{' '}
-              <Link href="/signup" style={{
-                color: '#C9A961',
-                textDecoration: 'none',
-                fontWeight: 600,
-                borderBottom: '1px solid #EDD9AF',
-                paddingBottom: '1px',
-              }}>Create one →</Link>
+              {unverifiedEmail ? (
+                <>We sent a code to <strong>{unverifiedEmail}</strong>.</>
+              ) : (
+                <>
+                  Don&apos;t have an account?{' '}
+                  <Link href="/signup" style={{
+                    color: '#C9A961',
+                    textDecoration: 'none',
+                    fontWeight: 600,
+                    borderBottom: '1px solid #EDD9AF',
+                    paddingBottom: '1px',
+                  }}>Create one &gt;</Link>
+                </>
+              )}
             </p>
 
             {error && <ErrorMessage message={error} />}
 
             {unverifiedEmail ? (
-              <div style={{ display: 'grid', gap: '10px', marginBottom: '18px' }}>
+              <div style={{ display: 'grid', gap: '14px', marginBottom: '18px' }}>
                 <button
                   type="button"
-                  onClick={() => void handleResendCode()}
-                  disabled={resendLoading}
+                  onClick={handleGoToVerification}
+                  disabled={isRedirecting}
                   style={{
                     width: '100%',
-                    padding: '13px 16px',
-                    background: 'transparent',
-                    color: '#C9A961',
-                    border: '0.5px solid #EDD9AF',
-                    fontSize: '11px',
-                    letterSpacing: '0.16em',
-                    fontFamily: 'Inter, sans-serif',
-                    cursor: resendLoading ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.3s',
-                  }}
-                >
-                  {resendLoading ? 'SENDING...' : 'RESEND VERIFICATION CODE'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => router.replace(`/signup?verifyEmail=${encodeURIComponent(unverifiedEmail)}`)}
-                  style={{
-                    width: '100%',
-                    padding: '13px 16px',
+                    padding: '15px 16px',
                     background: '#1A1014',
                     color: '#FBF5F0',
                     border: 'none',
                     fontSize: '11px',
                     letterSpacing: '0.16em',
                     fontFamily: 'Inter, sans-serif',
-                    cursor: 'pointer',
+                    cursor: isRedirecting ? 'not-allowed' : 'pointer',
                     transition: 'all 0.3s',
                   }}
                 >
-                  ENTER VERIFICATION CODE
+                  {isRedirecting ? 'OPENING...' : 'ENTER VERIFICATION CODE'}
+                </button>
+                <p style={{ color: '#B8A090', fontFamily: 'Inter, sans-serif', fontSize: '12px', lineHeight: 1.7, margin: 0, textAlign: 'center' }}>
+                  Need a new code?{' '}
+                  <button
+                    type="button"
+                    onClick={() => void handleResendCode()}
+                    disabled={resendLoading}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#C9A961',
+                      cursor: resendLoading ? 'not-allowed' : 'pointer',
+                      fontFamily: 'Inter, sans-serif',
+                      fontSize: '12px',
+                      padding: 0,
+                      textDecoration: 'underline',
+                    }}
+                  >
+                    {resendLoading ? 'sending...' : 'Resend code'}
+                  </button>
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUnverifiedEmail('')
+                    setError('')
+                    setNotice('')
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#1A1014',
+                    cursor: 'pointer',
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: '12px',
+                    padding: 0,
+                  }}
+                >
+                  Back to sign in
                 </button>
               </div>
             ) : null}
@@ -515,6 +556,8 @@ export default function LoginPage() {
               }}>{notice}</div>
             )}
 
+            {!unverifiedEmail ? (
+              <>
             <div style={{ marginBottom: '18px' }}>
               <div style={{
                 fontSize: '9px',
@@ -587,22 +630,22 @@ export default function LoginPage() {
 
             <button
               onClick={() => void handleSignIn()}
-              disabled={loading}
+              disabled={loading || isRedirecting}
               style={{
                 width: '100%',
                 padding: '16px',
-                background: loading ? '#888' : '#1A1014',
+                background: loading || isRedirecting ? '#888' : '#1A1014',
                 color: '#FBF5F0',
                 border: 'none',
                 fontSize: '11px',
                 letterSpacing: '0.22em',
                 fontFamily: 'Inter, sans-serif',
-                cursor: loading ? 'not-allowed' : 'pointer',
+                cursor: loading || isRedirecting ? 'not-allowed' : 'pointer',
                 transition: 'background 0.3s',
                 marginBottom: '24px',
               }}
             >
-              {loading ? 'SIGNING IN...' : 'SIGN IN →'}
+              {loading || isRedirecting ? 'SIGNING IN...' : 'SIGN IN >'}
             </button>
 
             <div style={{
@@ -618,7 +661,11 @@ export default function LoginPage() {
             </div>
 
             <button
-              onClick={() => router.push('/')}
+              onClick={() => {
+                if (isRedirecting) return
+                setIsRedirecting(true)
+                router.push('/')
+              }}
               style={{
                 width: '100%',
                 padding: '14px',
@@ -651,6 +698,8 @@ export default function LoginPage() {
             }}>
               Browse our collection without an account
             </p>
+              </>
+            ) : null}
           </div>
         </div>
       </div>

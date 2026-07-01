@@ -160,6 +160,7 @@ function MenuCard({ href, icon: Icon, title, description, badge }: MenuCardProps
 export default function AccountPage() {
   const router = useRouter()
   const loadedUserIdRef = useRef<string | null>(null)
+  const isRedirectingRef = useRef(false)
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [stats, setStats] = useState<AccountStats>({
@@ -182,11 +183,12 @@ export default function AccountPage() {
     }
 
     const scheduleLoginRedirect = () => {
-      if (loginRedirectTimer) return
+      if (loginRedirectTimer || isRedirectingRef.current) return
 
       loginRedirectTimer = globalThis.setTimeout(() => {
-        if (cancelled || loadedUserIdRef.current) return
+        if (cancelled || loadedUserIdRef.current || isRedirectingRef.current) return
 
+        isRedirectingRef.current = true
         setPageLoading(false)
         router.replace('/login?redirect=/account')
       }, 3000)
@@ -226,6 +228,7 @@ export default function AccountPage() {
       const email = currentUser.email || ''
       const isSameUser = loadedUserIdRef.current === currentUser.id
 
+      isRedirectingRef.current = false
       clearLoginRedirect()
       setUser(currentUser)
       setPageLoading(false)
@@ -254,7 +257,7 @@ export default function AccountPage() {
     }
 
     const verifyCurrentSession = async () => {
-      await new Promise((resolve) => globalThis.setTimeout(resolve, 500))
+      await new Promise((resolve) => globalThis.setTimeout(resolve, 1000))
       const { data: { session } } = await supabase.auth.getSession()
       if (cancelled) return
 
@@ -275,6 +278,8 @@ export default function AccountPage() {
 
       if (event === 'SIGNED_OUT') {
         clearLoginRedirect()
+        if (isRedirectingRef.current) return
+        isRedirectingRef.current = true
         setPageLoading(false)
         router.replace('/login?redirect=/account')
         return

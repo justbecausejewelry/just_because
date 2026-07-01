@@ -36,6 +36,10 @@ function redirectToLogin(request: NextRequest) {
   return NextResponse.redirect(redirectUrl)
 }
 
+function wait(ms: number) {
+  return new Promise((resolve) => globalThis.setTimeout(resolve, ms))
+}
+
 async function checkAdminUser(email: string, env: SupabaseEnv): Promise<AdminCheck> {
   if (!env.serviceRoleKey) {
     console.error('[proxy] SUPABASE_SERVICE_ROLE_KEY missing during admin check')
@@ -73,10 +77,9 @@ export async function proxy(request: NextRequest) {
   }
 
   const adminPath = pathname === '/admin' || pathname.startsWith('/admin/')
-  const accountPath = pathname === '/account' || pathname.startsWith('/account/')
   const checkoutPath = pathname === '/checkout'
 
-  if (!adminPath && !accountPath && !checkoutPath) {
+  if (!adminPath && !checkoutPath) {
     return NextResponse.next()
   }
 
@@ -107,10 +110,17 @@ export async function proxy(request: NextRequest) {
     },
   })
 
-  const {
+  let {
     data: { user },
     error,
   } = await supabase.auth.getUser()
+
+  if (!user?.email) {
+    await wait(600)
+    const retry = await supabase.auth.getUser()
+    user = retry.data.user
+    error = retry.error
+  }
 
   if (error) {
     console.error('[proxy] getUser failed:', error.message)
@@ -136,5 +146,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/account/:path*', '/checkout', '/admin/:path*'],
+  matcher: ['/checkout', '/admin/:path*'],
 }
