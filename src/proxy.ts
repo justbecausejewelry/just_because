@@ -67,6 +67,11 @@ async function checkAdminUser(email: string, env: SupabaseEnv): Promise<AdminChe
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname
+
+  if (pathname === '/auth/callback' || pathname.startsWith('/auth/callback/')) {
+    return NextResponse.next()
+  }
+
   const adminPath = pathname === '/admin' || pathname.startsWith('/admin/')
   const accountPath = pathname === '/account' || pathname.startsWith('/account/')
   const checkoutPath = pathname === '/checkout'

@@ -172,6 +172,25 @@ export default function AccountPage() {
 
   useEffect(() => {
     let cancelled = false
+    let loginRedirectTimer: ReturnType<typeof globalThis.setTimeout> | null = null
+
+    const clearLoginRedirect = () => {
+      if (!loginRedirectTimer) return
+
+      globalThis.clearTimeout(loginRedirectTimer)
+      loginRedirectTimer = null
+    }
+
+    const scheduleLoginRedirect = () => {
+      if (loginRedirectTimer) return
+
+      loginRedirectTimer = globalThis.setTimeout(() => {
+        if (cancelled || loadedUserIdRef.current) return
+
+        setPageLoading(false)
+        router.replace('/login?redirect=/account')
+      }, 3000)
+    }
 
     const loadStats = async (userId: string, email: string) => {
       const [ordersResult, wishlistResult, unreadResult] = await Promise.allSettled([
@@ -207,6 +226,7 @@ export default function AccountPage() {
       const email = currentUser.email || ''
       const isSameUser = loadedUserIdRef.current === currentUser.id
 
+      clearLoginRedirect()
       setUser(currentUser)
       setPageLoading(false)
 
@@ -244,8 +264,7 @@ export default function AccountPage() {
       }
 
       if (!storedSession?.user) {
-        setPageLoading(false)
-        router.push('/login?redirect=/account')
+        scheduleLoginRedirect()
       }
     }
 
@@ -255,8 +274,9 @@ export default function AccountPage() {
       if (cancelled) return
 
       if (event === 'SIGNED_OUT') {
+        clearLoginRedirect()
         setPageLoading(false)
-        router.push('/login?redirect=/account')
+        router.replace('/login?redirect=/account')
         return
       }
 
@@ -269,6 +289,7 @@ export default function AccountPage() {
 
     return () => {
       cancelled = true
+      clearLoginRedirect()
       subscription.unsubscribe()
     }
   }, [router])
