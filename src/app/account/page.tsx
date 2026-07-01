@@ -247,12 +247,6 @@ export default function AccountPage() {
     const storedSession = getSessionFromStorage()
     if (storedSession?.user) {
       hydrateAccount(storedSession.user)
-      if (storedSession.refresh_token) {
-        void supabase.auth.setSession({
-          access_token: storedSession.access_token,
-          refresh_token: storedSession.refresh_token,
-        })
-      }
     }
 
     const verifyCurrentSession = async () => {

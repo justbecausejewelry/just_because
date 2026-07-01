@@ -246,26 +246,7 @@ export default function SignupPage() {
         return
       }
 
-      const cookieResponse = await withTimeout(fetch('/api/auth/session-cookie', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${signInData.session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          accessToken: signInData.session.access_token,
-          refreshToken: signInData.session.refresh_token,
-        }),
-      }), 'Saving your session timed out. Please sign in manually.')
-
-      if (!cookieResponse.ok) {
-        console.error('[signup] session cookie save failed:', await cookieResponse.text().catch(() => 'No response body'))
-        setError('Email verified, but we could not finish signing you in. Please sign in manually.')
-        setLoading(false)
-        return
-      }
-
-      await delay(600)
+      await delay(500)
 
       const { data: sessionData, error: sessionError } = await withTimeout(
         supabaseAuth.auth.getSession(),

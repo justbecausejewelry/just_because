@@ -107,20 +107,6 @@ export default function LoginPage() {
         return
       }
 
-      const { error: setSessionError } = await withTimeout(
-        supabaseAuth.auth.setSession({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-        }),
-        'Saving your session timed out. Please try again.'
-      )
-
-      if (setSessionError) {
-        console.error('[login] browser session save failed:', setSessionError)
-        setError('We could not finish signing you in. Please try again.')
-        return
-      }
-
       await delay(500)
 
       const { data: sessionData, error: sessionError } = await withTimeout(
