@@ -1,4 +1,5 @@
-import { createClient, type Session, type SupabaseClient, type User } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/ssr'
+import type { Session, SupabaseClient, User } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -75,6 +76,15 @@ function clearLegacyAuthStorage() {
   }
 }
 
+function clearStaleCanonicalAuthState() {
+  if (typeof window === 'undefined') return
+
+  const hostname = window.location.hostname.toLowerCase()
+  if (hostname === 'www.justbecausejewelry.com') return
+
+  clearLegacyAuthStorage()
+}
+
 export function clearBrowserAuthState(clearAccountUser = false) {
   if (typeof window === 'undefined') return
 
@@ -101,6 +111,8 @@ function bootstrapSessionFromCookie() {
   if (typeof window === 'undefined') return
 
   try {
+    clearStaleCanonicalAuthState()
+
     if (window.localStorage.getItem(SUPABASE_AUTH_STORAGE_KEY)) return
 
     const session = getBrowserCookie(AUTH_SESSION_COOKIE)
@@ -176,11 +188,12 @@ export function getSupabaseClient(): SupabaseClient {
 
   bootstrapSessionFromCookie()
 
-  supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
+  supabaseInstance = createBrowserClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       autoRefreshToken: true,
-      detectSessionInUrl: false,
       persistSession: true,
+      detectSessionInUrl: true,
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
       storageKey: SUPABASE_AUTH_STORAGE_KEY,
     },
   })

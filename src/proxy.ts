@@ -119,6 +119,14 @@ async function checkAdminUser(email: string, env: SupabaseEnv): Promise<AdminChe
 }
 
 export async function proxy(request: NextRequest) {
+  const host = request.headers.get('host') || ''
+
+  if (host.startsWith('www.')) {
+    const url = request.nextUrl.clone()
+    url.host = host.replace('www.', '')
+    return NextResponse.redirect(url, { status: 301 })
+  }
+
   const pathname = request.nextUrl.pathname
 
   if (pathname === '/auth/callback' || pathname.startsWith('/auth/callback/')) {
@@ -203,5 +211,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/checkout'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)'],
 }

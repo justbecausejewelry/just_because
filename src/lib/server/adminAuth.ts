@@ -52,11 +52,20 @@ function createAdminClient() {
 }
 
 function getBearerToken(request: NextRequest | Request) {
-  const authHeader = request.headers.get('authorization')
-  if (!authHeader?.startsWith('Bearer ')) return null
+  const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+  if (!authHeader) {
+    console.log('[adminAuth] No authorization header found')
+    console.log('[adminAuth] Headers received:', Object.fromEntries(request.headers.entries()))
+    return null
+  }
 
-  const token = authHeader.slice('Bearer '.length).trim()
-  return token || null
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim()
+  if (!token) {
+    console.log('[adminAuth] Empty authorization token')
+    return null
+  }
+
+  return token
 }
 
 export async function verifyAdminRequest(request: NextRequest | Request): Promise<VerifyAdminRequestResult> {
@@ -77,7 +86,7 @@ export async function verifyAdminRequest(request: NextRequest | Request): Promis
       return {
         admin: null,
         adminData: null,
-        error: 'No authorization token provided',
+        error: 'No authorization header',
         status: 401,
         user: null,
       }
@@ -88,11 +97,23 @@ export async function verifyAdminRequest(request: NextRequest | Request): Promis
       error,
     } = await admin.auth.getUser(token)
 
-    if (error || !user?.email) {
+    if (error) {
+      console.log('[adminAuth] getUser error:', error.message)
       return {
         admin: null,
         adminData: null,
-        error: 'Invalid or expired token',
+        error: error.message,
+        status: 401,
+        user: null,
+      }
+    }
+
+    if (!user?.email) {
+      console.log('[adminAuth] No user found')
+      return {
+        admin: null,
+        adminData: null,
+        error: 'No user found',
         status: 401,
         user: null,
       }
@@ -102,10 +123,11 @@ export async function verifyAdminRequest(request: NextRequest | Request): Promis
       .from('AdminUser')
       .select('id,email,name,role,createdAt')
       .eq('email', user.email.toLowerCase())
-      .maybeSingle()
+      .single()
 
     const role = typeof adminUser?.role === 'string' ? adminUser.role : null
     if (adminError || (role !== 'admin' && role !== 'super_admin')) {
+      console.log('[adminAuth] AdminUser lookup failed:', adminError?.message || 'Not an admin')
       return {
         admin: null,
         adminData: null,
