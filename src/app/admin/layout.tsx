@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, type ReactNode } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { forceSignOut } from '@/lib/forceSignOut'
 import { getSettledBrowserSession } from '@/lib/supabase'
@@ -55,7 +55,6 @@ export default function AdminLayout({
 }: {
   children: ReactNode
 }) {
-  const router = useRouter()
   const pathname = usePathname()
   const [checking, setChecking] = useState(true)
   const [allowed, setAllowed] = useState(false)
@@ -70,7 +69,6 @@ export default function AdminLayout({
     if (!isAdmin) {
       setAllowed(false)
       setChecking(false)
-      router.replace('/account')
       return
     }
 
@@ -84,7 +82,7 @@ export default function AdminLayout({
         : user?.email?.split('@')[0] || 'Admin'
       setAdminName(name)
     })
-  }, [isAdmin, roleLoading, router])
+  }, [isAdmin, roleLoading])
 
   useEffect(() => {
     if (!isAdmin) return
@@ -144,7 +142,38 @@ export default function AdminLayout({
     )
   }
 
-  if (!allowed) return null
+  if (!allowed) {
+    return (
+      <main style={{ alignItems: 'center', background: '#FBF5F0', color: '#1A1014', display: 'flex', justifyContent: 'center', minHeight: '100vh', padding: '40px 20px' }}>
+        <section style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '4px', maxWidth: '440px', padding: '36px 28px', textAlign: 'center' }}>
+          <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.3em', margin: '0 0 18px' }}>
+            ADMIN
+          </p>
+          <h1 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '30px', fontWeight: 400, margin: '0 0 12px' }}>
+            Admin access is not available yet.
+          </h1>
+          <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '13px', lineHeight: 1.7, margin: '0 0 24px' }}>
+            Your storefront session was not signed out. Return to your account and try the admin panel again once the role check finishes.
+          </p>
+          <Link
+            href="/account"
+            style={{
+              background: '#1A1014',
+              color: '#FBF5F0',
+              display: 'inline-block',
+              fontFamily: 'var(--font-inter)',
+              fontSize: '11px',
+              letterSpacing: '0.18em',
+              padding: '14px 22px',
+              textDecoration: 'none',
+            }}
+          >
+            BACK TO ACCOUNT
+          </Link>
+        </section>
+      </main>
+    )
+  }
 
   const isActive = (href: string, exact?: boolean) => {
     if (exact) return pathname === href
