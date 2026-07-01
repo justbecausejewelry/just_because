@@ -7,13 +7,8 @@ export const SUPABASE_AUTH_STORAGE_KEY = 'sb-xayiwdexbykvbvcgudne-auth-token'
 export const ACCOUNT_USER_STORAGE_KEY = 'jb_account_user_v1'
 const AUTH_SESSION_COOKIE = 'jb_auth_session_v1'
 const ACCOUNT_USER_COOKIE = 'jb_account_user_v1'
-const SESSION_SETTLE_DELAY_MS = 600
-const REFRESH_BACKOFF_MS = 60 * 1000
-const TOKEN_EXPIRY_BUFFER_SECONDS = 90
 
 let supabaseInstance: SupabaseClient | null = null
-let settledSessionPromise: Promise<Session | null> | null = null
-let refreshBackoffUntil = 0
 
 function cookieDomain() {
   if (typeof window === 'undefined') return ''
@@ -165,22 +160,6 @@ export function getStoredBrowserSession(): Session | null {
   }
 }
 
-function isSessionFresh(session: Session | null) {
-  if (!session?.access_token || !session.refresh_token || !session.user) return false
-  if (typeof session.expires_at !== 'number') return true
-  return session.expires_at > Date.now() / 1000 + TOKEN_EXPIRY_BUFFER_SECONDS
-}
-
-function shouldBackOff(error: unknown) {
-  if (!error || typeof error !== 'object') return false
-
-  const status = 'status' in error ? (error as { status?: unknown }).status : undefined
-  if (status === 429) return true
-
-  const message = 'message' in error ? (error as { message?: unknown }).message : undefined
-  return typeof message === 'string' && message.toLowerCase().includes('too many')
-}
-
 export function getSupabaseClient(): SupabaseClient {
   if (supabaseInstance) {
     return supabaseInstance
@@ -248,64 +227,14 @@ export function persistBrowserSession(session: Session) {
     window.localStorage.setItem(ACCOUNT_USER_STORAGE_KEY, storedAccountUser)
     setBrowserCookie(AUTH_SESSION_COOKIE, storedSession, 30 * 24 * 60 * 60)
     setBrowserCookie(ACCOUNT_USER_COOKIE, storedAccountUser, 30 * 24 * 60 * 60)
-    refreshBackoffUntil = 0
   } catch {
     // Storage can be unavailable in private modes. Supabase still owns in-memory auth.
   }
 }
 
-export async function getSettledBrowserSession(waitMs = SESSION_SETTLE_DELAY_MS): Promise<Session | null> {
-  if (settledSessionPromise) return settledSessionPromise
-
-  settledSessionPromise = settleBrowserSession(waitMs).finally(() => {
-    settledSessionPromise = null
-  })
-
-  return settledSessionPromise
-}
-
-async function settleBrowserSession(waitMs: number): Promise<Session | null> {
-  const client = getSupabaseClient()
-
-  const readSession = async () => {
-    const {
-      data: { session },
-    } = await client.auth.getSession()
-    return session
-  }
-
-  try {
-    const storedSession = getStoredBrowserSession()
-    if (isSessionFresh(storedSession)) {
-      return storedSession
-    }
-
-    if (Date.now() < refreshBackoffUntil) {
-      return storedSession
-    }
-
-    const immediateSession = await readSession()
-    if (immediateSession?.user) {
-      persistBrowserSession(immediateSession)
-      return immediateSession
-    }
-
-    await new Promise((resolve) => globalThis.setTimeout(resolve, waitMs))
-
-    const settledSession = await readSession()
-    if (settledSession?.user) {
-      persistBrowserSession(settledSession)
-      return settledSession
-    }
-
-    return storedSession
-  } catch (error) {
-    console.error('[auth] settled session check failed:', error)
-    if (shouldBackOff(error)) {
-      refreshBackoffUntil = Date.now() + REFRESH_BACKOFF_MS
-    }
-    return getStoredBrowserSession()
-  }
+export async function getSettledBrowserSession(waitMs = 0): Promise<Session | null> {
+  void waitMs
+  return getStoredBrowserSession()
 }
 
 export function getStoredAccountUser(): User | null {
