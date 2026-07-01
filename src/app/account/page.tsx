@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Heart, MessageSquare, RotateCcw, Settings, ShoppingBag } from 'lucide-react'
 import type { User } from '@supabase/supabase-js'
-import { supabase, SUPABASE_AUTH_STORAGE_KEY } from '@/lib/supabase'
+import { getStoredAccountUser, supabase, SUPABASE_AUTH_STORAGE_KEY } from '@/lib/supabase'
 import { forceSignOut } from '@/lib/forceSignOut'
 import { getOrCreateProfile, type UserProfile } from '@/lib/userProfile'
 import { useRole } from '@/hooks/useRole'
@@ -275,7 +275,11 @@ export default function AccountPage() {
       ])
     }
 
-    const storedSession = getSessionFromStorage() || getLoginHandoff()
+    const storedAccountUser = getStoredAccountUser()
+    const storedSession = getSessionFromStorage() || getLoginHandoff() || (storedAccountUser ? {
+      access_token: '',
+      user: storedAccountUser,
+    } : null)
     if (storedSession?.user) {
       hydrateAccount(storedSession.user)
     }

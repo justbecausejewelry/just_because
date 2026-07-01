@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { supabaseAuth } from '@/lib/auth'
 import { getAuthErrorMessage, isAlreadyRegisteredError, readFriendlyApiError } from '@/lib/errors'
+import { persistBrowserSession } from '@/lib/supabase'
 import { useToast } from '@/context/ToastContext'
 import { useFormPersistence } from '@/hooks/useFormPersistence'
 import { BrandLogo } from '@/components/ui/BrandLogo'
@@ -246,6 +247,7 @@ export default function SignupPage() {
         return
       }
 
+      persistBrowserSession(signInData.session)
       await delay(500)
 
       const { data: sessionData, error: sessionError } = await withTimeout(

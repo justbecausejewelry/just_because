@@ -8,6 +8,7 @@ import { supabaseAuth } from '@/lib/auth'
 import { clearCart, getCart } from '@/lib/cart'
 import { getAuthErrorMessage } from '@/lib/errors'
 import { mergeGuestCart } from '@/lib/mergeGuestCart'
+import { persistBrowserSession } from '@/lib/supabase'
 import { BrandLogo } from '@/components/ui/BrandLogo'
 import ErrorMessage from '@/components/ui/ErrorMessage'
 
@@ -121,6 +122,7 @@ export default function LoginPage() {
         return
       }
 
+      persistBrowserSession(data.session)
       saveLoginHandoff(data.user)
 
       const guestCart = getCart()

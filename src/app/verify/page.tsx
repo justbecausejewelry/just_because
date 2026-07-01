@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { BrandLogo } from '@/components/ui/BrandLogo'
 import ErrorMessage from '@/components/ui/ErrorMessage'
 import { getAuthErrorMessage, readFriendlyApiError } from '@/lib/errors'
-import { supabase } from '@/lib/supabase'
+import { persistBrowserSession, supabase } from '@/lib/supabase'
 
 const AUTH_TIMEOUT_MS = 10000
 
@@ -106,7 +106,7 @@ function VerifyContent() {
         return
       }
 
-      const { error: otpError } = await withTimeout(
+      const { data: otpData, error: otpError } = await withTimeout(
         supabase.auth.verifyOtp({
           email: verifiedEmail,
           token: magicToken,
@@ -121,6 +121,10 @@ function VerifyContent() {
         setIsRedirecting(true)
         router.replace('/login')
         return
+      }
+
+      if (otpData.session) {
+        persistBrowserSession(otpData.session)
       }
 
       await delay(500)
