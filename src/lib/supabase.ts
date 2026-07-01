@@ -230,10 +230,10 @@ export async function getSettledBrowserSession(waitMs = SESSION_SETTLE_DELAY_MS)
       return settledSession
     }
 
-    return getStoredBrowserSession()
+    return null
   } catch (error) {
     console.error('[auth] settled session check failed:', error)
-    return getStoredBrowserSession()
+    return null
   }
 }
 

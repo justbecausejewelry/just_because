@@ -256,7 +256,7 @@ export default function AccountPage() {
       }
     }
 
-    const hydrateAccount = (currentUser: User) => {
+    const hydrateAccount = (currentUser: User, loadPrivateData = true) => {
       if (cancelled) return
 
       const email = currentUser.email || ''
@@ -266,6 +266,10 @@ export default function AccountPage() {
       clearLoginRedirect()
       setUser(currentUser)
       setPageLoading(false)
+
+      if (!loadPrivateData) {
+        return
+      }
 
       if (isSameUser) {
         return
@@ -285,14 +289,10 @@ export default function AccountPage() {
       user: storedAccountUser,
     } : null)
     if (storedSession?.user) {
-      hydrateAccount(storedSession.user)
+      hydrateAccount(storedSession.user, false)
     }
 
     const verifyCurrentSession = async () => {
-      if (storedSession?.user) {
-        return
-      }
-
       const settledSession = await getSettledBrowserSession(1000)
       if (cancelled) return
 
