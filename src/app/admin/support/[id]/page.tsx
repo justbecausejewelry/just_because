@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { useToast } from '@/context/ToastContext'
-import { getSettledBrowserSession } from '@/lib/supabase'
+import { getAdminAccessToken } from '@/lib/adminSession'
 
 type ConversationStatus = 'open' | 'replied' | 'resolved'
 
@@ -45,14 +45,14 @@ export default function AdminSupportThreadPage() {
   const [isSending, setIsSending] = useState(false)
 
   const getAccessToken = async () => {
-    const session = await getSettledBrowserSession()
-    return session?.access_token || null
+    return getAdminAccessToken()
   }
 
   const loadConversation = useCallback(async () => {
     const token = await getAccessToken()
     if (!token) {
-      router.replace('/login?redirect=/admin/support')
+      showToast('Admin session is still loading. Please refresh in a moment.', 'error')
+      setIsLoading(false)
       return
     }
 

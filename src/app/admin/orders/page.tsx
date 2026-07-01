@@ -4,7 +4,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Check, Download, ExternalLink, Eye, MessageSquare, PackageCheck, Search, Truck, X } from 'lucide-react'
 import { getMetalLabel } from '@/config/productOptions'
-import { getSettledBrowserSession } from '@/lib/supabase'
+import { getAdminAccessToken } from '@/lib/adminSession'
 import {
   CARRIERS,
   getCarrierLabel,
@@ -159,8 +159,7 @@ function orderTotal(order: Order) {
 }
 
 async function getAdminToken() {
-  const session = await getSettledBrowserSession()
-  return session?.access_token || null
+  return getAdminAccessToken()
 }
 
 function isProcessingStatus(status: OrderStatus) {

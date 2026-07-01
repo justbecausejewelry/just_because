@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Shield, ShieldCheck, UserRound } from 'lucide-react'
 import { useToast } from '@/context/ToastContext'
-import { getSettledBrowserSession } from '@/lib/supabase'
+import { getAdminAccessToken } from '@/lib/adminSession'
 import { useRole } from '@/hooks/useRole'
 import { BrandLogo } from '@/components/ui/BrandLogo'
 
@@ -52,14 +52,14 @@ export default function AdminUsersPage() {
   const [updatingEmail, setUpdatingEmail] = useState<string | null>(null)
 
   const getAccessToken = useCallback(async () => {
-    const session = await getSettledBrowserSession()
-    return session?.access_token || null
+    return getAdminAccessToken()
   }, [])
 
   const loadUsers = useCallback(async () => {
     const token = await getAccessToken()
     if (!token) {
-      router.replace('/login')
+      showToast('Admin session is still loading. Please refresh in a moment.', 'error')
+      setLoading(false)
       return
     }
 
@@ -100,7 +100,7 @@ export default function AdminUsersPage() {
   const updateRole = async (email: string, role: 'user' | 'admin') => {
     const token = await getAccessToken()
     if (!token) {
-      router.replace('/login')
+      showToast('Admin session is still loading. Please try again.', 'error')
       return
     }
 

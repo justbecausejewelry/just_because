@@ -15,7 +15,7 @@ import {
   type RingSettingImages,
   type RingSettingPayload,
 } from '@/lib/ringSettings'
-import { getSettledBrowserSession } from '@/lib/supabase'
+import { getAdminAccessToken } from '@/lib/adminSession'
 import { useToast } from '@/context/ToastContext'
 
 type RingSettingFormProps = {
@@ -53,8 +53,7 @@ function blankPayload(): RingSettingPayload {
 }
 
 async function getAdminToken() {
-  const session = await getSettledBrowserSession()
-  return session?.access_token || null
+  return getAdminAccessToken()
 }
 
 function labelStyle() {

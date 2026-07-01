@@ -122,14 +122,20 @@ export function getStoredBrowserSession(): Session | null {
     const parsed: unknown = JSON.parse(raw)
     if (!isRecord(parsed)) return null
 
-    const accessToken = parsed.access_token
-    const refreshToken = parsed.refresh_token
-    const tokenType = parsed.token_type
-    const user = parsed.user
+    const candidate = isRecord(parsed.currentSession)
+      ? parsed.currentSession
+      : isRecord(parsed.session)
+        ? parsed.session
+        : parsed
+
+    const accessToken = candidate.access_token
+    const refreshToken = candidate.refresh_token
+    const tokenType = candidate.token_type
+    const user = candidate.user
     if (typeof accessToken !== 'string' || typeof refreshToken !== 'string' || !isRecord(user)) return null
     if (typeof user.id !== 'string' || !user.id) return null
 
-    const expiresAt = parsed.expires_at
+    const expiresAt = candidate.expires_at
     if (typeof expiresAt === 'number' && expiresAt < Date.now() / 1000 - 60) {
       return null
     }
@@ -138,7 +144,7 @@ export function getStoredBrowserSession(): Session | null {
       access_token: accessToken,
       refresh_token: refreshToken,
       expires_at: typeof expiresAt === 'number' ? expiresAt : undefined,
-      expires_in: typeof parsed.expires_in === 'number' ? parsed.expires_in : 3600,
+      expires_in: typeof candidate.expires_in === 'number' ? candidate.expires_in : 3600,
       token_type: tokenType === 'bearer' ? tokenType : 'bearer',
       user: user as unknown as User,
     }
@@ -262,7 +268,7 @@ async function settleBrowserSession(waitMs: number): Promise<Session | null> {
     }
 
     if (Date.now() < refreshBackoffUntil) {
-      return null
+      return storedSession
     }
 
     const immediateSession = await readSession()
@@ -279,13 +285,13 @@ async function settleBrowserSession(waitMs: number): Promise<Session | null> {
       return settledSession
     }
 
-    return null
+    return storedSession
   } catch (error) {
     console.error('[auth] settled session check failed:', error)
     if (shouldBackOff(error)) {
       refreshBackoffUntil = Date.now() + REFRESH_BACKOFF_MS
     }
-    return null
+    return getStoredBrowserSession()
   }
 }
 

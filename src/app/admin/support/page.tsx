@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { getSettledBrowserSession } from '@/lib/supabase'
+import { getAdminAccessToken } from '@/lib/adminSession'
 
 type ConversationStatus = 'open' | 'replied' | 'resolved'
 
@@ -26,8 +26,7 @@ type ConversationFilter = 'all' | 'general' | 'product' | ConversationStatus
 const tabs: ConversationFilter[] = ['all', 'general', 'product', 'open', 'replied', 'resolved']
 
 async function getAdminToken() {
-  const session = await getSettledBrowserSession()
-  return session?.access_token || null
+  return getAdminAccessToken()
 }
 
 function formatDate(value: string) {

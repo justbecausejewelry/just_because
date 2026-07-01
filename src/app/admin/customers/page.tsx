@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { MessageSquare, Search, ShoppingBag, UserRound } from 'lucide-react'
-import { getSettledBrowserSession } from '@/lib/supabase'
+import { getAdminAccessToken } from '@/lib/adminSession'
 
 type Customer = {
   id?: string
@@ -60,8 +60,7 @@ function customerSignupSource(customer: Customer) {
 }
 
 async function getAdminToken() {
-  const session = await getSettledBrowserSession()
-  return session?.access_token || null
+  return getAdminAccessToken()
 }
 
 export default function AdminCustomersPage() {

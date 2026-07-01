@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { ProductForm } from '@/components/admin/ProductForm'
-import { getSettledBrowserSession } from '@/lib/supabase'
+import { getAdminAccessToken } from '@/lib/adminSession'
 
 type ProductPayload = {
   product?: Record<string, unknown>
@@ -17,8 +17,7 @@ export default function EditProductPage() {
 
   useEffect(() => {
     const load = async () => {
-      const session = await getSettledBrowserSession()
-      const token = session?.access_token
+      const token = await getAdminAccessToken()
       if (!token) {
         setError('Admin session expired. Please sign in again.')
         return
