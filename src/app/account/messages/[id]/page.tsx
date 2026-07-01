@@ -46,7 +46,6 @@ export default function MessageThreadPage() {
       return
     }
 
-    loadedRef.current = true
     const response = await fetch(`/api/conversations/${params.id}`, {
       headers: { Authorization: `Bearer ${session.access_token}` },
     })
@@ -54,6 +53,7 @@ export default function MessageThreadPage() {
       conversation?: Conversation
       messages?: ConversationMessage[]
     }
+    loadedRef.current = true
     setConversation(payload.conversation || null)
     setMessages(payload.messages || [])
     setIsLoading(false)

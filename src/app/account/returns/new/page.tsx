@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { CheckCircle } from 'lucide-react'
@@ -77,6 +77,7 @@ function ReturnRequestContent() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const loadedRef = useRef(false)
   const draftState = useMemo(() => ({ step, reason, details }), [details, reason, step])
   const clearPersistedReturn = useFormPersistence('return_request_form_v1', draftState, (updater) => {
     const next = typeof updater === 'function' ? updater(draftState) : updater
@@ -109,6 +110,7 @@ function ReturnRequestContent() {
         if (orderError) throw orderError
 
         if (!cancelled) {
+          loadedRef.current = true
           setOrder(data as Order | null)
           setError(data ? '' : 'Order not found for this account.')
         }
@@ -135,8 +137,11 @@ function ReturnRequestContent() {
       if (cancelled) return
 
       if (event === 'SIGNED_OUT') {
+        if (loadedRef.current) return
+
         void getSettledBrowserSession().then((settledSession) => {
           if (cancelled) return
+          if (loadedRef.current) return
           if (settledSession?.user) {
             setUser(settledSession.user)
             void loadOrder(settledSession.user)

@@ -258,15 +258,7 @@ async function settleBrowserSession(waitMs: number): Promise<Session | null> {
   try {
     const storedSession = getStoredBrowserSession()
     if (isSessionFresh(storedSession)) {
-      const { data } = await client.auth.setSession({
-        access_token: storedSession!.access_token,
-        refresh_token: storedSession!.refresh_token,
-      })
-
-      if (data.session?.user) {
-        persistBrowserSession(data.session)
-        return data.session
-      }
+      return storedSession
     }
 
     if (Date.now() < refreshBackoffUntil) {

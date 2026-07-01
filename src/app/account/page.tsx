@@ -197,6 +197,7 @@ export default function AccountPage() {
   const router = useRouter()
   const loadedUserIdRef = useRef<string | null>(null)
   const isRedirectingRef = useRef(false)
+  const manualSignOutRef = useRef(false)
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [stats, setStats] = useState<AccountStats>({
@@ -312,6 +313,8 @@ export default function AccountPage() {
       if (cancelled) return
 
       if (event === 'SIGNED_OUT') {
+        if (loadedUserIdRef.current && !manualSignOutRef.current) return
+
         void (async () => {
           const settledSession = await getSettledBrowserSession(1000)
           if (cancelled) return
@@ -360,6 +363,7 @@ export default function AccountPage() {
   }, [router])
 
   const handleSignOut = async () => {
+    manualSignOutRef.current = true
     await forceSignOut()
   }
 

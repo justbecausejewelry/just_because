@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { RotateCcw } from 'lucide-react'
@@ -42,6 +42,7 @@ export default function AccountReturnsPage() {
   const [returns, setReturns] = useState<ReturnRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const loadedRef = useRef(false)
 
   useEffect(() => {
     let cancelled = false
@@ -68,6 +69,7 @@ export default function AccountReturnsPage() {
         }
 
         if (!cancelled) {
+          loadedRef.current = true
           setReturns(payload.returns || [])
           setError('')
         }
@@ -85,8 +87,11 @@ export default function AccountReturnsPage() {
 
     const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
+        if (loadedRef.current) return
+
         void getSettledBrowserSession().then((settledSession) => {
           if (cancelled) return
+          if (loadedRef.current) return
           if (settledSession?.user) {
             void loadReturns()
             return

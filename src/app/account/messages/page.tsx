@@ -48,12 +48,12 @@ export default function MessagesPage() {
         return
       }
 
-      loadedRef.current = true
       const response = await fetch('/api/conversations', {
         headers: { Authorization: `Bearer ${session.access_token}` },
       })
       const payload = (await response.json()) as { conversations?: Conversation[] }
       if (cancelled) return
+      loadedRef.current = true
       setConversations(payload.conversations || [])
       setIsLoading(false)
     }

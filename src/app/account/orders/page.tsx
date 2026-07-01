@@ -121,8 +121,11 @@ export default function AccountOrdersPage() {
       if (cancelled) return
 
       if (event === 'SIGNED_OUT') {
+        if (loadedUserIdRef.current) return
+
         void getSettledBrowserSession().then((settledSession) => {
           if (cancelled) return
+          if (loadedUserIdRef.current) return
           if (settledSession?.user) {
             void loadForUser(settledSession.user)
             return
