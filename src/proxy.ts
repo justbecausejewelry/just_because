@@ -59,10 +59,6 @@ function parseStoredSessionCookie(request: NextRequest): string | null {
     const decoded = decodeURIComponent(rawCookie)
     const parsed = JSON.parse(decoded) as StoredAuthSession
 
-    if (typeof parsed.expires_at === 'number' && parsed.expires_at < Date.now() / 1000 - 60) {
-      return null
-    }
-
     return typeof parsed.access_token === 'string' && parsed.access_token
       ? parsed.access_token
       : null
@@ -120,8 +116,9 @@ async function checkAdminUser(email: string, env: SupabaseEnv): Promise<AdminChe
 
 export async function proxy(request: NextRequest) {
   const host = request.headers.get('host') || ''
+  const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1')
 
-  if (host.startsWith('www.')) {
+  if (!isLocalhost && host.startsWith('www.')) {
     const url = request.nextUrl.clone()
     url.host = host.replace('www.', '')
     return NextResponse.redirect(url, { status: 301 })

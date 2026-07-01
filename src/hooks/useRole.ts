@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { getSettledBrowserSession, supabase } from '@/lib/supabase'
+import { adminFetch } from '@/lib/adminSession'
+import { supabase } from '@/lib/supabase'
 
 export type UserRole = 'user' | 'admin' | 'super_admin'
 const ROLE_CACHE_KEY = 'jb_user_role_v1'
@@ -52,28 +53,13 @@ export function useRole() {
       try {
         await new Promise((resolve) => globalThis.setTimeout(resolve, 500))
 
-        const session = await getSettledBrowserSession()
-        const user = session?.user || null
-
-        if (!user?.email || !session?.access_token) {
-          if (!cancelled) {
-            if (roleRef.current === 'user') {
-              setRole('user')
-            }
-            setLoading(false)
-          }
-          return
-        }
-
-        const response = await fetch('/api/admin/check-access', {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        })
+        const response = await adminFetch('/api/admin/check-access')
         const data = await response.json().catch(() => null) as { isAdmin?: boolean; role?: string | null } | null
 
         if (!cancelled) {
           if (response.ok && data?.isAdmin) {
             setRole(normalizeRole(data.role))
-          } else if (response.status === 403) {
+          } else if (response.status === 401 || response.status === 403) {
             setRole('user')
           }
           setLoading(false)

@@ -3,29 +3,6 @@ import { supabase } from './supabase'
 const STORAGE_KEY = 'sb-xayiwdexbykvbvcgudne-auth-token'
 
 export async function getAdminAccessToken(): Promise<string | null> {
-  // Step 1: Read directly from localStorage first.
-  // Token is already there, so no refresh is needed.
-  if (typeof window !== 'undefined') {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (raw) {
-        const parsed = JSON.parse(raw)
-        const token = parsed?.access_token
-        if (token) {
-          const expiresAt = parsed?.expires_at
-          const now = Math.floor(Date.now() / 1000)
-          if (!expiresAt || expiresAt > now + 60) {
-            return token
-          }
-        }
-      }
-    } catch {
-      // localStorage read failed. Continue to fallback.
-    }
-  }
-
-  // Step 2: Only call getSession if localStorage was empty.
-  // Do not manually refresh here; repeated refresh attempts cause 429s.
   try {
     const {
       data: { session },
@@ -33,11 +10,30 @@ export async function getAdminAccessToken(): Promise<string | null> {
     if (session?.access_token) {
       return session.access_token
     }
-  } catch {
-    // getSession failed.
+  } catch (err) {
+    console.error('[adminSession] getSession failed:', err)
   }
 
-  console.error('[adminFetch] No valid token found')
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (raw) {
+        const parsed: unknown = JSON.parse(raw)
+        if (
+          parsed &&
+          typeof parsed === 'object' &&
+          'access_token' in parsed &&
+          typeof parsed.access_token === 'string'
+        ) {
+          return parsed.access_token
+        }
+      }
+    } catch (err) {
+      console.error('[adminSession] localStorage read failed:', err)
+    }
+  }
+
+  console.error('[adminFetch] No token found anywhere')
   return null
 }
 
@@ -49,31 +45,20 @@ export async function adminFetch(
 
   if (!token) {
     return new Response(
-      JSON.stringify({
-        error: 'Session expired. Please sign in again.',
-      }),
-      {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      }
+      JSON.stringify({ error: 'Session expired. Please sign in again.' }),
+      { status: 401, headers: { 'Content-Type': 'application/json' } }
     )
   }
 
   const headers = new Headers(options.headers)
   headers.set('Authorization', `Bearer ${token}`)
-
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData
   if (
     !headers.has('Content-Type') &&
-    !(options.body instanceof FormData)
+    !isFormData
   ) {
     headers.set('Content-Type', 'application/json')
   }
 
-  const response = await fetch(url, { ...options, headers })
-
-  if (response.status === 401) {
-    console.error('[adminFetch] 401 on:', url)
-  }
-
-  return response
+  return fetch(url, { ...options, headers })
 }

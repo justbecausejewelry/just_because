@@ -52,51 +52,67 @@ async function writeWithSchemaRetry(
 }
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAdmin(request)
-  if ('error' in auth) return auth.error
+  try {
+    const auth = await requireAdmin(request)
+    if ('error' in auth) return auth.error
 
-  const { data, error } = await auth.admin
-    .from('Product')
-    .select('id, sku, title, slug, productType, category, basePrice, isActive, isBestSeller, isNewArrival, isFeatured, isGift, collections, images')
-    .order('createdAt', { ascending: false })
-
-  const missingColumn = error ? getMissingColumn(error.message) : null
-  if (error && isCollectionColumn(missingColumn)) {
-    const fallback = await auth.admin
+    const { data, error } = await auth.admin
       .from('Product')
-      .select('id, sku, title, slug, productType, category, basePrice, isActive, isFeatured, isNewArrival, images')
+      .select('id, sku, title, slug, productType, category, basePrice, isActive, isBestSeller, isNewArrival, isFeatured, isGift, collections, images')
       .order('createdAt', { ascending: false })
 
-    if (fallback.error) {
-      return NextResponse.json({ error: fallback.error.message }, { status: 500 })
+    const missingColumn = error ? getMissingColumn(error.message) : null
+    if (error && isCollectionColumn(missingColumn)) {
+      const fallback = await auth.admin
+        .from('Product')
+        .select('id, sku, title, slug, productType, category, basePrice, isActive, isFeatured, isNewArrival, images')
+        .order('createdAt', { ascending: false })
+
+      if (fallback.error) {
+        return NextResponse.json({ error: fallback.error.message }, { status: 500 })
+      }
+
+      return NextResponse.json({ products: fallback.data || [], omittedColumns: [missingColumn] })
     }
 
-    return NextResponse.json({ products: fallback.data || [], omittedColumns: [missingColumn] })
-  }
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ products: data || [] })
+  } catch (err) {
+    console.error('[admin/products] Error:', err)
+    return NextResponse.json(
+      { error: 'Internal server error', details: String(err) },
+      { status: 500 }
+    )
   }
-
-  return NextResponse.json({ products: data || [] })
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdmin(request)
-  if ('error' in auth) return auth.error
+  try {
+    const auth = await requireAdmin(request)
+    if ('error' in auth) return auth.error
 
-  const body = (await request.json()) as Record<string, unknown>
-  const { data, error, omittedColumns } = await writeWithSchemaRetry(body, async (saveData) =>
-    await auth.admin
-      .from('Product')
-      .insert(saveData)
-      .select('*')
-      .single()
-  )
+    const body = (await request.json()) as Record<string, unknown>
+    const { data, error, omittedColumns } = await writeWithSchemaRetry(body, async (saveData) =>
+      await auth.admin
+        .from('Product')
+        .insert(saveData)
+        .select('*')
+        .single()
+    )
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ product: data, omittedColumns })
+  } catch (err) {
+    console.error('[admin/products] Error:', err)
+    return NextResponse.json(
+      { error: 'Internal server error', details: String(err) },
+      { status: 500 }
+    )
   }
-
-  return NextResponse.json({ product: data, omittedColumns })
 }

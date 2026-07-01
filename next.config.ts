@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
     const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL
       ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname
       : '*.supabase.co'
+    const isProduction = process.env.NODE_ENV === 'production'
 
     const csp = [
       "default-src 'self'",
@@ -18,38 +19,43 @@ const nextConfig: NextConfig = {
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
       `connect-src 'self' https://${supabaseHost} wss://${supabaseHost} https://api.stripe.com https://api.resend.com`,
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      'upgrade-insecure-requests',
-    ].join('; ')
+      isProduction ? 'upgrade-insecure-requests' : '',
+    ].filter(Boolean).join('; ')
+
+    const securityHeaders = [
+      {
+        key: 'Content-Security-Policy',
+        value: csp,
+      },
+      {
+        key: 'Referrer-Policy',
+        value: 'strict-origin-when-cross-origin',
+      },
+      {
+        key: 'X-Content-Type-Options',
+        value: 'nosniff',
+      },
+      {
+        key: 'X-Frame-Options',
+        value: 'DENY',
+      },
+      {
+        key: 'Permissions-Policy',
+        value: 'camera=(), microphone=(), geolocation=(), payment=(self "https://checkout.stripe.com")',
+      },
+    ]
+
+    if (isProduction) {
+      securityHeaders.push({
+        key: 'Strict-Transport-Security',
+        value: 'max-age=63072000; includeSubDomains; preload',
+      })
+    }
 
     return [
       {
         source: '/:path*',
-        headers: [
-          {
-            key: 'Content-Security-Policy',
-            value: csp,
-          },
-          {
-            key: 'Referrer-Policy',
-            value: 'strict-origin-when-cross-origin',
-          },
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
-          },
-          {
-            key: 'X-Frame-Options',
-            value: 'DENY',
-          },
-          {
-            key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=(), payment=(self "https://checkout.stripe.com")',
-          },
-          {
-            key: 'Strict-Transport-Security',
-            value: 'max-age=63072000; includeSubDomains; preload',
-          },
-        ],
+        headers: securityHeaders,
       },
     ]
   },
