@@ -250,6 +250,10 @@ export default function AccountPage() {
     }
 
     const verifyCurrentSession = async () => {
+      if (storedSession?.user) {
+        return
+      }
+
       const { data: { session: firstSession } } = await supabase.auth.getSession()
       if (cancelled) return
 
@@ -279,10 +283,8 @@ export default function AccountPage() {
 
       if (event === 'SIGNED_OUT') {
         clearLoginRedirect()
-        if (isRedirectingRef.current) return
-        isRedirectingRef.current = true
-        setPageLoading(false)
-        router.replace('/login?redirect=/account')
+        setUser(null)
+        setProfile(null)
         return
       }
 
