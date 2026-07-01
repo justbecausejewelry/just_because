@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { RingSettingForm } from '@/components/admin/RingSettingForm'
 import { normalizeRingSetting, type RingSetting } from '@/lib/ringSettings'
-import { getAdminAccessToken } from '@/lib/adminSession'
+import { adminFetch } from '@/lib/adminSession'
 
 type RingSettingPayload = {
   setting?: RingSetting
@@ -18,15 +18,7 @@ export default function EditRingSettingPage() {
 
   useEffect(() => {
     const loadSetting = async () => {
-      const token = await getAdminAccessToken()
-      if (!token) {
-        setError('Admin session expired. Please sign in again.')
-        return
-      }
-
-      const response = await fetch(`/api/admin/ring-settings/${params.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const response = await adminFetch(`/api/admin/ring-settings/${params.id}`)
       const payload = (await response.json()) as RingSettingPayload
       if (!response.ok || !payload.setting) {
         setError(payload.error || 'Ring setting not found.')

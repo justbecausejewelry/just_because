@@ -1,6 +1,6 @@
-import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { normalizeReturnStatus, type ReturnStatus } from '@/lib/returnEligibility'
+import { verifyAdminRequest } from '@/lib/server/adminAuth'
 import { sendReturnRequestEmail } from '@/lib/sendReturnEmail'
 
 type ReturnRow = {
@@ -34,70 +34,18 @@ type UpdatePayload = {
   adminNotes?: string
 }
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-function getClients() {
-  if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
-    return null
-  }
-
-  return {
-    auth: createClient(supabaseUrl, supabaseAnonKey),
-    admin: createClient(supabaseUrl, supabaseServiceRoleKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      },
-    }),
-  }
-}
-
-function getBearerToken(request: NextRequest) {
-  const header = request.headers.get('authorization')
-  if (!header?.startsWith('Bearer ')) return null
-  const token = header.slice('Bearer '.length).trim()
-  return token || null
-}
-
 async function requireAdmin(request: NextRequest) {
-  const clients = getClients()
-  if (!clients) {
+  const auth = await verifyAdminRequest(request)
+  if (auth.error || !auth.admin) {
     return {
-      error: NextResponse.json({ error: 'Supabase admin environment is not configured' }, { status: 500 }),
+      error: NextResponse.json(
+        { error: auth.error || 'Admin access required' },
+        { status: auth.status === 403 ? 403 : auth.status === 500 ? 500 : 401 }
+      ),
     }
   }
 
-  const token = getBearerToken(request)
-  if (!token) {
-    return {
-      error: NextResponse.json({ error: 'Missing auth token' }, { status: 401 }),
-    }
-  }
-
-  const { data: userData, error: userError } = await clients.auth.auth.getUser(token)
-  const email = userData.user?.email?.toLowerCase()
-
-  if (userError || !email) {
-    return {
-      error: NextResponse.json({ error: 'Invalid auth token' }, { status: 401 }),
-    }
-  }
-
-  const { data: adminData, error: adminError } = await clients.admin
-    .from('AdminUser')
-    .select('role')
-    .eq('email', email)
-    .maybeSingle()
-
-  if (adminError || !adminData) {
-    return {
-      error: NextResponse.json({ error: 'Admin access required' }, { status: 403 }),
-    }
-  }
-
-  return { clients }
+  return { clients: { admin: auth.admin } }
 }
 
 function normalizeReturn(row: ReturnRow) {
@@ -249,4 +197,3 @@ export async function PATCH(request: NextRequest) {
 
   return NextResponse.json({ returnRequest: normalizeReturn(updated) })
 }
-

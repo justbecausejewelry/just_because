@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Copy, Diamond, Eye, EyeOff, Plus, Sparkles, Trash2, X } from 'lucide-react'
 import { useToast } from '@/context/ToastContext'
-import { getAdminAccessToken } from '@/lib/adminSession'
+import { adminFetch } from '@/lib/adminSession'
 
 type DiscountType = 'percentage' | 'fixed' | 'free_shipping' | 'free_gift'
 type AppliesTo = 'all' | 'specific_products' | 'specific_categories' | 'specific_types'
@@ -182,27 +182,12 @@ export default function AdminDiscountCodesPage() {
   const todayISO = useMemo(() => new Date().toISOString().split('T')[0], [])
   const expiresToday = form.isActive && form.expiresAt === todayISO
 
-  const getAccessToken = useCallback(async () => {
-    return getAdminAccessToken()
-  }, [])
-
   const apiRequest = useCallback(async (
     path: string,
     init: RequestInit = {}
   ) => {
-    const token = await getAccessToken()
-    if (!token) {
-      throw new Error('Missing auth session')
-    }
-
-    return fetch(path, {
-      ...init,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...(init.headers || {}),
-      },
-    })
-  }, [getAccessToken])
+    return adminFetch(path, init)
+  }, [])
 
   const loadCodes = useCallback(async () => {
     setLoading(true)

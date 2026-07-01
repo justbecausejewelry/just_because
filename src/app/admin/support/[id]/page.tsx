@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { useToast } from '@/context/ToastContext'
-import { getAdminAccessToken } from '@/lib/adminSession'
+import { adminFetch } from '@/lib/adminSession'
 
 type ConversationStatus = 'open' | 'replied' | 'resolved'
 
@@ -44,21 +44,8 @@ export default function AdminSupportThreadPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSending, setIsSending] = useState(false)
 
-  const getAccessToken = async () => {
-    return getAdminAccessToken()
-  }
-
   const loadConversation = useCallback(async () => {
-    const token = await getAccessToken()
-    if (!token) {
-      showToast('Admin session is still loading. Please refresh in a moment.', 'error')
-      setIsLoading(false)
-      return
-    }
-
-    const response = await fetch(`/api/conversations/${params.id}?viewer=admin`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    const response = await adminFetch(`/api/conversations/${params.id}?viewer=admin`)
     const payload = (await response.json()) as {
       conversation?: Conversation
       messages?: ConversationMessage[]
@@ -79,15 +66,8 @@ export default function AdminSupportThreadPage() {
 
     setIsSending(true)
     try {
-      const token = await getAccessToken()
-      if (!token) throw new Error('Please sign in again')
-
-      const response = await fetch(`/api/conversations/${params.id}`, {
+      const response = await adminFetch(`/api/conversations/${params.id}`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           senderType: 'admin',
           senderName: 'Just Because Team',
@@ -108,15 +88,8 @@ export default function AdminSupportThreadPage() {
   }
 
   const updateStatus = async (status: ConversationStatus) => {
-    const token = await getAccessToken()
-    if (!token) return
-
-    await fetch(`/api/conversations/${params.id}`, {
+    await adminFetch(`/api/conversations/${params.id}`, {
       method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({ status }),
     })
     setConversation((prev) => (prev ? { ...prev, status } : prev))

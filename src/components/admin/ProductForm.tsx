@@ -7,7 +7,7 @@ import { Upload, X } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/context/ToastContext'
 import { useFormPersistence } from '@/hooks/useFormPersistence'
-import { getAdminAccessToken } from '@/lib/adminSession'
+import { adminFetch } from '@/lib/adminSession'
 import { supabase } from '@/lib/supabase'
 
 type PricingMap = Record<string, { enabled: boolean; modifier: number }>
@@ -222,10 +222,6 @@ function numberOrZero(value: string) {
   if (cleaned === '') return 0
   const numericValue = Number(cleaned)
   return Number.isFinite(numericValue) ? Math.max(0, numericValue) : 0
-}
-
-async function getAdminToken() {
-  return getAdminAccessToken()
 }
 
 function isRingProduct(productType: string) {
@@ -490,12 +486,8 @@ function MetalImageUpload({
       body.append('file', file)
       body.append('slug', `${slug || 'draft'}/${metal}`)
 
-      const token = await getAdminToken()
-      if (!token) throw new Error('Admin session expired. Please sign in again.')
-
-      const response = await fetch('/api/admin/upload', {
+      const response = await adminFetch('/api/admin/upload', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
         body,
       })
       const payload = (await response.json()) as { publicUrl?: string; error?: string }
@@ -721,14 +713,8 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
       const body = new FormData()
       body.append('file', file)
       body.append('slug', form.slug || slugify(form.title) || 'draft')
-      const token = await getAdminToken()
-      if (!token) {
-        setStatus('Admin session expired. Please sign in again.')
-        return
-      }
-      const response = await fetch('/api/admin/upload', {
+      const response = await adminFetch('/api/admin/upload', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
         body,
       })
       const payload = (await response.json()) as { publicUrl?: string; error?: string }
@@ -817,14 +803,9 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
         updatedAt: new Date().toISOString(),
       }
       const url = mode === 'new' ? '/api/admin/products' : `/api/admin/products/${form.id}`
-      const token = await getAdminToken()
-      if (!token) {
-        throw new Error('Admin session expired. Please sign in again.')
-      }
 
-      const response = await fetch(url, {
+      const response = await adminFetch(url, {
         method: mode === 'new' ? 'POST' : 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
       })
       const data = (await response.json()) as { product?: ProductFormData; error?: string; omittedColumns?: string[] }

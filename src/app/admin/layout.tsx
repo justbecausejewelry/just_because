@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { forceSignOut } from '@/lib/forceSignOut'
-import { getAdminAccessToken } from '@/lib/adminSession'
+import { adminFetch } from '@/lib/adminSession'
 import { getSettledBrowserSession } from '@/lib/supabase'
 import { useRole } from '@/hooks/useRole'
 import { BrandLogo } from '@/components/ui/BrandLogo'
@@ -91,13 +91,8 @@ export default function AdminLayout({
     let cancelled = false
 
     const loadPendingReturns = async () => {
-      const token = await getAdminAccessToken()
-      if (!token) return
-
       try {
-        const response = await fetch('/api/admin/returns', {
-          headers: { Authorization: `Bearer ${token}` },
-        })
+        const response = await adminFetch('/api/admin/returns')
         const payload = await response.json() as {
           returns?: Array<{ status: string }>
         }

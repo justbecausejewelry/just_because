@@ -1,20 +1,59 @@
-import { getSettledBrowserSession, getStoredBrowserSession, persistBrowserSession, supabase } from '@/lib/supabase'
+import { createBrowserClient } from '@supabase/ssr'
+
+const supabase = createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
+
+let tokenPromise: Promise<string | null> | null = null
 
 export async function getAdminAccessToken(): Promise<string | null> {
-  const settledSession = await getSettledBrowserSession(1000)
-  if (settledSession?.access_token) return settledSession.access_token
+  if (tokenPromise) return tokenPromise
 
-  const storedSession = getStoredBrowserSession()
-  if (storedSession?.access_token) return storedSession.access_token
+  tokenPromise = (async () => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      if (session?.access_token) return session.access_token
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
+      const {
+        data: { session: refreshed },
+      } = await supabase.auth.refreshSession()
+      if (refreshed?.access_token) return refreshed.access_token
 
-  if (session?.access_token) {
-    persistBrowserSession(session)
-    return session.access_token
+      return null
+    } catch (error) {
+      console.error('[adminSession] unable to get admin access token:', error)
+      return null
+    } finally {
+      tokenPromise = null
+    }
+  })()
+
+  return tokenPromise
+}
+
+export async function adminFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const token = await getAdminAccessToken()
+
+  if (!token) {
+    return new Response(
+      JSON.stringify({ error: 'No session found. Please sign in.' }),
+      { status: 401, headers: { 'Content-Type': 'application/json' } }
+    )
   }
 
-  return null
+  const headers = new Headers(options.headers)
+  headers.set('Authorization', `Bearer ${token}`)
+
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData
+  if (options.body && !isFormData && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
+
+  return fetch(url, {
+    ...options,
+    headers,
+  })
 }

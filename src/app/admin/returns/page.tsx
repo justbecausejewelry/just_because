@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Eye, RotateCcw, X } from 'lucide-react'
-import { getAdminAccessToken } from '@/lib/adminSession'
+import { adminFetch } from '@/lib/adminSession'
 import {
   RETURN_STATUS_LABELS,
   normalizeReturnStatus,
@@ -101,12 +101,7 @@ export default function AdminReturnsPage() {
     setError('')
 
     try {
-      const token = await getAdminAccessToken()
-      if (!token) throw new Error('Admin session expired. Please sign in again.')
-
-      const response = await fetch('/api/admin/returns', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const response = await adminFetch('/api/admin/returns')
       const payload = await response.json() as {
         returns?: ReturnRequest[]
         error?: string
@@ -149,12 +144,6 @@ export default function AdminReturnsPage() {
   }, [returns])
 
   const runAction = async (returnRequest: ReturnRequest, action: AdminAction, extra?: { rejectionReason?: string; refundAmount?: number }) => {
-    const token = await getAdminAccessToken()
-    if (!token) {
-      setError('Admin session expired. Please sign in again.')
-      return
-    }
-
     setReturns((current) => current.map((item) => {
       if (item.id !== returnRequest.id) return item
       if (action === 'approve') return { ...item, status: 'approved' }
@@ -164,12 +153,8 @@ export default function AdminReturnsPage() {
       return { ...item, status: 'under_review' }
     }))
 
-    const response = await fetch('/api/admin/returns', {
+    const response = await adminFetch('/api/admin/returns', {
       method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({
         returnId: returnRequest.id,
         action,

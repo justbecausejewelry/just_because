@@ -15,7 +15,7 @@ import {
   type RingSettingImages,
   type RingSettingPayload,
 } from '@/lib/ringSettings'
-import { getAdminAccessToken } from '@/lib/adminSession'
+import { adminFetch } from '@/lib/adminSession'
 import { useToast } from '@/context/ToastContext'
 
 type RingSettingFormProps = {
@@ -50,10 +50,6 @@ function blankPayload(): RingSettingPayload {
     sortOrder: 0,
     style: 'Solitaire',
   }
-}
-
-async function getAdminToken() {
-  return getAdminAccessToken()
 }
 
 function labelStyle() {
@@ -168,12 +164,6 @@ export function RingSettingForm({ mode, setting }: RingSettingFormProps) {
   }
 
   const uploadImage = async (file: File, target: UploadTarget) => {
-    const token = await getAdminToken()
-    if (!token) {
-      showToast('Admin session expired. Please sign in again.', 'error')
-      return
-    }
-
     setUploading(target)
     try {
       const data = new FormData()
@@ -181,9 +171,8 @@ export function RingSettingForm({ mode, setting }: RingSettingFormProps) {
       data.set('bucket', 'ring-settings')
       data.set('slug', form.name || 'setting')
 
-      const response = await fetch('/api/admin/upload', {
+      const response = await adminFetch('/api/admin/upload', {
         body: data,
-        headers: { Authorization: `Bearer ${token}` },
         method: 'POST',
       })
       const payload = (await response.json()) as { publicUrl?: string; error?: string }
@@ -206,20 +195,10 @@ export function RingSettingForm({ mode, setting }: RingSettingFormProps) {
   }
 
   const saveSetting = async () => {
-    const token = await getAdminToken()
-    if (!token) {
-      showToast('Admin session expired. Please sign in again.', 'error')
-      return
-    }
-
     setSaving(true)
     try {
-      const response = await fetch(mode === 'new' ? '/api/admin/ring-settings' : `/api/admin/ring-settings/${setting?.id}`, {
+      const response = await adminFetch(mode === 'new' ? '/api/admin/ring-settings' : `/api/admin/ring-settings/${setting?.id}`, {
         body: JSON.stringify(form),
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
         method: mode === 'new' ? 'POST' : 'PUT',
       })
       const payload = (await response.json()) as { setting?: RingSetting; error?: string }
@@ -241,16 +220,9 @@ export function RingSettingForm({ mode, setting }: RingSettingFormProps) {
   const deleteSetting = async () => {
     if (!setting || !window.confirm('Delete this ring setting? This cannot be undone.')) return
 
-    const token = await getAdminToken()
-    if (!token) {
-      showToast('Admin session expired. Please sign in again.', 'error')
-      return
-    }
-
     setSaving(true)
     try {
-      const response = await fetch(`/api/admin/ring-settings/${setting.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const response = await adminFetch(`/api/admin/ring-settings/${setting.id}`, {
         method: 'DELETE',
       })
       const payload = (await response.json()) as { error?: string }

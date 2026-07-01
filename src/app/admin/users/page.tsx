@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Shield, ShieldCheck, UserRound } from 'lucide-react'
 import { useToast } from '@/context/ToastContext'
-import { getAdminAccessToken } from '@/lib/adminSession'
+import { adminFetch } from '@/lib/adminSession'
 import { useRole } from '@/hooks/useRole'
 import { BrandLogo } from '@/components/ui/BrandLogo'
 
@@ -51,26 +51,11 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true)
   const [updatingEmail, setUpdatingEmail] = useState<string | null>(null)
 
-  const getAccessToken = useCallback(async () => {
-    return getAdminAccessToken()
-  }, [])
-
   const loadUsers = useCallback(async () => {
-    const token = await getAccessToken()
-    if (!token) {
-      showToast('Admin session is still loading. Please refresh in a moment.', 'error')
-      setLoading(false)
-      return
-    }
-
     setLoading(true)
 
     try {
-      const response = await fetch('/api/admin/users', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
+      const response = await adminFetch('/api/admin/users')
       const payload = await response.json() as unknown
 
       if (!isUsersResponse(payload) || !response.ok) {
@@ -85,7 +70,7 @@ export default function AdminUsersPage() {
     } finally {
       setLoading(false)
     }
-  }, [getAccessToken, router, showToast])
+  }, [showToast])
 
   useEffect(() => {
     if (roleLoading) return
@@ -98,21 +83,11 @@ export default function AdminUsersPage() {
   }, [isSuperAdmin, loadUsers, roleLoading, router])
 
   const updateRole = async (email: string, role: 'user' | 'admin') => {
-    const token = await getAccessToken()
-    if (!token) {
-      showToast('Admin session is still loading. Please try again.', 'error')
-      return
-    }
-
     setUpdatingEmail(email)
 
     try {
-      const response = await fetch('/api/admin/users', {
+      const response = await adminFetch('/api/admin/users', {
         method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ email, role }),
       })
       const payload = await response.json() as unknown

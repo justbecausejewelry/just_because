@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, AlertTriangle, BarChart3 } from 'lucide-react'
-import { getAdminAccessToken } from '@/lib/adminSession'
+import { adminFetch } from '@/lib/adminSession'
 
 type DiscountCode = {
   id: string
@@ -46,11 +46,7 @@ export default function DiscountAnalyticsPage() {
     setLoading(true)
     setError('')
     try {
-      const token = await getAdminAccessToken()
-
-      const response = await fetch('/api/admin/discount-codes', {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
+      const response = await adminFetch('/api/admin/discount-codes')
       const payload = await response.json() as CodesResponse
       if (!response.ok) {
         throw new Error(payload.error || 'Unable to load discount analytics')

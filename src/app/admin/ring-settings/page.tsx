@@ -5,12 +5,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Gem, Pencil, Plus, Trash2 } from 'lucide-react'
 import { formatRingSettingMoney, normalizeRingSetting, type RingSetting } from '@/lib/ringSettings'
-import { getAdminAccessToken } from '@/lib/adminSession'
+import { adminFetch } from '@/lib/adminSession'
 import { useToast } from '@/context/ToastContext'
-
-async function getAdminToken() {
-  return getAdminAccessToken()
-}
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
   return (
@@ -29,17 +25,9 @@ export default function AdminRingSettingsPage() {
   const loadSettings = async () => {
     setLoading(true)
     setError('')
-    const token = await getAdminToken()
-    if (!token) {
-      setError('Admin session expired. Please sign in again.')
-      setLoading(false)
-      return
-    }
 
     try {
-      const response = await fetch('/api/admin/ring-settings', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const response = await adminFetch('/api/admin/ring-settings')
       const payload = (await response.json()) as { settings?: RingSetting[]; error?: string }
       if (!response.ok) {
         throw new Error(payload.error || 'Unable to load ring settings.')
@@ -60,15 +48,9 @@ export default function AdminRingSettingsPage() {
   const patchSetting = async (setting: RingSetting, payload: Partial<RingSetting>) => {
     const next = normalizeRingSetting({ ...setting, ...payload })
     setSettings((items) => items.map((item) => item.id === setting.id ? next : item))
-    const token = await getAdminToken()
-    if (!token) return
 
-    const response = await fetch(`/api/admin/ring-settings/${setting.id}`, {
+    const response = await adminFetch(`/api/admin/ring-settings/${setting.id}`, {
       body: JSON.stringify(next),
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
       method: 'PUT',
     })
 
@@ -80,11 +62,8 @@ export default function AdminRingSettingsPage() {
 
   const deleteSetting = async (setting: RingSetting) => {
     if (!window.confirm(`Delete ${setting.name}?`)) return
-    const token = await getAdminToken()
-    if (!token) return
 
-    const response = await fetch(`/api/admin/ring-settings/${setting.id}`, {
-      headers: { Authorization: `Bearer ${token}` },
+    const response = await adminFetch(`/api/admin/ring-settings/${setting.id}`, {
       method: 'DELETE',
     })
     const payload = (await response.json()) as { error?: string }

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import Image from 'next/image'
 import { Diamond as DiamondIcon, Edit, Eye, Plus, Search, Trash2 } from 'lucide-react'
-import { getAdminAccessToken } from '@/lib/adminSession'
+import { adminFetch } from '@/lib/adminSession'
 import { getDiamondImage } from '@/lib/diamondImages'
 
 type DiamondRecord = {
@@ -111,10 +111,6 @@ function formatMoney(value: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value)
 }
 
-async function getAdminToken() {
-  return getAdminAccessToken()
-}
-
 function formFromDiamond(diamond: DiamondRecord): DiamondForm {
   return {
     shape: diamond.shape || 'Round',
@@ -180,16 +176,8 @@ export default function AdminDiamondsPage() {
   const fetchDiamonds = useCallback(async () => {
     setLoading(true)
     try {
-      const token = await getAdminToken()
-      if (!token) {
-        showToast('Admin session expired. Please sign in again.')
-        setDiamonds([])
-        return
-      }
-
-      const response = await fetch('/api/admin/diamonds?all=true', {
+      const response = await adminFetch('/api/admin/diamonds?all=true', {
         cache: 'no-store',
-        headers: { Authorization: `Bearer ${token}` },
       })
       const payload = (await response.json()) as DiamondListResponse
       setDiamonds(response.ok ? payload.diamonds || [] : [])
@@ -261,15 +249,8 @@ export default function AdminDiamondsPage() {
 
     setSaving(true)
     try {
-      const token = await getAdminToken()
-      if (!token) {
-        showToast('Admin session expired. Please sign in again.')
-        return
-      }
-
-      const response = await fetch('/api/admin/diamonds', {
+      const response = await adminFetch('/api/admin/diamonds', {
         method: editingDiamond ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(savePayload(form, editingDiamond?.id)),
       })
       const payload = (await response.json()) as DiamondMutationResponse
@@ -299,15 +280,8 @@ export default function AdminDiamondsPage() {
   const handleDelete = async (diamond: DiamondRecord) => {
     if (!window.confirm(`Delete ${diamond.carat}ct ${diamond.shape} diamond?`)) return
 
-    const token = await getAdminToken()
-    if (!token) {
-      showToast('Admin session expired. Please sign in again.')
-      return
-    }
-
-    const response = await fetch(`/api/admin/diamonds?id=${encodeURIComponent(diamond.id)}`, {
+    const response = await adminFetch(`/api/admin/diamonds?id=${encodeURIComponent(diamond.id)}`, {
       method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
     })
     const payload = (await response.json()) as { error?: string }
 

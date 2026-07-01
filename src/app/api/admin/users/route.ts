@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { verifyAdminRequest } from '@/lib/server/adminAuth'
 
 type AdminRole = 'user' | 'admin' | 'super_admin'
 
@@ -30,26 +30,6 @@ type AdminUserResponse = {
   createdAt: string | null
 }
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-function getClients() {
-  if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
-    return null
-  }
-
-  return {
-    auth: createClient(supabaseUrl, supabaseAnonKey),
-    admin: createClient(supabaseUrl, supabaseServiceRoleKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      },
-    }),
-  }
-}
-
 function normalizeRole(role: string | null | undefined): AdminRole {
   if (role === 'admin' || role === 'super_admin') return role
   return 'user'
@@ -62,52 +42,23 @@ function displayName(profile: UserProfileRow | null, admin: AdminUserRow | null,
   return email.split('@')[0] || 'Customer'
 }
 
-function getBearerToken(request: NextRequest) {
-  const header = request.headers.get('authorization')
-  if (!header?.startsWith('Bearer ')) return null
-  const token = header.slice('Bearer '.length).trim()
-  return token || null
-}
-
 async function requireSuperAdmin(request: NextRequest) {
-  const clients = getClients()
-  if (!clients) {
+  const auth = await verifyAdminRequest(request)
+  if (auth.error || !auth.user || !auth.admin) {
     return {
-      error: NextResponse.json({ error: 'Supabase admin environment is not configured' }, { status: 500 }),
+      error: NextResponse.json({ error: auth.error || 'Invalid auth token' }, { status: auth.status === 403 ? 403 : auth.status === 500 ? 500 : 401 }),
     }
   }
 
-  const token = getBearerToken(request)
-  if (!token) {
-    return {
-      error: NextResponse.json({ error: 'Missing auth token' }, { status: 401 }),
-    }
-  }
-
-  const { data: userData, error: userError } = await clients.auth.auth.getUser(token)
-  const email = userData.user?.email?.toLowerCase()
-
-  if (userError || !email) {
-    return {
-      error: NextResponse.json({ error: 'Invalid auth token' }, { status: 401 }),
-    }
-  }
-
-  const { data: adminData, error: adminError } = await clients.admin
-    .from('AdminUser')
-    .select('role')
-    .eq('email', email)
-    .maybeSingle()
-
-  if (adminError || normalizeRole((adminData as Pick<AdminUserRow, 'role'> | null)?.role) !== 'super_admin') {
+  if (auth.user.role !== 'super_admin') {
     return {
       error: NextResponse.json({ error: 'Super admin access required' }, { status: 403 }),
     }
   }
 
   return {
-    clients,
-    email,
+    clients: { admin: auth.admin },
+    email: auth.user.email?.toLowerCase() || '',
   }
 }
 

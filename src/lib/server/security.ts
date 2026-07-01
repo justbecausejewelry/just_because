@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { verifyAdminRequest } from '@/lib/server/adminAuth'
 import { getGeneralErrorMessage } from '@/lib/errors'
 
 type AuthResult =
@@ -71,24 +72,13 @@ export async function requireUser(request: NextRequest | Request): Promise<AuthR
 }
 
 export async function requireAdmin(request: NextRequest | Request): Promise<AdminResult> {
-  const auth = await requireUser(request)
-  if ('error' in auth) return auth
+  const auth = await verifyAdminRequest(request)
 
-  const email = auth.user.email?.toLowerCase()
-  if (!email) {
-    return { error: NextResponse.json({ error: 'Admin access required' }, { status: 403 }) }
+  if (auth.error || !auth.user || !auth.admin) {
+    const status = auth.status === 403 ? 403 : auth.status === 500 ? 500 : 401
+    const message = status === 403 ? 'Admin access required' : status === 401 ? 'Please sign in to continue.' : getGeneralErrorMessage()
+    return { error: NextResponse.json({ error: message }, { status }) }
   }
 
-  const { data, error } = await auth.admin
-    .from('AdminUser')
-    .select('role')
-    .eq('email', email)
-    .maybeSingle()
-
-  const role = typeof data?.role === 'string' ? data.role : null
-  if (error || (role !== 'admin' && role !== 'super_admin')) {
-    return { error: NextResponse.json({ error: 'Admin access required' }, { status: 403 }) }
-  }
-
-  return { ...auth, role }
+  return { user: auth.user, admin: auth.admin, role: auth.user.role }
 }

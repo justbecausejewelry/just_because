@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Archive, DollarSign, Gem, Package, ShoppingBag } from 'lucide-react'
 import { useToast } from '@/context/ToastContext'
-import { getAdminAccessToken } from '@/lib/adminSession'
+import { adminFetch } from '@/lib/adminSession'
 import { normalizeOrderStatus, orderStatusLabel } from '@/lib/tracking'
 
 type Product = { id: string }
@@ -48,10 +48,6 @@ function statusStyle(status: string) {
   return { backgroundColor: '#FDF8F2', color: '#B8A090' }
 }
 
-async function getAdminToken() {
-  return getAdminAccessToken()
-}
-
 export default function AdminDashboardPage() {
   const { showToast } = useToast()
   const [products, setProducts] = useState<Product[]>([])
@@ -62,13 +58,10 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     const load = async () => {
-      const token = await getAdminToken()
-      if (!token) return
-      const adminHeaders = { Authorization: `Bearer ${token}` }
       const [productsResponse, diamondsResponse, ordersResponse] = await Promise.all([
-        fetch('/api/admin/products', { headers: adminHeaders }),
+        adminFetch('/api/admin/products'),
         fetch('/api/products?limit=1'),
-        fetch('/api/admin/stats', { headers: adminHeaders }).catch(() => null),
+        adminFetch('/api/admin/stats').catch(() => null),
       ])
       const productPayload = (await productsResponse.json()) as { products?: Product[] }
       setProducts(productPayload.products || [])
@@ -76,7 +69,7 @@ export default function AdminDashboardPage() {
       const apiProducts = await diamondsResponse.json()
       void apiProducts
 
-      const diamondResponse = await fetch('/api/admin/diamonds', { headers: adminHeaders }).catch(() => null)
+      const diamondResponse = await adminFetch('/api/admin/diamonds').catch(() => null)
       if (diamondResponse?.ok) {
         const payload = (await diamondResponse.json()) as { diamonds?: Diamond[] }
         setDiamonds(payload.diamonds || [])
@@ -87,7 +80,7 @@ export default function AdminDashboardPage() {
         setOrders(payload.orders || [])
       }
 
-      const backupResponse = await fetch('/api/admin/backup/status', { headers: adminHeaders }).catch(() => null)
+      const backupResponse = await adminFetch('/api/admin/backup/status').catch(() => null)
       if (backupResponse?.ok) {
         const payload = (await backupResponse.json()) as BackupStatus
         setBackupStatus(payload)
@@ -116,17 +109,9 @@ export default function AdminDashboardPage() {
   const backupColor = backupLoading || backupStatus?.status === 'success' ? '#7A8F72' : backupStatus?.status === 'failed' ? '#A85C6A' : '#B8A090'
 
   const runBackupNow = async () => {
-    const token = await getAdminToken()
-    if (!token) {
-      showToast('Admin session expired. Please sign in again.', 'error')
-      return
-    }
-
     setBackupLoading(true)
     try {
-      const response = await fetch('/api/backup/orders', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const response = await adminFetch('/api/backup/orders')
       const payload = (await response.json()) as {
         details?: string
         error?: string

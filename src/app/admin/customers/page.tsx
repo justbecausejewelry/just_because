@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { MessageSquare, Search, ShoppingBag, UserRound } from 'lucide-react'
-import { getAdminAccessToken } from '@/lib/adminSession'
+import { adminFetch } from '@/lib/adminSession'
 
 type Customer = {
   id?: string
@@ -59,10 +59,6 @@ function customerSignupSource(customer: Customer) {
   return customer.signupSource || customer.signup_source || 'direct'
 }
 
-async function getAdminToken() {
-  return getAdminAccessToken()
-}
-
 export default function AdminCustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
@@ -73,15 +69,7 @@ export default function AdminCustomersPage() {
     const fetchCustomers = async () => {
       setLoading(true)
       try {
-        const token = await getAdminToken()
-        if (!token) {
-          setCustomers([])
-          return
-        }
-
-        const response = await fetch('/api/admin/customers', {
-          headers: { Authorization: `Bearer ${token}` },
-        })
+        const response = await adminFetch('/api/admin/customers')
         const payload = (await response.json()) as {
           customers?: Customer[]
           error?: string

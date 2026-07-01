@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Gem, Pencil, Search, Trash2 } from 'lucide-react'
-import { getAdminAccessToken } from '@/lib/adminSession'
+import { adminFetch } from '@/lib/adminSession'
 
 type Product = {
   id: string
@@ -36,10 +36,6 @@ function prettify(value: string) {
   return value.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
 }
 
-async function getAdminToken() {
-  return getAdminAccessToken()
-}
-
 function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
   return (
     <button onClick={onChange} style={{ backgroundColor: checked ? '#C9A961' : '#D8CFC8', borderRadius: '999px', height: '22px', padding: '2px', transition: 'all 0.2s', width: '42px' }}>
@@ -55,11 +51,7 @@ export default function AdminProductsPage() {
   const [selected, setSelected] = useState<string[]>([])
 
   const loadProducts = async () => {
-    const token = await getAdminToken()
-    if (!token) return
-    const response = await fetch('/api/admin/products', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    const response = await adminFetch('/api/admin/products')
     const payload = (await response.json()) as { products?: Product[] }
     setProducts(payload.products || [])
   }
@@ -78,22 +70,16 @@ export default function AdminProductsPage() {
 
   const patchProduct = async (id: string, payload: Partial<Product>) => {
     setProducts((items) => items.map((item) => (item.id === id ? { ...item, ...payload } : item)))
-    const token = await getAdminToken()
-    if (!token) return
-    await fetch(`/api/admin/products/${id}`, {
+    await adminFetch(`/api/admin/products/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify(payload),
     })
   }
 
   const deleteProduct = async (id: string) => {
     if (!window.confirm('Hide this product from customers?')) return
-    const token = await getAdminToken()
-    if (!token) return
-    await fetch(`/api/admin/products/${id}`, {
+    await adminFetch(`/api/admin/products/${id}`, {
       method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
     })
     setProducts((items) => items.map((item) => (item.id === id ? { ...item, isActive: false } : item)))
   }

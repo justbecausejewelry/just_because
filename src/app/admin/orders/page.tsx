@@ -4,7 +4,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Check, Download, ExternalLink, Eye, MessageSquare, PackageCheck, Search, Truck, X } from 'lucide-react'
 import { getMetalLabel } from '@/config/productOptions'
-import { getAdminAccessToken } from '@/lib/adminSession'
+import { adminFetch } from '@/lib/adminSession'
 import {
   CARRIERS,
   getCarrierLabel,
@@ -158,10 +158,6 @@ function orderTotal(order: Order) {
   return order.total || order.subtotal || 0
 }
 
-async function getAdminToken() {
-  return getAdminAccessToken()
-}
-
 function isProcessingStatus(status: OrderStatus) {
   return status === 'processing'
 }
@@ -238,16 +234,7 @@ export default function AdminOrdersPage() {
     setLoading(true)
 
     try {
-      const token = await getAdminToken()
-      if (!token) {
-        setError('Admin session expired. Please sign in again.')
-        setOrders([])
-        return
-      }
-
-      const response = await fetch('/api/admin/orders', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const response = await adminFetch('/api/admin/orders')
       const payload = (await response.json()) as {
         orders?: Order[]
         error?: string
@@ -311,15 +298,8 @@ export default function AdminOrdersPage() {
     setError(null)
 
     try {
-      const token = await getAdminToken()
-      if (!token) {
-        setError('Admin session expired. Please sign in again.')
-        return
-      }
-
-      const response = await fetch('/api/admin/orders', {
+      const response = await adminFetch('/api/admin/orders', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ orderId, status }),
       })
       const payload = (await response.json()) as { error?: string }
@@ -357,15 +337,8 @@ export default function AdminOrdersPage() {
     setError(null)
 
     try {
-      const token = await getAdminToken()
-      if (!token) {
-        setError('Admin session expired. Please sign in again.')
-        return
-      }
-
-      const response = await fetch('/api/admin/orders', {
+      const response = await adminFetch('/api/admin/orders', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           orderId: order.id,
           status: 'shipped',

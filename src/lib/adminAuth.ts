@@ -1,4 +1,5 @@
 import { getSettledBrowserSession, supabase } from '@/lib/supabase'
+import { adminFetch } from '@/lib/adminSession'
 
 const CACHE_KEY = 'jb_admin'
 const CACHE_TTL = 30 * 60 * 1000
@@ -122,22 +123,17 @@ function timeoutResult(): Promise<AdminCheckResult> {
 export async function checkIsAdmin(): Promise<AdminCheckResult> {
   try {
     const session = await getSettledBrowserSession()
-    const user = session?.user || null
+    const email = session?.user?.email?.toLowerCase() || null
 
-    if (!user?.email || !session?.access_token) {
-      return emptyAdminResult
-    }
-
-    const email = user.email.toLowerCase()
-    const cached = getCache(email)
-    if (cached) {
-      return cached
+    if (email) {
+      const cached = getCache(email)
+      if (cached) {
+        return cached
+      }
     }
 
     const result = await Promise.race([
-      fetch('/api/admin/check-access', {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      })
+      adminFetch('/api/admin/check-access')
         .then(async (response) => {
           const payload = await response.json().catch(() => null) as Partial<AdminCheckResult> | null
           if (!response.ok || !payload?.isAdmin || !payload.adminData) return emptyAdminResult
@@ -150,7 +146,10 @@ export async function checkIsAdmin(): Promise<AdminCheckResult> {
         .catch(() => emptyAdminResult),
       timeoutResult(),
     ])
-    setCache(email, result)
+    const cacheEmail = result.adminData?.email || email
+    if (cacheEmail) {
+      setCache(cacheEmail, result)
+    }
     return result
   } catch {
     return emptyAdminResult

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { ProductForm } from '@/components/admin/ProductForm'
-import { getAdminAccessToken } from '@/lib/adminSession'
+import { adminFetch } from '@/lib/adminSession'
 
 type ProductPayload = {
   product?: Record<string, unknown>
@@ -17,15 +17,7 @@ export default function EditProductPage() {
 
   useEffect(() => {
     const load = async () => {
-      const token = await getAdminAccessToken()
-      if (!token) {
-        setError('Admin session expired. Please sign in again.')
-        return
-      }
-
-      const response = await fetch(`/api/admin/products/${params.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const response = await adminFetch(`/api/admin/products/${params.id}`)
       const payload = (await response.json()) as ProductPayload
       if (!response.ok || !payload.product) {
         setError(payload.error || 'Product not found.')
