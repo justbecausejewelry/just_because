@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { LockKeyhole } from 'lucide-react'
 import { supabaseAuth } from '@/lib/auth'
 import { getAuthErrorMessage, getErrorText, isAlreadyRegisteredError, readFriendlyApiError } from '@/lib/errors'
@@ -28,7 +27,6 @@ const inputStyle = {
 }
 
 export function CheckoutAuthWall({ email, name, phone = '', onSuccess }: Props) {
-  const router = useRouter()
   const [mode, setMode] = useState<AuthMode>('choice')
   const [formEmail, setFormEmail] = useState(email)
   const [formName, setFormName] = useState(name)
@@ -37,6 +35,7 @@ export function CheckoutAuthWall({ email, name, phone = '', onSuccess }: Props) 
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
 
   useEffect(() => {
     setFormEmail((current) => current || email)
@@ -66,7 +65,6 @@ export function CheckoutAuthWall({ email, name, phone = '', onSuccess }: Props) 
       const message = getErrorText(signInError).toLowerCase()
       if (message.includes('email not confirmed') || message.includes('not confirmed')) {
         setError('Please check your email and click the confirmation link we sent you before continuing.')
-        router.push(`/signup?verifyEmail=${encodeURIComponent(cleanEmail)}`)
         setLoading(false)
         return
       }
@@ -92,12 +90,25 @@ export function CheckoutAuthWall({ email, name, phone = '', onSuccess }: Props) 
         return
       }
 
-      if (!profile || (profile as { email_verified?: boolean | null }).email_verified !== true) {
+      if (!data.user.email_confirmed_at) {
         await supabaseAuth.auth.signOut()
-        setError('Please verify your email before continuing to payment.')
-        router.push(`/signup?verifyEmail=${encodeURIComponent(cleanEmail)}`)
+        setError('Please check your email and click the confirmation link we sent you before continuing.')
         setLoading(false)
         return
+      }
+
+      if (!profile || (profile as { email_verified?: boolean | null }).email_verified !== true) {
+        const { error: profileUpdateError } = await supabaseAuth
+          .from('UserProfile')
+          .update({
+            email_verified: true,
+            updatedAt: new Date().toISOString(),
+          })
+          .eq('userId', data.user.id)
+
+        if (profileUpdateError) {
+          console.error('[checkout-auth] profile verification sync failed:', profileUpdateError)
+        }
       }
 
       onSuccess()
@@ -138,6 +149,7 @@ export function CheckoutAuthWall({ email, name, phone = '', onSuccess }: Props) 
 
     setLoading(true)
     setError('')
+    setNotice('')
 
     const signupResponse = await fetch('/api/auth/signup', {
       method: 'POST',
@@ -166,7 +178,8 @@ export function CheckoutAuthWall({ email, name, phone = '', onSuccess }: Props) 
       return
     }
 
-    router.push(`/signup?verifyEmail=${encodeURIComponent(cleanEmail)}`)
+    setMode('choice')
+    setNotice('Account created. Please check your email and click the confirmation link before continuing to payment.')
     setLoading(false)
   }
 
@@ -227,6 +240,11 @@ export function CheckoutAuthWall({ email, name, phone = '', onSuccess }: Props) 
               <input type="password" placeholder="Confirm Password *" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="input-luxury" style={inputStyle} />
             </div>
             {error ? <ErrorMessage message={error} /> : null}
+            {notice ? (
+              <div style={{ background: '#FDF8F2', border: '0.5px solid #7A8F72', color: '#7A8F72', fontFamily: 'var(--font-inter)', fontSize: '12px', lineHeight: 1.6, marginTop: '14px', padding: '12px 14px' }}>
+                {notice}
+              </div>
+            ) : null}
             <button type="button" onClick={() => void handleCreateAccount()} disabled={loading} className="btn-primary" style={{ width: '100%', marginTop: '16px', height: '52px', fontSize: '12px', letterSpacing: '0.12em', justifyContent: 'center', opacity: loading ? 0.72 : 1 }}>
               {loading ? 'Creating Account...' : 'Create Account & Continue'}
             </button>
@@ -257,6 +275,11 @@ export function CheckoutAuthWall({ email, name, phone = '', onSuccess }: Props) 
               <a href="/forgot-password" style={{ fontSize: '12px', color: '#C9A961' }}>Forgot password?</a>
             </div>
             {error ? <ErrorMessage message={error} /> : null}
+            {notice ? (
+              <div style={{ background: '#FDF8F2', border: '0.5px solid #7A8F72', color: '#7A8F72', fontFamily: 'var(--font-inter)', fontSize: '12px', lineHeight: 1.6, marginTop: '14px', padding: '12px 14px' }}>
+                {notice}
+              </div>
+            ) : null}
             <button type="button" onClick={() => void handleSignIn()} disabled={loading} className="btn-primary" style={{ width: '100%', marginTop: '16px', height: '52px', fontSize: '12px', letterSpacing: '0.12em', justifyContent: 'center', opacity: loading ? 0.72 : 1 }}>
               {loading ? 'Signing In...' : 'Sign In & Continue'}
             </button>

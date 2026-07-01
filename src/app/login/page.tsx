@@ -17,8 +17,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [resendLoading, setResendLoading] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState('')
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -42,6 +44,7 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
     setNotice('')
+    setUnconfirmedEmail('')
 
     try {
       const { data, error: signInError } = await supabaseAuth.auth.signInWithPassword({
@@ -52,9 +55,9 @@ export default function LoginPage() {
       if (signInError) {
         const message = signInError.message.toLowerCase()
         if (message.includes('email not confirmed') || message.includes('not confirmed')) {
-          setError(getAuthErrorMessage(signInError))
+          setError('Please check your email and click the confirmation link we sent you.')
+          setUnconfirmedEmail(normalizedEmail)
           setLoading(false)
-          router.push(`/signup?verifyEmail=${encodeURIComponent(normalizedEmail)}`)
           return
         }
 
@@ -82,12 +85,26 @@ export default function LoginPage() {
         return
       }
 
-      if (!profile || (profile as { email_verified?: boolean | null }).email_verified !== true) {
+      if (!data.user.email_confirmed_at) {
         await supabaseAuth.auth.signOut()
-        setError('Please check your email and click the confirmation link we sent you before signing in.')
+        setError('Please check your email and click the confirmation link we sent you.')
+        setUnconfirmedEmail(normalizedEmail)
         setLoading(false)
-        router.push(`/signup?verifyEmail=${encodeURIComponent(normalizedEmail)}`)
         return
+      }
+
+      if (!profile || (profile as { email_verified?: boolean | null }).email_verified !== true) {
+        const { error: profileUpdateError } = await supabaseAuth
+          .from('UserProfile')
+          .update({
+            email_verified: true,
+            updatedAt: new Date().toISOString(),
+          })
+          .eq('userId', data.user.id)
+
+        if (profileUpdateError) {
+          console.error('[login] profile verification sync failed:', profileUpdateError)
+        }
       }
 
       const accessToken = data.session?.access_token
@@ -128,6 +145,37 @@ export default function LoginPage() {
       setError(getAuthErrorMessage(caught))
       setLoading(false)
     }
+  }
+
+  const handleResendConfirmation = async () => {
+    const targetEmail = (unconfirmedEmail || email).trim().toLowerCase()
+
+    if (!targetEmail) {
+      setError('Enter your email address so we can resend the confirmation link.')
+      return
+    }
+
+    setResendLoading(true)
+    setNotice('')
+
+    const { error: resendError } = await supabaseAuth.auth.resend({
+      type: 'signup',
+      email: targetEmail,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=/account`,
+      },
+    })
+
+    setResendLoading(false)
+
+    if (resendError) {
+      setError(getAuthErrorMessage(resendError))
+      return
+    }
+
+    setError('')
+    setUnconfirmedEmail(targetEmail)
+    setNotice('Confirmation email resent. Please check your inbox and spam folder.')
   }
 
   return (
@@ -377,6 +425,29 @@ export default function LoginPage() {
             </p>
 
             {error && <ErrorMessage message={error} />}
+
+            {unconfirmedEmail ? (
+              <button
+                type="button"
+                onClick={() => void handleResendConfirmation()}
+                disabled={resendLoading}
+                style={{
+                  width: '100%',
+                  padding: '13px 16px',
+                  background: 'transparent',
+                  color: '#C9A961',
+                  border: '0.5px solid #EDD9AF',
+                  fontSize: '11px',
+                  letterSpacing: '0.16em',
+                  fontFamily: 'Inter, sans-serif',
+                  cursor: resendLoading ? 'not-allowed' : 'pointer',
+                  marginBottom: '18px',
+                  transition: 'all 0.3s',
+                }}
+              >
+                {resendLoading ? 'SENDING...' : 'RESEND CONFIRMATION EMAIL'}
+              </button>
+            ) : null}
 
             {notice && (
               <div style={{

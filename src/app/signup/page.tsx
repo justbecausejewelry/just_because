@@ -1,7 +1,7 @@
 "use client"
 
 import type { CSSProperties, FormEvent } from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -79,11 +79,11 @@ export default function SignupPage() {
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [resendLoading, setResendLoading] = useState(false)
   const [error, setError] = useState('')
   const [alreadyRegistered, setAlreadyRegistered] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<SignupFieldErrors>({})
-  const [showVerifyScreen, setShowVerifyScreen] = useState(false)
-  const [verificationCode, setVerificationCode] = useState('')
+  const [confirmationEmail, setConfirmationEmail] = useState('')
   const [resendMessage, setResendMessage] = useState('')
   const strength = useMemo(() => strengthFor(password), [password])
   const strengthColor = strength <= 1 ? '#A85C6A' : strength === 2 ? '#B7791F' : strength === 3 ? '#C9A961' : '#7A8F72'
@@ -91,26 +91,43 @@ export default function SignupPage() {
     name,
     email,
     termsAccepted,
-    showVerifyScreen,
-  }), [email, name, showVerifyScreen, termsAccepted])
+  }), [email, name, termsAccepted])
   const clearPersistedSignup = useFormPersistence('signup_form_v1', signupDraft, (updater) => {
     const next = typeof updater === 'function' ? updater(signupDraft) : updater
     if (typeof next.name === 'string') setName(next.name)
     if (typeof next.email === 'string') setEmail(next.email)
     if (typeof next.termsAccepted === 'boolean') setTermsAccepted(next.termsAccepted)
-    if (typeof next.showVerifyScreen === 'boolean') setShowVerifyScreen(next.showVerifyScreen)
   })
 
-  useEffect(() => {
-    const verifyEmail = new URLSearchParams(window.location.search).get('verifyEmail')
-    if (!verifyEmail) return
+  const handleResend = async () => {
+    const targetEmail = (confirmationEmail || email).trim().toLowerCase()
+    if (!targetEmail) {
+      setError('Enter your email address so we can resend the confirmation link.')
+      return
+    }
 
-    setEmail(verifyEmail)
-    setShowVerifyScreen(true)
-    setFieldErrors({})
-    setError('Please verify your email before signing in.')
-    setAlreadyRegistered(false)
-  }, [])
+    setResendLoading(true)
+    setError('')
+    setResendMessage('')
+
+    const { error: resendError } = await supabaseAuth.auth.resend({
+      type: 'signup',
+      email: targetEmail,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=/account`,
+      },
+    })
+
+    setResendLoading(false)
+
+    if (resendError) {
+      setError(getAuthErrorMessage(resendError))
+      return
+    }
+
+    setResendMessage('We sent a fresh confirmation link.')
+    showToast('Confirmation email resent.', 'success')
+  }
 
   const handleSubmit = async (event?: FormEvent<HTMLFormElement>) => {
     event?.preventDefault()
@@ -149,19 +166,16 @@ export default function SignupPage() {
       setLoading(false)
 
       if (!signupResponse.ok) {
-        const body: unknown = await signupResponse.json().catch(() => null)
-        const rawError = body && typeof body === 'object' && 'error' in body
-          ? (body as { error?: unknown }).error
-          : body
-        setAlreadyRegistered(isAlreadyRegisteredError(rawError))
-        setError(getAuthErrorMessage(rawError))
+        const message = await readFriendlyApiError(signupResponse, getAuthErrorMessage)
+        setAlreadyRegistered(isAlreadyRegisteredError(message))
+        setError(message)
         return
       }
 
       setEmail(normalizedEmail)
-      setVerificationCode('')
-      setShowVerifyScreen(true)
-      showToast('A 4-digit verification code was sent to your email.', 'success')
+      setConfirmationEmail(normalizedEmail)
+      clearPersistedSignup()
+      showToast('Check your email for your confirmation link.', 'success')
     } catch (caught) {
       console.error('[signup] account creation failed:', caught)
       setLoading(false)
@@ -169,100 +183,81 @@ export default function SignupPage() {
     }
   }
 
-  const handleVerifyEmail = async (event?: FormEvent<HTMLFormElement>) => {
-    event?.preventDefault()
-    const normalizedEmail = email.trim().toLowerCase()
-    const code = verificationCode.replace(/\D/g, '')
-
-    setError('')
-    setAlreadyRegistered(false)
-    setResendMessage('')
-
-    if (!normalizedEmail || code.length !== 4) {
-      setError('Enter the 4-digit code sent to your email.')
-      return
-    }
-
-    setLoading(true)
-
-    const verifyResponse = await fetch('/api/auth/verify-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: normalizedEmail,
-        code,
-      }),
-    }).catch((caught: unknown) => {
-      console.error('[signup] verification request failed:', caught)
-      return null
-    })
-
-    if (!verifyResponse?.ok) {
-      setError(verifyResponse ? await readFriendlyApiError(verifyResponse, getAuthErrorMessage) : getAuthErrorMessage('network'))
-      setLoading(false)
-      return
-    }
-
-    if (password) {
-      const { error: signInError } = await supabaseAuth.auth.signInWithPassword({
-        email: normalizedEmail,
-        password,
-      })
-
-      if (signInError) {
-        clearPersistedSignup()
-        showToast('Email verified. Please sign in to continue.', 'success')
-        router.push(`/login?verified=1&email=${encodeURIComponent(normalizedEmail)}`)
-        return
-      }
-
-      clearPersistedSignup()
-      showToast('Email verified. Welcome to Just Because.', 'success')
-      router.push('/account')
-      return
-    }
-
-    clearPersistedSignup()
-    showToast('Email verified. Please sign in to continue.', 'success')
-    router.push(`/login?verified=1&email=${encodeURIComponent(normalizedEmail)}`)
-  }
-
-  const handleResendCode = async () => {
-    const normalizedEmail = email.trim().toLowerCase()
-
-    setError('')
-    setAlreadyRegistered(false)
-    setResendMessage('')
-
-    if (!normalizedEmail) {
-      setError('Enter your email address to resend the code.')
-      return
-    }
-
-    setLoading(true)
-
-    const resendResponse = await fetch('/api/auth/send-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: normalizedEmail,
-        name: name.trim(),
-      }),
-    }).catch((caught: unknown) => {
-      console.error('[signup] resend code request failed:', caught)
-      return null
-    })
-
-    setLoading(false)
-
-    if (!resendResponse?.ok) {
-      setError(resendResponse ? await readFriendlyApiError(resendResponse, getAuthErrorMessage) : getAuthErrorMessage('network'))
-      return
-    }
-
-    setEmail(normalizedEmail)
-    setVerificationCode('')
-    setResendMessage('A fresh 4-digit verification code has been sent.')
+  if (confirmationEmail) {
+    return (
+      <div style={{
+        background: '#FBF5F0',
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '40px 20px',
+      }}>
+        <div style={{ maxWidth: '400px', textAlign: 'center' }}>
+          <p style={{
+            fontSize: '11px',
+            letterSpacing: '0.2em',
+            color: '#C9A961',
+            marginBottom: '24px',
+          }}>
+            CHECK YOUR EMAIL
+          </p>
+          <h1 style={{
+            fontFamily: 'var(--font-playfair)',
+            fontSize: '28px',
+            color: '#1A1014',
+            fontWeight: 400,
+            marginBottom: '16px',
+          }}>
+            One last step.
+          </h1>
+          <p style={{
+            fontFamily: 'var(--font-inter)',
+            fontSize: '14px',
+            color: '#B8A090',
+            lineHeight: '1.8',
+            marginBottom: '32px',
+          }}>
+            We sent a confirmation link to <strong style={{ color: '#1A1014' }}>{confirmationEmail}</strong>.
+            Click the link in that email to activate your account and start shopping.
+          </p>
+          {error ? <ErrorMessage message={error} /> : null}
+          {resendMessage ? (
+            <p style={{
+              fontFamily: 'var(--font-inter)',
+              fontSize: '12px',
+              color: '#7A8F72',
+              marginBottom: '16px',
+            }}>
+              {resendMessage}
+            </p>
+          ) : null}
+          <p style={{
+            fontFamily: 'var(--font-inter)',
+            fontSize: '12px',
+            color: '#B8A090',
+            lineHeight: 1.7,
+          }}>
+            Did not receive it? Check your spam folder or{' '}
+            <button
+              onClick={() => void handleResend()}
+              disabled={resendLoading}
+              style={{
+                color: '#C9A961',
+                background: 'none',
+                border: 'none',
+                cursor: resendLoading ? 'not-allowed' : 'pointer',
+                fontSize: '12px',
+                textDecoration: 'underline',
+                padding: 0,
+              }}
+            >
+              {resendLoading ? 'sending...' : 'resend the email'}
+            </button>
+          </p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -309,196 +304,171 @@ export default function SignupPage() {
       `}</style>
 
       <div className="login-wrap" style={{
-      display: 'flex',
-      height: '100vh',
-      width: '100vw',
-      overflow: 'hidden',
-      background: '#FBF5F0',
-    }}>
-      <div className="login-left" style={{
-        width: '52%',
-        position: 'relative',
+        display: 'flex',
+        height: '100vh',
+        width: '100vw',
         overflow: 'hidden',
-        flexShrink: 0,
+        background: '#FBF5F0',
       }}>
-        <Image
-          src="/images/login-hero.jpg"
-          alt="Just Because diamond ring"
-          fill
-          sizes="(max-width: 900px) 100vw, 45vw"
-          style={{ objectFit: 'cover', objectPosition: 'center' }}
-          priority
-          quality={95}
-        />
-
-        <div style={{
-          position: 'absolute',
-          inset: 0,
-          background: `linear-gradient(
-            to bottom,
-            rgba(26,16,20,0.72) 0%,
-            rgba(26,16,20,0.15) 35%,
-            rgba(26,16,20,0.08) 55%,
-            rgba(26,16,20,0.65) 100%
-          )`,
-        }} />
-
-        <div style={{
-          position: 'absolute',
-          top: '40px',
-          left: '48px',
-          zIndex: 2,
+        <div className="login-left" style={{
+          width: '52%',
+          position: 'relative',
+          overflow: 'hidden',
+          flexShrink: 0,
         }}>
-          <AuthLogo />
-        </div>
-
-        <div style={{
-          position: 'absolute',
-          bottom: '48px',
-          left: '48px',
-          right: '48px',
-          zIndex: 2,
-        }}>
-          <div style={{
-            width: '40px',
-            height: '1px',
-            background: '#C9A961',
-            marginBottom: '16px',
-          }} />
-
-          <h2 style={{
-            fontFamily: 'var(--font-playfair)',
-            fontSize: '52px',
-            fontWeight: 400,
-            color: '#FBF5F0',
-            lineHeight: 1,
-            marginBottom: '8px',
-          }}>
-            Begin your
-          </h2>
-          <h2 style={{
-            fontFamily: 'var(--font-playfair)',
-            fontSize: '52px',
-            fontWeight: 400,
-            fontStyle: 'italic',
-            color: '#C9A961',
-            lineHeight: 1,
-            marginBottom: '24px',
-          }}>
-            story.
-          </h2>
-
-          <p style={{
-            fontSize: '13px',
-            color: 'rgba(251,245,240,0.7)',
-            fontFamily: 'var(--font-inter)',
-            letterSpacing: '0.05em',
-            marginBottom: '28px',
-          }}>
-            Create your Just Because account.
-          </p>
+          <Image
+            src="/images/login-hero.jpg"
+            alt="Just Because diamond ring"
+            fill
+            sizes="(max-width: 900px) 100vw, 45vw"
+            style={{ objectFit: 'cover', objectPosition: 'center' }}
+            priority
+            quality={95}
+          />
 
           <div style={{
-            width: '100%',
-            height: '0.5px',
-            background: 'rgba(201,169,97,0.3)',
-            marginBottom: '24px',
+            position: 'absolute',
+            inset: 0,
+            background: `linear-gradient(
+              to bottom,
+              rgba(26,16,20,0.72) 0%,
+              rgba(26,16,20,0.15) 35%,
+              rgba(26,16,20,0.08) 55%,
+              rgba(26,16,20,0.65) 100%
+            )`,
           }} />
 
           <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px',
+            position: 'absolute',
+            top: '40px',
+            left: '48px',
+            zIndex: 2,
           }}>
-            {[
-              { q: '"The most beautiful buying experience."', name: 'Priya M.' },
-              { q: '"Quietly luxurious, from start to finish."', name: 'Sarah K.' },
-            ].map((r, i) => (
-              <div key={i} style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '10px',
-              }}>
-                <span style={{
-                  color: '#C9A961',
-                  fontSize: '12px',
-                  flexShrink: 0,
-                  marginTop: '1px',
-                }}>★</span>
-                <div>
-                  <p style={{
-                    fontFamily: 'var(--font-playfair)',
-                    fontStyle: 'italic',
-                    fontSize: '13px',
-                    color: 'rgba(251,245,240,0.9)',
-                    lineHeight: 1.5,
-                    marginBottom: '3px',
-                  }}>{r.q}</p>
+            <AuthLogo />
+          </div>
+
+          <div style={{
+            position: 'absolute',
+            bottom: '48px',
+            left: '48px',
+            right: '48px',
+            zIndex: 2,
+          }}>
+            <div style={{
+              width: '40px',
+              height: '1px',
+              background: '#C9A961',
+              marginBottom: '16px',
+            }} />
+
+            <h2 style={{
+              fontFamily: 'var(--font-playfair)',
+              fontSize: '52px',
+              fontWeight: 400,
+              color: '#FBF5F0',
+              lineHeight: 1,
+              marginBottom: '8px',
+            }}>
+              Begin your
+            </h2>
+            <h2 style={{
+              fontFamily: 'var(--font-playfair)',
+              fontSize: '52px',
+              fontWeight: 400,
+              fontStyle: 'italic',
+              color: '#C9A961',
+              lineHeight: 1,
+              marginBottom: '24px',
+            }}>
+              story.
+            </h2>
+
+            <p style={{
+              fontSize: '13px',
+              color: 'rgba(251,245,240,0.7)',
+              fontFamily: 'var(--font-inter)',
+              letterSpacing: '0.05em',
+              marginBottom: '28px',
+            }}>
+              Create your Just Because account.
+            </p>
+
+            <div style={{
+              width: '100%',
+              height: '0.5px',
+              background: 'rgba(201,169,97,0.3)',
+              marginBottom: '24px',
+            }} />
+
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+            }}>
+              {[
+                { q: '"The most beautiful buying experience."', name: 'Priya M.' },
+                { q: '"Quietly luxurious, from start to finish."', name: 'Sarah K.' },
+              ].map((r, i) => (
+                <div key={i} style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '10px',
+                }}>
                   <span style={{
-                    fontSize: '11px',
-                    color: 'rgba(201,169,97,0.7)',
-                    fontFamily: 'var(--font-inter)',
-                    letterSpacing: '0.08em',
-                  }}>{r.name}</span>
+                    color: '#C9A961',
+                    fontSize: '12px',
+                    flexShrink: 0,
+                    marginTop: '1px',
+                  }}>*</span>
+                  <div>
+                    <p style={{
+                      fontFamily: 'var(--font-playfair)',
+                      fontStyle: 'italic',
+                      fontSize: '13px',
+                      color: 'rgba(251,245,240,0.9)',
+                      lineHeight: 1.5,
+                      marginBottom: '3px',
+                    }}>{r.q}</p>
+                    <span style={{
+                      fontSize: '11px',
+                      color: 'rgba(201,169,97,0.7)',
+                      fontFamily: 'var(--font-inter)',
+                      letterSpacing: '0.08em',
+                    }}>{r.name}</span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
 
-        <div style={{
-          position: 'absolute',
-          top: '40px',
-          right: '32px',
-          zIndex: 2,
+        <div className="login-right" style={{
+          flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'flex-end',
-          gap: '3px',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: '34px 64px',
+          background: '#FDF8F2',
+          borderLeft: '0.5px solid #EDD9AF',
+          overflow: 'hidden',
         }}>
-          <div style={{ width: '24px', height: '0.5px', background: 'rgba(201,169,97,0.4)' }} />
-          <div style={{ width: '16px', height: '0.5px', background: 'rgba(201,169,97,0.3)' }} />
-          <div style={{ width: '8px', height: '0.5px', background: 'rgba(201,169,97,0.2)' }} />
-        </div>
-      </div>
+          <div className="mobile-logo" style={{
+            display: 'none',
+            marginBottom: '36px',
+          }}>
+            <BrandLogo size="lg" href="/" />
+          </div>
 
-      <div className="login-right" style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: '34px 64px',
-        background: '#FFFFFF',
-        borderLeft: '0.5px solid #EDD9AF',
-        overflow: 'hidden',
-      }}>
-        <div className="mobile-logo" style={{
-          display: 'none',
-          marginBottom: '36px',
-        }}>
-          <BrandLogo size="lg" href="/" />
-        </div>
-
-        {showVerifyScreen ? (
           <form
             className="login-form-inner"
-            onSubmit={(event) => void handleVerifyEmail(event)}
+            onSubmit={(event) => void handleSubmit(event)}
             style={{
               width: '100%',
               maxWidth: '400px',
             }}
           >
             <div style={{ marginBottom: '26px' }}>
-              <p style={{
-                color: '#C9A961',
-                fontFamily: 'var(--font-inter)',
-                fontSize: '10px',
-                letterSpacing: '0.3em',
-                marginBottom: '10px',
-              }}>
-                EMAIL VERIFICATION
-              </p>
               <h1 style={{
                 fontFamily: 'var(--font-playfair)',
                 fontSize: '34px',
@@ -507,43 +477,69 @@ export default function SignupPage() {
                 marginBottom: '8px',
                 lineHeight: 1.1,
               }}>
-                Verify your email
+                Create account
               </h1>
               <p style={{
                 fontSize: '13px',
                 color: '#1A1014',
                 fontFamily: 'var(--font-inter)',
-                lineHeight: 1.6,
               }}>
-                Enter the 4-digit code sent to {email || 'your email address'}.
+                Already have an account?{' '}
+                <Link href="/login" style={{
+                  color: '#C9A961',
+                  textDecoration: 'none',
+                  fontWeight: 500,
+                }}>
+                  Sign in &gt;
+                </Link>
               </p>
             </div>
 
-            {error && <ErrorMessage message={error} />}
+            {alreadyRegistered ? (
+              <>
+                <ErrorMessage
+                  message="It looks like you already have an account with us."
+                  action={{
+                    label: 'Sign in instead ->',
+                    href: '/login',
+                  }}
+                />
+                <ErrorMessage
+                  message="Forgot your password?"
+                  action={{
+                    label: 'Reset it here ->',
+                    href: '/forgot-password',
+                  }}
+                />
+              </>
+            ) : error ? (
+              <ErrorMessage message={error} />
+            ) : null}
 
-            {resendMessage && (
-              <div style={{
-                background: '#FDF8F2',
-                border: '1px solid #7A8F72',
-                padding: '10px 14px',
-                marginBottom: '14px',
-                fontSize: '12px',
-                color: '#7A8F72',
-                fontFamily: 'var(--font-inter)',
-              }}>
-                {resendMessage}
-              </div>
-            )}
-
+            <AuthInput
+              label="FULL NAME"
+              type="text"
+              value={name}
+              onChange={(value) => {
+                setName(value)
+                setFieldErrors((current) => ({ ...current, name: undefined }))
+              }}
+              placeholder="Your name"
+              error={fieldErrors.name}
+            />
             <AuthInput
               label="EMAIL ADDRESS"
               type="email"
               value={email}
-              onChange={setEmail}
+              onChange={(value) => {
+                setEmail(value)
+                setFieldErrors((current) => ({ ...current, email: undefined }))
+              }}
               placeholder="your@email.com"
+              error={fieldErrors.email}
             />
 
-            <div style={{ marginBottom: '16px' }}>
+            <div style={{ marginBottom: '12px' }}>
               <label style={{
                 display: 'block',
                 fontSize: '9px',
@@ -552,335 +548,161 @@ export default function SignupPage() {
                 fontFamily: 'var(--font-inter)',
                 marginBottom: '8px',
               }}>
-                VERIFICATION CODE
+                PASSWORD
               </label>
-              <input
-                className="signup-input"
-                type="text"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                value={verificationCode}
-                onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, '').slice(0, 4))}
-                placeholder="0000"
-                maxLength={4}
-                style={inputStyle}
-                onFocus={(event) => {
-                  event.target.style.borderColor = '#1A1014'
-                }}
-                onBlur={(event) => {
-                  event.target.style.borderColor = '#D4C4B0'
-                }}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  className="signup-input"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(event) => {
+                    setPassword(event.target.value)
+                    setFieldErrors((current) => ({ ...current, password: undefined, confirmPassword: undefined }))
+                  }}
+                  placeholder="Min. 8 characters"
+                  style={inputStyle}
+                  onFocus={(event) => {
+                    event.target.style.borderColor = '#1A1014'
+                  }}
+                  onBlur={(event) => {
+                    event.target.style.borderColor = '#EDD9AF'
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '14px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    color: 'var(--color-muted-text)',
+                  }}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+              <div style={{
+                color: password.length >= 8 ? '#7A8F72' : 'var(--color-muted-text)',
+                fontFamily: 'var(--font-inter)',
+                fontSize: '11px',
+                lineHeight: 1.5,
+                marginTop: '8px',
+              }}>
+                At least 8 characters
+              </div>
+              {fieldErrors.password ? (
+                <div style={fieldErrorStyle}>{fieldErrors.password}</div>
+              ) : null}
             </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '16px' }}>
+              {Array.from({ length: 4 }, (_, index) => (
+                <span key={index} style={{ backgroundColor: index < strength ? strengthColor : '#EDD9AF', height: '4px' }} />
+              ))}
+            </div>
+
+            <AuthInput
+              label="CONFIRM PASSWORD"
+              type="password"
+              value={confirmPassword}
+              onChange={(value) => {
+                setConfirmPassword(value)
+                setFieldErrors((current) => ({ ...current, confirmPassword: undefined }))
+              }}
+              placeholder="Repeat password"
+              error={fieldErrors.confirmPassword}
+            />
+
+            <label style={{
+              color: '#1A1014',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '10px',
+              fontFamily: 'var(--font-inter)',
+              fontSize: '12px',
+              lineHeight: 1.5,
+              margin: '4px 0 6px',
+            }}>
+              <input
+                checked={termsAccepted}
+                onChange={(event) => {
+                  setTermsAccepted(event.target.checked)
+                  setFieldErrors((current) => ({ ...current, terms: undefined }))
+                }}
+                type="checkbox"
+                style={{ accentColor: '#C9A961', marginTop: '3px' }}
+              />
+              <span>
+                I agree to the{' '}
+                <Link href="/terms" target="_blank" rel="noreferrer" style={{ color: '#C9A961', textDecoration: 'none' }}>
+                  Terms of Service
+                </Link>
+                {' '}and{' '}
+                <Link href="/privacy-policy" target="_blank" rel="noreferrer" style={{ color: '#C9A961', textDecoration: 'none' }}>
+                  Privacy Policy
+                </Link>
+              </span>
+            </label>
+            {fieldErrors.terms ? (
+              <div style={{ ...fieldErrorStyle, marginBottom: '16px' }}>{fieldErrors.terms}</div>
+            ) : (
+              <div style={{ marginBottom: '16px' }} />
+            )}
 
             <button
               type="submit"
-              disabled={loading || verificationCode.length !== 4}
+              disabled={loading}
               style={{
                 width: '100%',
                 padding: '16px',
-                background: loading || verificationCode.length !== 4 ? '#B8A090' : '#1A1014',
+                background: loading ? '#B8A090' : '#1A1014',
                 color: '#FBF5F0',
                 border: 'none',
                 fontSize: '12px',
                 letterSpacing: '0.2em',
                 fontFamily: 'var(--font-inter)',
-                cursor: loading || verificationCode.length !== 4 ? 'not-allowed' : 'pointer',
+                cursor: loading ? 'not-allowed' : 'pointer',
                 transition: 'background 0.3s',
-                marginBottom: '12px',
+                marginBottom: '18px',
               }}
             >
-              {loading ? 'VERIFYING...' : 'VERIFY EMAIL'}
+              {loading ? 'CREATING...' : 'CREATE ACCOUNT >'}
             </button>
 
             <button
               type="button"
-              onClick={() => void handleResendCode()}
-              disabled={loading}
+              onClick={() => router.push('/')}
               style={{
                 width: '100%',
                 padding: '14px',
                 background: 'transparent',
                 color: '#1A1014',
-                border: '1px solid #EDD9AF',
-                fontSize: '11px',
-                letterSpacing: '0.18em',
-                fontFamily: 'var(--font-inter)',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                marginBottom: '12px',
-              }}
-            >
-              RESEND CODE
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setShowVerifyScreen(false)
-                setVerificationCode('')
-                setError('')
-                setResendMessage('')
-              }}
-              style={{
-                width: '100%',
-                padding: '14px',
-                background: 'transparent',
-                color: 'var(--color-muted-text)',
-                border: 'none',
+                border: '1px solid #1A1014',
                 fontSize: '11px',
                 letterSpacing: '0.18em',
                 fontFamily: 'var(--font-inter)',
                 cursor: 'pointer',
+                transition: 'all 0.3s',
+              }}
+              onMouseEnter={(event) => {
+                event.currentTarget.style.background = '#1A1014'
+                event.currentTarget.style.color = '#FBF5F0'
+              }}
+              onMouseLeave={(event) => {
+                event.currentTarget.style.background = 'transparent'
+                event.currentTarget.style.color = '#1A1014'
               }}
             >
-              CREATE ACCOUNT AGAIN
+              CONTINUE AS GUEST &gt;
             </button>
           </form>
-        ) : (
-        <form
-          className="login-form-inner"
-          onSubmit={(event) => void handleSubmit(event)}
-          style={{
-            width: '100%',
-            maxWidth: '400px',
-          }}
-        >
-          <div style={{ marginBottom: '26px' }}>
-            <h1 style={{
-              fontFamily: 'var(--font-playfair)',
-              fontSize: '34px',
-              fontWeight: 400,
-              color: '#1A1014',
-              marginBottom: '8px',
-              lineHeight: 1.1,
-            }}>
-              Create account
-            </h1>
-            <p style={{
-              fontSize: '13px',
-              color: '#1A1014',
-              fontFamily: 'var(--font-inter)',
-            }}>
-              Already have an account?{' '}
-              <Link href="/login" style={{
-                color: '#C9A961',
-                textDecoration: 'none',
-                fontWeight: 600,
-              }}>
-                Sign in →
-              </Link>
-            </p>
-          </div>
-
-          {alreadyRegistered ? (
-            <>
-              <ErrorMessage
-                message="It looks like you already have an account with us."
-                action={{
-                  label: 'Sign in instead ->',
-                  href: '/login',
-                }}
-              />
-              <ErrorMessage
-                message="Forgot your password?"
-                action={{
-                  label: 'Reset it here ->',
-                  href: '/forgot-password',
-                }}
-              />
-            </>
-          ) : error ? (
-            <ErrorMessage message={error} />
-          ) : null}
-
-          <AuthInput
-            label="FULL NAME"
-            type="text"
-            value={name}
-            onChange={(value) => {
-              setName(value)
-              setFieldErrors((current) => ({ ...current, name: undefined }))
-            }}
-            placeholder="Your name"
-            error={fieldErrors.name}
-          />
-          <AuthInput
-            label="EMAIL ADDRESS"
-            type="email"
-            value={email}
-            onChange={(value) => {
-              setEmail(value)
-              setFieldErrors((current) => ({ ...current, email: undefined }))
-            }}
-            placeholder="your@email.com"
-            error={fieldErrors.email}
-          />
-
-          <div style={{ marginBottom: '12px' }}>
-            <label style={{
-              display: 'block',
-              fontSize: '9px',
-              letterSpacing: '0.25em',
-              color: '#1A1014',
-              fontFamily: 'var(--font-inter)',
-              marginBottom: '8px',
-            }}>
-              PASSWORD
-            </label>
-            <div style={{ position: 'relative' }}>
-              <input
-                className="signup-input"
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(event) => {
-                  setPassword(event.target.value)
-                  setFieldErrors((current) => ({ ...current, password: undefined, confirmPassword: undefined }))
-                }}
-                placeholder="••••••••"
-                style={inputStyle}
-                onFocus={(event) => {
-                  event.target.style.borderColor = '#1A1014'
-                }}
-                onBlur={(event) => {
-                  event.target.style.borderColor = '#D4C4B0'
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{
-                  position: 'absolute',
-                  right: '14px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  color: 'var(--color-muted-text)',
-                }}
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-            <div style={{
-              color: password.length >= 8 ? '#7A8F72' : 'var(--color-muted-text)',
-              fontFamily: 'var(--font-inter)',
-              fontSize: '11px',
-              lineHeight: 1.5,
-              marginTop: '8px',
-            }}>
-              At least 8 characters
-            </div>
-            {fieldErrors.password ? (
-              <div style={fieldErrorStyle}>{fieldErrors.password}</div>
-            ) : null}
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '16px' }}>
-            {Array.from({ length: 4 }, (_, index) => (
-              <span key={index} style={{ backgroundColor: index < strength ? strengthColor : '#EDD9AF', height: '4px' }} />
-            ))}
-          </div>
-
-          <AuthInput
-            label="CONFIRM PASSWORD"
-            type="password"
-            value={confirmPassword}
-            onChange={(value) => {
-              setConfirmPassword(value)
-              setFieldErrors((current) => ({ ...current, confirmPassword: undefined }))
-            }}
-            placeholder="••••••••"
-            error={fieldErrors.confirmPassword}
-          />
-
-          <label style={{
-            color: '#1A1014',
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '10px',
-            fontFamily: 'var(--font-inter)',
-            fontSize: '12px',
-            lineHeight: 1.5,
-            margin: '4px 0 6px',
-          }}>
-            <input
-              checked={termsAccepted}
-              onChange={(event) => {
-                setTermsAccepted(event.target.checked)
-                setFieldErrors((current) => ({ ...current, terms: undefined }))
-              }}
-              type="checkbox"
-              style={{ accentColor: '#C9A961', marginTop: '3px' }}
-            />
-            <span>
-              I agree to the{' '}
-              <Link href="/terms" target="_blank" rel="noreferrer" style={{ color: '#C9A961', textDecoration: 'none' }}>
-                Terms of Service
-              </Link>
-              {' '}and{' '}
-              <Link href="/privacy-policy" target="_blank" rel="noreferrer" style={{ color: '#C9A961', textDecoration: 'none' }}>
-                Privacy Policy
-              </Link>
-            </span>
-          </label>
-          {fieldErrors.terms ? (
-            <div style={{ ...fieldErrorStyle, marginBottom: '16px' }}>{fieldErrors.terms}</div>
-          ) : (
-            <div style={{ marginBottom: '16px' }} />
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: '16px',
-              background: loading ? '#888' : '#1A1014',
-              color: '#FBF5F0',
-              border: 'none',
-              fontSize: '12px',
-              letterSpacing: '0.2em',
-              fontFamily: 'var(--font-inter)',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'background 0.3s',
-              marginBottom: '18px',
-            }}
-          >
-            {loading ? 'CREATING...' : 'CREATE ACCOUNT →'}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => router.push('/')}
-            style={{
-              width: '100%',
-              padding: '14px',
-              background: 'transparent',
-              color: '#1A1014',
-              border: '1px solid #1A1014',
-              fontSize: '11px',
-              letterSpacing: '0.18em',
-              fontFamily: 'var(--font-inter)',
-              cursor: 'pointer',
-              transition: 'all 0.3s',
-            }}
-            onMouseEnter={(event) => {
-              event.currentTarget.style.background = '#1A1014'
-              event.currentTarget.style.color = '#FBF5F0'
-            }}
-            onMouseLeave={(event) => {
-              event.currentTarget.style.background = 'transparent'
-              event.currentTarget.style.color = '#1A1014'
-            }}
-          >
-            CONTINUE AS GUEST →
-          </button>
-        </form>
-        )}
+        </div>
       </div>
-    </div>
     </>
   )
 }
@@ -923,7 +745,7 @@ function AuthInput({
           event.target.style.borderColor = '#1A1014'
         }}
         onBlur={(event) => {
-          event.target.style.borderColor = '#D4C4B0'
+          event.target.style.borderColor = '#EDD9AF'
         }}
       />
       {error ? (
@@ -944,8 +766,8 @@ const fieldErrorStyle: CSSProperties = {
 const inputStyle: CSSProperties = {
   width: '100%',
   padding: '14px 16px',
-  background: '#FFFFFF',
-  border: '1px solid #D4C4B0',
+  background: '#FBF5F0',
+  border: '0.5px solid #EDD9AF',
   color: '#1A1014',
   fontSize: '14px',
   fontFamily: 'var(--font-inter)',

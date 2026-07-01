@@ -2,7 +2,6 @@ import { createServerClient } from '@supabase/ssr'
 import type { EmailOtpType, User } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
-import { getOrCreateProfile } from '@/lib/userProfile'
 
 const allowedOtpTypes = new Set<EmailOtpType>([
   'signup',
@@ -26,16 +25,6 @@ function normalizeOtpType(value: string | null): EmailOtpType | null {
 
   const otpType = value as EmailOtpType
   return allowedOtpTypes.has(otpType) ? otpType : null
-}
-
-async function ensureProfile(user: User | null) {
-  if (!user?.email) return
-
-  await getOrCreateProfile(
-    user.id,
-    user.email,
-    typeof user.user_metadata?.name === 'string' ? user.user_metadata.name : undefined
-  )
 }
 
 export async function GET(request: NextRequest) {
@@ -88,6 +77,56 @@ export async function GET(request: NextRequest) {
     }
   )
 
+  const ensureVerifiedProfile = async (user: User | null) => {
+    if (!user?.email) return
+
+    const name = typeof user.user_metadata?.name === 'string' ? user.user_metadata.name : user.email.split('@')[0]
+    const nameParts = name.trim().split(/\s+/)
+    const now = new Date().toISOString()
+    const { data: existingProfile, error: profileLookupError } = await supabase
+      .from('UserProfile')
+      .select('userId')
+      .eq('userId', user.id)
+      .maybeSingle()
+
+    if (profileLookupError) {
+      console.error('[auth/callback] profile lookup failed:', profileLookupError.message)
+      return
+    }
+
+    if (existingProfile) {
+      const { error: updateProfileError } = await supabase
+        .from('UserProfile')
+        .update({
+          email_verified: true,
+          updatedAt: now,
+        })
+        .eq('userId', user.id)
+
+      if (updateProfileError) {
+        console.error('[auth/callback] profile verification update failed:', updateProfileError.message)
+      }
+      return
+    }
+
+    const { error: insertProfileError } = await supabase
+      .from('UserProfile')
+      .insert({
+        userId: user.id,
+        email: user.email,
+        firstName: nameParts[0] || '',
+        lastName: nameParts.slice(1).join(' '),
+        signupSource: 'direct',
+        signup_source: 'direct',
+        email_verified: true,
+        updatedAt: now,
+      })
+
+    if (insertProfileError) {
+      console.error('[auth/callback] verified profile insert failed:', insertProfileError.message)
+    }
+  }
+
   try {
     if (tokenHash && otpType) {
       console.log('[auth/callback] verifying token hash before session cookie write')
@@ -101,7 +140,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(`${origin}/login?error=verification_failed`)
       }
 
-      await ensureProfile(data.user)
+      await ensureVerifiedProfile(data.user)
       console.log('[auth/callback] verifyOtp succeeded; redirecting with session cookies')
       return response
     }
@@ -115,7 +154,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(`${origin}/login?error=verification_failed`)
       }
 
-      await ensureProfile(data.session?.user || data.user)
+      await ensureVerifiedProfile(data.session?.user || data.user)
       console.log('[auth/callback] exchangeCodeForSession succeeded; redirecting with session cookies')
       return response
     }
