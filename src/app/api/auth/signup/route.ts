@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
-import { getAuthErrorMessage } from '@/lib/errors'
+import { getAuthErrorMessage, getGeneralErrorMessage } from '@/lib/errors'
 import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/server/rateLimit'
 
 export const runtime = 'nodejs'
@@ -43,6 +43,16 @@ function splitName(name: string, email: string) {
   }
 }
 
+async function readApiError(response: Response) {
+  const body: unknown = await response.json().catch(() => null)
+  if (typeof body === 'object' && body !== null && 'error' in body) {
+    const message = (body as { error?: unknown }).error
+    if (typeof message === 'string' && message.trim()) return message
+  }
+
+  return getGeneralErrorMessage()
+}
+
 export async function POST(req: Request) {
   console.log('[signup] step 1: handler entered')
 
@@ -68,10 +78,9 @@ export async function POST(req: Request) {
 
     step = 'check-env'
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-    if (!supabaseUrl || !anonKey || !serviceRoleKey) {
+    if (!supabaseUrl || !serviceRoleKey) {
       throw new Error('Signup service is not configured')
     }
     console.log('[signup]', step, 'OK')
@@ -104,35 +113,20 @@ export async function POST(req: Request) {
         persistSession: false,
       },
     })
-    const supabasePublic = createClient(supabaseUrl, anonKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    })
     console.log('[signup] step 3: supabase admin client created')
     console.log('[signup]', step, 'OK')
 
     step = 'create-auth-user'
-    const redirectUrl = new URL('/auth/callback', req.url)
-    redirectUrl.searchParams.set('next', '/account')
-    const { data: createdUserData, error: createError } = await supabasePublic.auth.signUp({
+    const { data: createdUserData, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
-      options: {
-        emailRedirectTo: redirectUrl.toString(),
-        data: {
-          name,
-          full_name: name,
-        },
+      email_confirm: true,
+      user_metadata: {
+        name,
+        full_name: name,
       },
     })
     if (createError) throw createError
-
-    if (createdUserData.user?.identities && createdUserData.user.identities.length === 0) {
-      return NextResponse.json({ error: 'User already registered' }, { status: 409 })
-    }
-
     console.log('[signup]', step, 'OK', {
       userId: createdUserData.user?.id,
       email: createdUserData.user?.email,
@@ -155,7 +149,7 @@ export async function POST(req: Request) {
         phone: phone || null,
         signupSource,
         signup_source: signupSource,
-        email_verified: Boolean(user.email_confirmed_at),
+        email_verified: false,
         updatedAt: new Date().toISOString(),
       }, { onConflict: 'userId' })
     if (profileError) {
@@ -174,6 +168,55 @@ export async function POST(req: Request) {
       throw profileError
     }
     console.log('[signup]', step, 'OK', { userId: user.id })
+
+    step = 'call-send-otp'
+    const sendOtpUrl = new URL('/api/auth/send-otp', req.url)
+    console.log('[signup]', step, 'request', sendOtpUrl.toString())
+    const otpResponse = await fetch(sendOtpUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(10000),
+      body: JSON.stringify({
+        email,
+        name,
+        userId: user.id,
+      }),
+    })
+    console.log('[signup]', step, 'response', {
+      ok: otpResponse.ok,
+      status: otpResponse.status,
+      statusText: otpResponse.statusText,
+    })
+
+    if (!otpResponse.ok) {
+      const otpError = await readApiError(otpResponse)
+      console.error('[signup]', step, 'failed', {
+        status: otpResponse.status,
+        error: otpError,
+      })
+
+      step = 'cleanup-profile-after-otp-failure'
+      const { error: deleteProfileError } = await supabaseAdmin
+        .from('UserProfile')
+        .delete()
+        .eq('userId', user.id)
+      if (deleteProfileError) {
+        console.error('[signup]', step, 'cleanup failed', deleteProfileError)
+      } else {
+        console.log('[signup]', step, 'OK')
+      }
+
+      step = 'cleanup-auth-user-after-otp-failure'
+      const { error: deleteUserError } = await supabaseAdmin.auth.admin.deleteUser(user.id)
+      if (deleteUserError) {
+        console.error('[signup]', step, 'cleanup failed', deleteUserError)
+      } else {
+        console.log('[signup]', step, 'OK')
+      }
+
+      throw new Error(otpError)
+    }
+    console.log('[signup] call-send-otp OK')
 
     step = 'return-success'
     console.log('[signup]', step, 'OK', { userId: user.id })

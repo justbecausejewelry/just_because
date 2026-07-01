@@ -11,6 +11,28 @@ import { mergeGuestCart } from '@/lib/mergeGuestCart'
 import { BrandLogo } from '@/components/ui/BrandLogo'
 import ErrorMessage from '@/components/ui/ErrorMessage'
 
+const AUTH_TIMEOUT_MS = 10000
+
+function delay(ms: number) {
+  return new Promise((resolve) => globalThis.setTimeout(resolve, ms))
+}
+
+function withTimeout<T>(promise: PromiseLike<T>, label: string, timeoutMs = AUTH_TIMEOUT_MS): Promise<T> {
+  let timeoutId: ReturnType<typeof globalThis.setTimeout> | null = null
+
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeoutId = globalThis.setTimeout(() => {
+      reject(new Error(label))
+    }, timeoutMs)
+  })
+
+  return Promise.race([Promise.resolve(promise), timeoutPromise]).finally(() => {
+    if (timeoutId) {
+      globalThis.clearTimeout(timeoutId)
+    }
+  })
+}
+
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
@@ -20,7 +42,7 @@ export default function LoginPage() {
   const [resendLoading, setResendLoading] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
-  const [unconfirmedEmail, setUnconfirmedEmail] = useState('')
+  const [unverifiedEmail, setUnverifiedEmail] = useState('')
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -41,141 +63,154 @@ export default function LoginPage() {
       setError('Please enter your email and password.')
       return
     }
+
     setLoading(true)
     setError('')
     setNotice('')
-    setUnconfirmedEmail('')
+    setUnverifiedEmail('')
 
     try {
-      const { data, error: signInError } = await supabaseAuth.auth.signInWithPassword({
-        email: normalizedEmail,
-        password,
-      })
+      const { data, error: signInError } = await withTimeout(
+        supabaseAuth.auth.signInWithPassword({
+          email: normalizedEmail,
+          password,
+        }),
+        'Sign in timed out. Please try again.'
+      )
 
       if (signInError) {
+        console.error('[login] signInWithPassword failed:', signInError)
         const message = signInError.message.toLowerCase()
         if (message.includes('email not confirmed') || message.includes('not confirmed')) {
-          setError('Please check your email and click the confirmation link we sent you.')
-          setUnconfirmedEmail(normalizedEmail)
-          setLoading(false)
+          setError('Please verify your email with the 4-digit code we sent you.')
+          setUnverifiedEmail(normalizedEmail)
           return
         }
 
         setError(getAuthErrorMessage(signInError))
-        setLoading(false)
         return
       }
 
       if (!data.user) {
         setError('The email or password you entered is incorrect. Please try again.')
-        setLoading(false)
         return
       }
 
-      const { data: profile, error: profileError } = await supabaseAuth
-        .from('UserProfile')
-        .select('email_verified')
-        .eq('userId', data.user.id)
-        .maybeSingle()
+      const { data: profile, error: profileError } = await withTimeout(
+        supabaseAuth
+          .from('UserProfile')
+          .select('email_verified')
+          .eq('userId', data.user.id)
+          .maybeSingle(),
+        'Account verification check timed out. Please try again.'
+      )
 
       if (profileError) {
         console.error('[login] profile lookup failed:', profileError)
         setError(getGeneralErrorMessage(profileError))
-        setLoading(false)
-        return
-      }
-
-      if (!data.user.email_confirmed_at) {
-        await supabaseAuth.auth.signOut()
-        setError('Please check your email and click the confirmation link we sent you.')
-        setUnconfirmedEmail(normalizedEmail)
-        setLoading(false)
         return
       }
 
       if (!profile || (profile as { email_verified?: boolean | null }).email_verified !== true) {
-        const { error: profileUpdateError } = await supabaseAuth
-          .from('UserProfile')
-          .update({
-            email_verified: true,
-            updatedAt: new Date().toISOString(),
-          })
-          .eq('userId', data.user.id)
-
-        if (profileUpdateError) {
-          console.error('[login] profile verification sync failed:', profileUpdateError)
-        }
+        await withTimeout(supabaseAuth.auth.signOut(), 'Sign out timed out. Please refresh and try again.').catch((caught: unknown) => {
+          console.error('[login] signOut after unverified profile failed:', caught)
+        })
+        setError('Please verify your email with the 4-digit code we sent you.')
+        setUnverifiedEmail(normalizedEmail)
+        return
       }
 
       const accessToken = data.session?.access_token
       const refreshToken = data.session?.refresh_token
       if (!accessToken || !refreshToken) {
         setError('We could not finish signing you in. Please try again.')
-        setLoading(false)
         return
       }
 
-      const cookieResponse = await fetch('/api/auth/session-cookie', {
+      const cookieResponse = await withTimeout(fetch('/api/auth/session-cookie', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ accessToken, refreshToken }),
-      })
+      }), 'Saving your session timed out. Please try again.')
 
       if (!cookieResponse.ok) {
-        await supabaseAuth.auth.signOut()
+        console.error('[login] session cookie route failed:', await cookieResponse.text().catch(() => 'No response body'))
+        await withTimeout(supabaseAuth.auth.signOut(), 'Sign out timed out. Please refresh and try again.').catch((caught: unknown) => {
+          console.error('[login] signOut after cookie failure failed:', caught)
+        })
         setError('We could not finish signing you in. Please try again.')
-        setLoading(false)
+        return
+      }
+
+      await delay(600)
+
+      const { data: sessionData, error: sessionError } = await withTimeout(
+        supabaseAuth.auth.getSession(),
+        'Checking your session timed out. Please try again.'
+      )
+
+      if (sessionError || !sessionData.session) {
+        console.error('[login] session check failed:', sessionError)
+        setError('We could not keep you signed in. Please try again.')
         return
       }
 
       const guestCart = getCart()
       if (guestCart.length > 0) {
-        await mergeGuestCart(data.user.id, guestCart)
+        await withTimeout(mergeGuestCart(data.user.id, guestCart), 'Cart sync timed out. Please try again.')
         clearCart()
       }
 
       const redirect = new URLSearchParams(window.location.search).get('redirect')
-      await new Promise((resolve) => globalThis.setTimeout(resolve, 300))
-      router.replace(redirect || '/')
+      router.replace(redirect || '/account')
     } catch (caught) {
       console.error('[login] sign in failed:', caught)
-      setError(getAuthErrorMessage(caught))
+      setError(caught instanceof Error ? caught.message : getAuthErrorMessage(caught))
+    } finally {
       setLoading(false)
     }
   }
 
-  const handleResendConfirmation = async () => {
-    const targetEmail = (unconfirmedEmail || email).trim().toLowerCase()
+  const handleResendCode = async () => {
+    const targetEmail = (unverifiedEmail || email).trim().toLowerCase()
 
     if (!targetEmail) {
-      setError('Enter your email address so we can resend the confirmation link.')
+      setError('Enter your email address so we can resend the verification code.')
       return
     }
 
     setResendLoading(true)
+    setError('')
     setNotice('')
 
-    const { error: resendError } = await supabaseAuth.auth.resend({
-      type: 'signup',
-      email: targetEmail,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=/account`,
-      },
-    })
+    try {
+      const resendResponse = await withTimeout(fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: targetEmail }),
+      }), 'Resend request timed out. Please try again.')
 
-    setResendLoading(false)
+      if (!resendResponse.ok) {
+        setError(await resendResponse.json().then((body: unknown) => {
+          if (body && typeof body === 'object' && 'error' in body) {
+            return getAuthErrorMessage((body as { error?: unknown }).error)
+          }
+          return getAuthErrorMessage(body)
+        }).catch(() => getAuthErrorMessage('network')))
+        return
+      }
 
-    if (resendError) {
-      setError(getAuthErrorMessage(resendError))
-      return
+      setUnverifiedEmail(targetEmail)
+      setNotice('Verification code resent. Please check your inbox and spam folder.')
+    } catch (caught) {
+      console.error('[login] resend verification code failed:', caught)
+      setError(caught instanceof Error ? caught.message : getAuthErrorMessage(caught))
+    } finally {
+      setResendLoading(false)
     }
-
-    setError('')
-    setUnconfirmedEmail(targetEmail)
-    setNotice('Confirmation email resent. Please check your inbox and spam folder.')
   }
 
   return (
@@ -426,27 +461,46 @@ export default function LoginPage() {
 
             {error && <ErrorMessage message={error} />}
 
-            {unconfirmedEmail ? (
-              <button
-                type="button"
-                onClick={() => void handleResendConfirmation()}
-                disabled={resendLoading}
-                style={{
-                  width: '100%',
-                  padding: '13px 16px',
-                  background: 'transparent',
-                  color: '#C9A961',
-                  border: '0.5px solid #EDD9AF',
-                  fontSize: '11px',
-                  letterSpacing: '0.16em',
-                  fontFamily: 'Inter, sans-serif',
-                  cursor: resendLoading ? 'not-allowed' : 'pointer',
-                  marginBottom: '18px',
-                  transition: 'all 0.3s',
-                }}
-              >
-                {resendLoading ? 'SENDING...' : 'RESEND CONFIRMATION EMAIL'}
-              </button>
+            {unverifiedEmail ? (
+              <div style={{ display: 'grid', gap: '10px', marginBottom: '18px' }}>
+                <button
+                  type="button"
+                  onClick={() => void handleResendCode()}
+                  disabled={resendLoading}
+                  style={{
+                    width: '100%',
+                    padding: '13px 16px',
+                    background: 'transparent',
+                    color: '#C9A961',
+                    border: '0.5px solid #EDD9AF',
+                    fontSize: '11px',
+                    letterSpacing: '0.16em',
+                    fontFamily: 'Inter, sans-serif',
+                    cursor: resendLoading ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.3s',
+                  }}
+                >
+                  {resendLoading ? 'SENDING...' : 'RESEND VERIFICATION CODE'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.replace(`/signup?verifyEmail=${encodeURIComponent(unverifiedEmail)}`)}
+                  style={{
+                    width: '100%',
+                    padding: '13px 16px',
+                    background: '#1A1014',
+                    color: '#FBF5F0',
+                    border: 'none',
+                    fontSize: '11px',
+                    letterSpacing: '0.16em',
+                    fontFamily: 'Inter, sans-serif',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s',
+                  }}
+                >
+                  ENTER VERIFICATION CODE
+                </button>
+              </div>
             ) : null}
 
             {notice && (

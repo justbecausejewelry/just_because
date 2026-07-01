@@ -2,10 +2,9 @@
 
 import { FormEvent, Suspense, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, Sparkles } from 'lucide-react'
-import { supabaseAuth } from '@/lib/auth'
-import { getAuthErrorMessage } from '@/lib/errors'
+import { getAuthErrorMessage, readFriendlyApiError } from '@/lib/errors'
 import { BrandLogo } from '@/components/ui/BrandLogo'
 import ErrorMessage from '@/components/ui/ErrorMessage'
 
@@ -31,44 +30,24 @@ function getStrength(password: string) {
 
 function ResetPasswordContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const [email, setEmail] = useState('')
+  const [code, setCode] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [checkingSession, setCheckingSession] = useState(true)
-  const [hasRecoverySession, setHasRecoverySession] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
 
   const strength = useMemo(() => getStrength(password), [password])
 
   useEffect(() => {
-    let cancelled = false
-
-    const checkSession = async () => {
-      const { data: { session } } = await supabaseAuth.auth.getSession()
-      if (cancelled) return
-
-      setHasRecoverySession(Boolean(session?.user))
-      setCheckingSession(false)
+    const emailParam = searchParams.get('email')
+    if (emailParam) {
+      setEmail(emailParam)
     }
-
-    void checkSession()
-
-    const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange((event, session) => {
-      if (cancelled) return
-
-      if (event === 'PASSWORD_RECOVERY' || session?.user) {
-        setHasRecoverySession(true)
-        setCheckingSession(false)
-      }
-    })
-
-    return () => {
-      cancelled = true
-      subscription.unsubscribe()
-    }
-  }, [])
+  }, [searchParams])
 
   useEffect(() => {
     if (!done) return
@@ -83,6 +62,19 @@ function ResetPasswordContent() {
   const handleReset = async (event?: FormEvent<HTMLFormElement>) => {
     event?.preventDefault()
 
+    const normalizedEmail = email.trim().toLowerCase()
+    const normalizedCode = code.replace(/\D/g, '')
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      setError('Enter the email address for your account.')
+      return
+    }
+
+    if (normalizedCode.length !== 4) {
+      setError('Enter the 4-digit code sent to your email.')
+      return
+    }
+
     if (password.length < 8) {
       setError('Please choose a password that is at least 8 characters long.')
       return
@@ -96,18 +88,25 @@ function ResetPasswordContent() {
     setLoading(true)
     setError('')
 
-    const { error: updateError } = await supabaseAuth.auth.updateUser({ password }).catch((caught: unknown) => {
-      console.error('[reset-password] update request failed:', caught)
-      return { error: caught }
+    const resetResponse = await fetch('/api/auth/password-reset/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: normalizedEmail,
+        code: normalizedCode,
+        password,
+      }),
+    }).catch((caught: unknown) => {
+      console.error('[reset-password] reset request failed:', caught)
+      return null
     })
 
-    if (updateError) {
-      setError(getAuthErrorMessage(updateError))
+    if (!resetResponse?.ok) {
+      setError(resetResponse ? await readFriendlyApiError(resetResponse, getAuthErrorMessage) : getAuthErrorMessage('network'))
       setLoading(false)
       return
     }
 
-    await supabaseAuth.auth.signOut()
     setDone(true)
     setLoading(false)
   }
@@ -209,44 +208,7 @@ function ResetPasswordContent() {
           </div>
 
           <div className="reset-panel">
-            {checkingSession ? (
-              <div style={{ textAlign: 'center', color: '#C9A961' }}>
-                <Sparkles size={28} strokeWidth={1.5} />
-              </div>
-            ) : !hasRecoverySession ? (
-              <div style={{ textAlign: 'center' }}>
-                <h1
-                  style={{
-                    fontFamily: 'var(--font-playfair)',
-                    fontSize: '28px',
-                    fontWeight: 400,
-                    color: '#1A1014',
-                    marginBottom: '12px',
-                    lineHeight: 1.1,
-                  }}
-                >
-                  Open your reset link
-                </h1>
-                <p
-                  style={{
-                    fontSize: '13px',
-                    color: 'var(--color-muted-text)',
-                    lineHeight: 1.7,
-                    marginBottom: '24px',
-                  }}
-                >
-                  For your security, password updates must start from the link we send to your email.
-                </p>
-                <Link
-                  href="/forgot-password"
-                  className="reset-primary-button"
-                  style={{ textDecoration: 'none' }}
-                >
-                  REQUEST RESET LINK
-                  <ArrowRight size={14} strokeWidth={1.5} />
-                </Link>
-              </div>
-            ) : !done ? (
+            {!done ? (
               <form onSubmit={(event) => void handleReset(event)}>
                 <h1
                   style={{
@@ -268,10 +230,66 @@ function ResetPasswordContent() {
                     lineHeight: 1.6,
                   }}
                 >
-                  Choose a new password for your Just Because account.
+                  Enter the 4-digit code from your email and choose a new password.
                 </p>
 
                 {error && <ErrorMessage message={error} />}
+
+                <div style={{ marginBottom: '16px' }}>
+                  <label
+                    htmlFor="reset-email"
+                    style={{
+                      display: 'block',
+                      fontSize: '9px',
+                      letterSpacing: '0.25em',
+                      color: '#1A1014',
+                      marginBottom: '8px',
+                    }}
+                  >
+                    EMAIL ADDRESS
+                  </label>
+                  <input
+                    id="reset-email"
+                    className="reset-input"
+                    type="email"
+                    value={email}
+                    onChange={(event) => {
+                      setEmail(event.target.value)
+                      setError('')
+                    }}
+                    placeholder="your@email.com"
+                    autoComplete="email"
+                  />
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <label
+                    htmlFor="reset-code"
+                    style={{
+                      display: 'block',
+                      fontSize: '9px',
+                      letterSpacing: '0.25em',
+                      color: '#1A1014',
+                      marginBottom: '8px',
+                    }}
+                  >
+                    4-DIGIT CODE
+                  </label>
+                  <input
+                    id="reset-code"
+                    className="reset-input"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    value={code}
+                    onChange={(event) => {
+                      setCode(event.target.value.replace(/\D/g, '').slice(0, 4))
+                      setError('')
+                    }}
+                    placeholder="0000"
+                    maxLength={4}
+                  />
+                </div>
 
                 <div style={{ marginBottom: '16px' }}>
                   <label
@@ -421,7 +439,7 @@ function ResetPasswordContent() {
                     }}
                   >
                     <ArrowLeft size={13} strokeWidth={1.5} />
-                    Request a new link
+                    Request a new code
                   </Link>
                 </div>
               </form>

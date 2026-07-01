@@ -4,7 +4,6 @@ import { FormEvent, useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, ArrowRight, Mail, Sparkles } from 'lucide-react'
 import { getAuthErrorMessage, getPasswordResetMessage } from '@/lib/errors'
-import { supabaseAuth } from '@/lib/auth'
 import { BrandLogo } from '@/components/ui/BrandLogo'
 import ErrorMessage from '@/components/ui/ErrorMessage'
 
@@ -27,12 +26,14 @@ export default function ForgotPasswordPage() {
     setError('')
 
     try {
-      const { error: resetError } = await supabaseAuth.auth.resetPasswordForEmail(trimmedEmail, {
-        redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+      const resetResponse = await fetch('/api/auth/password-reset/send-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: trimmedEmail }),
       })
 
-      if (resetError) {
-        console.error('[forgot-password] reset request failed:', resetError)
+      if (!resetResponse.ok) {
+        console.error('[forgot-password] reset request returned a friendly neutral response')
       }
     } catch (caught) {
       console.error('[forgot-password] reset request failed:', caught)
@@ -185,7 +186,7 @@ export default function ForgotPasswordPage() {
                     lineHeight: 1.6,
                   }}
                 >
-                  Enter your email and we will send you a secure link to reset your password.
+                  Enter your email and we will send you a 4-digit code to reset your password.
                 </p>
 
                 {error && <ErrorMessage message={error} />}
@@ -220,7 +221,7 @@ export default function ForgotPasswordPage() {
 
                 <button className="password-primary-button" type="submit" disabled={loading}>
                   <Mail size={15} strokeWidth={1.5} />
-                  {loading ? 'SENDING...' : 'SEND RESET LINK'}
+                  {loading ? 'SENDING...' : 'SEND RESET CODE'}
                   {!loading && <ArrowRight size={14} strokeWidth={1.5} />}
                 </button>
 
@@ -301,9 +302,21 @@ export default function ForgotPasswordPage() {
                     marginBottom: '28px',
                   }}
                 >
-                  Click the link in that email to choose a new password. Check your spam folder if
+                  Enter the code on the reset password page. Check your spam folder if
                   you do not see it.
                 </p>
+
+                <Link
+                  href={`/reset-password?email=${encodeURIComponent(email)}`}
+                  className="password-primary-button"
+                  style={{
+                    textDecoration: 'none',
+                    marginBottom: '16px',
+                  }}
+                >
+                  ENTER RESET CODE
+                  <ArrowRight size={14} strokeWidth={1.5} />
+                </Link>
 
                 <button
                   className="password-secondary-button"

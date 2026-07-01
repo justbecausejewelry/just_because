@@ -67,6 +67,7 @@ export function getAuthErrorMessage(error: unknown): string {
     message.includes('rate limit') ||
     message.includes('too many requests') ||
     message.includes('too many attempts') ||
+    message.includes('too many codes') ||
     code === 'over_request_rate_limit'
   ) {
     return 'Too many attempts. Please wait a few minutes before trying again.'
@@ -98,8 +99,8 @@ export function getAuthErrorMessage(error: unknown): string {
     return 'We could not find an account with that email address.'
   }
 
-  if (message.includes('expired')) {
-    return 'That link is not valid anymore. Please request a new email and try again.'
+  if (message.includes('verification code') || message.includes('otp') || message.includes('expired')) {
+    return 'That code is not valid anymore. Please check the code or request a new one.'
   }
 
   if (message.includes('signup') || message.includes('register') || message.includes('createuser')) {

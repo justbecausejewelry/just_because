@@ -64,7 +64,7 @@ export function CheckoutAuthWall({ email, name, phone = '', onSuccess }: Props) 
     if (signInError) {
       const message = getErrorText(signInError).toLowerCase()
       if (message.includes('email not confirmed') || message.includes('not confirmed')) {
-        setError('Please check your email and click the confirmation link we sent you before continuing.')
+        setError('Please verify your email with the 4-digit code we sent you before continuing.')
         setLoading(false)
         return
       }
@@ -90,25 +90,11 @@ export function CheckoutAuthWall({ email, name, phone = '', onSuccess }: Props) 
         return
       }
 
-      if (!data.user.email_confirmed_at) {
+      if (!profile || (profile as { email_verified?: boolean | null }).email_verified !== true) {
         await supabaseAuth.auth.signOut()
-        setError('Please check your email and click the confirmation link we sent you before continuing.')
+        setError('Please verify your email with the 4-digit code we sent you before continuing.')
         setLoading(false)
         return
-      }
-
-      if (!profile || (profile as { email_verified?: boolean | null }).email_verified !== true) {
-        const { error: profileUpdateError } = await supabaseAuth
-          .from('UserProfile')
-          .update({
-            email_verified: true,
-            updatedAt: new Date().toISOString(),
-          })
-          .eq('userId', data.user.id)
-
-        if (profileUpdateError) {
-          console.error('[checkout-auth] profile verification sync failed:', profileUpdateError)
-        }
       }
 
       onSuccess()
@@ -179,7 +165,7 @@ export function CheckoutAuthWall({ email, name, phone = '', onSuccess }: Props) 
     }
 
     setMode('choice')
-    setNotice('Account created. Please check your email and click the confirmation link before continuing to payment.')
+    setNotice('Account created. Please check your email for the 4-digit code, then verify before continuing to payment.')
     setLoading(false)
   }
 
