@@ -26,7 +26,7 @@ export function useRole() {
         const session = await getSettledBrowserSession()
         const user = session?.user || null
 
-        if (!user?.email) {
+        if (!user?.email || !session?.access_token) {
           if (!cancelled) {
             setRole('user')
             setLoading(false)
@@ -34,14 +34,13 @@ export function useRole() {
           return
         }
 
-        const { data } = await supabase
-          .from('AdminUser')
-          .select('role')
-          .eq('email', user.email.toLowerCase())
-          .maybeSingle()
+        const response = await fetch('/api/admin/check-access', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        })
+        const data = await response.json().catch(() => null) as { isAdmin?: boolean; role?: string | null } | null
 
         if (!cancelled) {
-          setRole(normalizeRole(data?.role))
+          setRole(data?.isAdmin ? normalizeRole(data.role) : 'user')
           setLoading(false)
         }
       } catch {

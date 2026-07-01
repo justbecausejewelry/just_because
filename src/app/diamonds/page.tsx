@@ -9,7 +9,7 @@ import { useCart } from '@/context/CartContext'
 import { useToast } from '@/context/ToastContext'
 import { LOOSE_DIAMOND_VALUE } from '@/config/productOptions'
 import { ALL_DIAMONDS, Diamond } from '@/lib/diamondCatalog'
-import { supabase } from '@/lib/supabase'
+import { getSettledBrowserSession, supabase } from '@/lib/supabase'
 import DiamondVisualizer from '@/components/diamonds/DiamondVisualizer'
 import { getDiamondImage } from '@/lib/diamondImages'
 
@@ -280,7 +280,8 @@ function DiamondModal({
         clarity: 0,
       },
     })
-    const { data: { user } } = await supabase.auth.getUser()
+    const session = await getSettledBrowserSession()
+    const user = session?.user || null
     setCartNotice({ isGuest: !user })
     showToast('Diamond added to cart', 'success')
     router.push('/cart')

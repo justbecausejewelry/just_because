@@ -3,8 +3,8 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { supabaseAuth } from '@/lib/auth'
 import { forceSignOut } from '@/lib/forceSignOut'
+import { getSettledBrowserSession } from '@/lib/supabase'
 import { useRole } from '@/hooks/useRole'
 import { BrandLogo } from '@/components/ui/BrandLogo'
 import {
@@ -77,7 +77,8 @@ export default function AdminLayout({
     setAllowed(true)
     setChecking(false)
 
-    supabaseAuth.auth.getUser().then(({ data: { user } }) => {
+    getSettledBrowserSession().then((session) => {
+      const user = session?.user || null
       const name = typeof user?.user_metadata?.name === 'string' && user.user_metadata.name.trim()
         ? user.user_metadata.name
         : user?.email?.split('@')[0] || 'Admin'
@@ -91,8 +92,8 @@ export default function AdminLayout({
     let cancelled = false
 
     const loadPendingReturns = async () => {
-      const { data: sessionData } = await supabaseAuth.auth.getSession()
-      const token = sessionData.session?.access_token
+      const session = await getSettledBrowserSession()
+      const token = session?.access_token
       if (!token) return
 
       try {

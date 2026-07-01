@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { RingSettingForm } from '@/components/admin/RingSettingForm'
 import { normalizeRingSetting, type RingSetting } from '@/lib/ringSettings'
-import { supabaseAuth } from '@/lib/auth'
+import { getSettledBrowserSession } from '@/lib/supabase'
 
 type RingSettingPayload = {
   setting?: RingSetting
@@ -18,8 +18,8 @@ export default function EditRingSettingPage() {
 
   useEffect(() => {
     const loadSetting = async () => {
-      const { data } = await supabaseAuth.auth.getSession()
-      const token = data.session?.access_token
+      const session = await getSettledBrowserSession()
+      const token = session?.access_token
       if (!token) {
         setError('Admin session expired. Please sign in again.')
         return

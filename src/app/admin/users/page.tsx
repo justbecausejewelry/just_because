@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Shield, ShieldCheck, UserRound } from 'lucide-react'
 import { useToast } from '@/context/ToastContext'
-import { supabase } from '@/lib/supabase'
+import { getSettledBrowserSession } from '@/lib/supabase'
 import { useRole } from '@/hooks/useRole'
 import { BrandLogo } from '@/components/ui/BrandLogo'
 
@@ -52,10 +52,7 @@ export default function AdminUsersPage() {
   const [updatingEmail, setUpdatingEmail] = useState<string | null>(null)
 
   const getAccessToken = useCallback(async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-
+    const session = await getSettledBrowserSession()
     return session?.access_token || null
   }, [])
 

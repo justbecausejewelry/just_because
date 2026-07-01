@@ -5,12 +5,12 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Gem, Pencil, Plus, Trash2 } from 'lucide-react'
 import { formatRingSettingMoney, normalizeRingSetting, type RingSetting } from '@/lib/ringSettings'
-import { supabaseAuth } from '@/lib/auth'
+import { getSettledBrowserSession } from '@/lib/supabase'
 import { useToast } from '@/context/ToastContext'
 
 async function getAdminToken() {
-  const { data } = await supabaseAuth.auth.getSession()
-  return data.session?.access_token || null
+  const session = await getSettledBrowserSession()
+  return session?.access_token || null
 }
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {

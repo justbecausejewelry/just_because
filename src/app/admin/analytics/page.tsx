@@ -18,7 +18,7 @@ import {
   YAxis,
 } from 'recharts'
 import { Diamond as DiamondIcon } from 'lucide-react'
-import { supabaseAuth } from '@/lib/auth'
+import { supabase } from '@/lib/supabase'
 import { formatCurrency, groupByDay } from '@/lib/analyticsHelpers'
 import { normalizeOrderStatus, orderStatusLabel } from '@/lib/tracking'
 
@@ -196,13 +196,13 @@ export default function AdminAnalyticsPage() {
         productsResponse,
         diamondsResponse,
       ] = await Promise.all([
-        supabaseAuth.from('UserProfile').select('id,userId,email,createdAt'),
-        supabaseAuth.from('AdminUser').select('email,role'),
-        supabaseAuth.from('Order').select('id,customerEmail,total,status,createdAt').order('createdAt', { ascending: true }),
-        supabaseAuth.from('cart_events').select('*').order('created_at', { ascending: true }),
-        supabaseAuth.from('page_views').select('*').order('created_at', { ascending: true }),
-        supabaseAuth.from('Product').select('id,title,basePrice,productType,images'),
-        supabaseAuth.from('Diamond').select('id,shape,carat,price,imageUrl'),
+        supabase.from('UserProfile').select('id,userId,email,createdAt'),
+        supabase.from('AdminUser').select('email,role'),
+        supabase.from('Order').select('id,customerEmail,total,status,createdAt').order('createdAt', { ascending: true }),
+        supabase.from('cart_events').select('*').order('created_at', { ascending: true }),
+        supabase.from('page_views').select('*').order('created_at', { ascending: true }),
+        supabase.from('Product').select('id,title,basePrice,productType,images'),
+        supabase.from('Diamond').select('id,shape,carat,price,imageUrl'),
       ])
 
       const failed = [

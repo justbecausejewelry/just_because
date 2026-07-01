@@ -14,8 +14,8 @@ import { useCart } from '@/context/CartContext'
 import { useToast } from '@/context/ToastContext'
 import { useWishlist } from '@/context/WishlistContext'
 import { getMetalLabel, normalizeMetalSelection } from '@/config/productOptions'
-import { supabaseAuth } from '@/lib/auth'
 import { getGeneralErrorMessage } from '@/lib/errors'
+import { getSettledBrowserSession } from '@/lib/supabase'
 
 type PricingMap = Record<string, { enabled?: boolean; modifier?: number }>
 type MetalImages = Record<string, string[] | undefined>
@@ -399,7 +399,8 @@ export default function ProductDetailPage() {
     const params = new URLSearchParams(window.location.search)
     if (params.get('askExpert') !== 'true') return
 
-    supabaseAuth.auth.getUser().then(({ data: { user } }) => {
+    getSettledBrowserSession().then((session) => {
+      const user = session?.user || null
       if (!user) return
 
       const msgParams = new URLSearchParams({
@@ -586,9 +587,8 @@ export default function ProductDetailPage() {
   }
 
   const handleTalkToExpert = async () => {
-    const {
-      data: { user },
-    } = await supabaseAuth.auth.getUser()
+    const session = await getSettledBrowserSession()
+    const user = session?.user || null
 
     if (!user) {
       router.push(`/login?redirect=/products/${product.slug}?askExpert=true`)
@@ -627,9 +627,8 @@ export default function ProductDetailPage() {
   }
 
   const handleWishlistToggle = async () => {
-    const {
-      data: { user },
-    } = await supabaseAuth.auth.getUser()
+    const session = await getSettledBrowserSession()
+    const user = session?.user || null
 
     if (!user) {
       showToast('Please sign in to save this piece.', 'info')

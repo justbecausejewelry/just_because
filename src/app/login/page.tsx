@@ -122,19 +122,7 @@ export default function LoginPage() {
         return
       }
 
-      const { data: restoredData, error: restoreError } = await withTimeout(
-        supabaseAuth.auth.setSession({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-        }),
-        'Session setup timed out. Please try again.'
-      )
-
-      if (restoreError) {
-        console.error('[login] setSession failed:', restoreError)
-      }
-
-      persistBrowserSession(restoredData.session || data.session)
+      persistBrowserSession(data.session)
       await getSettledBrowserSession(500)
       saveLoginHandoff(data.user)
 

@@ -8,7 +8,7 @@ import { Gem } from 'lucide-react'
 import { useCart } from '@/context/CartContext'
 import { LOOSE_DIAMOND_VALUE } from '@/config/productOptions'
 import { getDiamondImage } from '@/lib/diamondImages'
-import { supabase } from '@/lib/supabase'
+import { getSettledBrowserSession, supabase } from '@/lib/supabase'
 
 type DiamondRow = {
   id: string
@@ -160,7 +160,8 @@ export default function DiamondDetailPage() {
       },
     })
 
-    const { data: { user } } = await supabase.auth.getUser()
+    const session = await getSettledBrowserSession()
+    const user = session?.user || null
     setCartNotice({ isGuest: !user })
     router.push('/cart')
   }

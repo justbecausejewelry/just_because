@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { Gem, ShieldCheck } from 'lucide-react'
 import { useCart } from '@/context/CartContext'
 import { getMetalLabel } from '@/config/productOptions'
-import { supabase } from '@/lib/supabase'
+import { getSettledBrowserSession } from '@/lib/supabase'
 
 type Suggestion = {
   id: string
@@ -53,9 +53,7 @@ export default function CartPage() {
       return
     }
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
+    const session = await getSettledBrowserSession()
     const headers: HeadersInit = { 'Content-Type': 'application/json' }
     if (session?.access_token) {
       headers.Authorization = `Bearer ${session.access_token}`
@@ -113,9 +111,7 @@ export default function CartPage() {
   const removePromo = async () => {
     setPromoError('')
     setPromoSuccess('')
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
+    const session = await getSettledBrowserSession()
     if (session?.access_token) {
       await fetch('/api/discount/remove', {
         method: 'DELETE',

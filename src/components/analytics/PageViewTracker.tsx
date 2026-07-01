@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { getSessionId } from '@/lib/cart'
-import { supabase } from '@/lib/supabase'
+import { getSettledBrowserSession, supabase } from '@/lib/supabase'
 
 export function PageViewTracker() {
   const pathname = usePathname()
@@ -11,9 +11,8 @@ export function PageViewTracker() {
   useEffect(() => {
     const trackPageView = async () => {
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
+        const session = await getSettledBrowserSession()
+        const user = session?.user || null
 
         const { error } = await supabase.from('page_views').insert({
           user_id: user?.id || null,

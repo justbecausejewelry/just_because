@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import Image from 'next/image'
 import { Diamond as DiamondIcon, Edit, Eye, Plus, Search, Trash2 } from 'lucide-react'
-import { supabaseAuth } from '@/lib/auth'
+import { getSettledBrowserSession } from '@/lib/supabase'
 import { getDiamondImage } from '@/lib/diamondImages'
 
 type DiamondRecord = {
@@ -112,8 +112,8 @@ function formatMoney(value: number) {
 }
 
 async function getAdminToken() {
-  const { data } = await supabaseAuth.auth.getSession()
-  return data.session?.access_token || null
+  const session = await getSettledBrowserSession()
+  return session?.access_token || null
 }
 
 function formFromDiamond(diamond: DiamondRecord): DiamondForm {

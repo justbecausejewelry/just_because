@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, AlertTriangle, BarChart3 } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+import { getSettledBrowserSession } from '@/lib/supabase'
 
 type DiscountCode = {
   id: string
@@ -46,9 +46,7 @@ export default function DiscountAnalyticsPage() {
     setLoading(true)
     setError('')
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
+      const session = await getSettledBrowserSession()
 
       const response = await fetch('/api/admin/discount-codes', {
         headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Archive, DollarSign, Gem, Package, ShoppingBag } from 'lucide-react'
 import { useToast } from '@/context/ToastContext'
-import { supabaseAuth } from '@/lib/auth'
+import { getSettledBrowserSession } from '@/lib/supabase'
 import { normalizeOrderStatus, orderStatusLabel } from '@/lib/tracking'
 
 type Product = { id: string }
@@ -49,8 +49,8 @@ function statusStyle(status: string) {
 }
 
 async function getAdminToken() {
-  const { data } = await supabaseAuth.auth.getSession()
-  return data.session?.access_token || null
+  const session = await getSettledBrowserSession()
+  return session?.access_token || null
 }
 
 export default function AdminDashboardPage() {

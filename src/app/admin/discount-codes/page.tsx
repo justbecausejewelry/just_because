@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Copy, Diamond, Eye, EyeOff, Plus, Sparkles, Trash2, X } from 'lucide-react'
 import { useToast } from '@/context/ToastContext'
-import { supabase } from '@/lib/supabase'
+import { getSettledBrowserSession } from '@/lib/supabase'
 
 type DiscountType = 'percentage' | 'fixed' | 'free_shipping' | 'free_gift'
 type AppliesTo = 'all' | 'specific_products' | 'specific_categories' | 'specific_types'
@@ -183,10 +183,7 @@ export default function AdminDiscountCodesPage() {
   const expiresToday = form.isActive && form.expiresAt === todayISO
 
   const getAccessToken = useCallback(async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-
+    const session = await getSettledBrowserSession()
     return session?.access_token || null
   }, [])
 

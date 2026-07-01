@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { LockKeyhole } from 'lucide-react'
 import { supabaseAuth } from '@/lib/auth'
+import { getSettledBrowserSession, persistBrowserSession } from '@/lib/supabase'
 import { getAuthErrorMessage, getErrorText, isAlreadyRegisteredError, readFriendlyApiError } from '@/lib/errors'
 import ErrorMessage from '@/components/ui/ErrorMessage'
 
@@ -77,6 +78,10 @@ export function CheckoutAuthWall({ email, name, phone = '', onSuccess }: Props) 
         return
       }
 
+      if (data.session) {
+        persistBrowserSession(data.session)
+      }
+
       const { data: profile, error: profileError } = await supabaseAuth
         .from('UserProfile')
         .select('email_verified')
@@ -91,12 +96,12 @@ export function CheckoutAuthWall({ email, name, phone = '', onSuccess }: Props) 
       }
 
       if (!profile || (profile as { email_verified?: boolean | null }).email_verified !== true) {
-        await supabaseAuth.auth.signOut()
         setError('Please verify your email with the 4-digit code we sent you before continuing.')
         setLoading(false)
         return
       }
 
+      await getSettledBrowserSession()
       onSuccess()
     }
 

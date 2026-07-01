@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Gem } from 'lucide-react'
-import { supabaseAuth } from '@/lib/auth'
 import { getSettledBrowserSession } from '@/lib/supabase'
 
 type Conversation = {
@@ -62,7 +61,14 @@ export default function MessagesPage() {
 
     const fallbackTimer = window.setTimeout(() => {
       if (cancelled || loadedRef.current) return
-      router.replace('/login?redirect=/account/messages')
+      void getSettledBrowserSession(1000).then((session) => {
+        if (cancelled || loadedRef.current) return
+        if (session?.user && session.access_token) {
+          void load()
+          return
+        }
+        router.replace('/login?redirect=/account/messages')
+      })
     }, 5000)
 
     return () => {

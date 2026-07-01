@@ -7,8 +7,7 @@ import { Upload, X } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/context/ToastContext'
 import { useFormPersistence } from '@/hooks/useFormPersistence'
-import { supabaseAuth } from '@/lib/auth'
-import { supabase } from '@/lib/supabase'
+import { getSettledBrowserSession, supabase } from '@/lib/supabase'
 
 type PricingMap = Record<string, { enabled: boolean; modifier: number }>
 type MetalTab = 'default' | 'white_gold' | 'yellow_gold' | 'rose_gold' | 'platinum'
@@ -225,8 +224,8 @@ function numberOrZero(value: string) {
 }
 
 async function getAdminToken() {
-  const { data } = await supabaseAuth.auth.getSession()
-  return data.session?.access_token || null
+  const session = await getSettledBrowserSession()
+  return session?.access_token || null
 }
 
 function isRingProduct(productType: string) {

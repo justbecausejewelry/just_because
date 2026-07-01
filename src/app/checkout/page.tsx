@@ -15,6 +15,7 @@ import { useFormPersistence } from '@/hooks/useFormPersistence'
 import { supabaseAuth } from '@/lib/auth'
 import { trackCartEvent, type CartItem as AnalyticsCartItem } from '@/lib/cart'
 import { getCheckoutErrorMessage } from '@/lib/errors'
+import { getSettledBrowserSession } from '@/lib/supabase'
 
 type SavedAddress = {
   id: string
@@ -149,9 +150,8 @@ export default function CheckoutPage() {
   const canPlaceOrder = Boolean(items.length && !cartHasErrors && contactValid && shippingValid && userId && !isPlacing)
 
   const refreshUser = useCallback(async () => {
-    const {
-      data: { user },
-    } = await supabaseAuth.auth.getUser()
+    const session = await getSettledBrowserSession()
+    const user = session?.user || null
 
     if (!user) {
       setUserId(null)
@@ -249,9 +249,7 @@ export default function CheckoutPage() {
       return
     }
 
-    const {
-      data: { session },
-    } = await supabaseAuth.auth.getSession()
+    const session = await getSettledBrowserSession()
     const headers: HeadersInit = { 'Content-Type': 'application/json' }
     if (session?.access_token) {
       headers.Authorization = `Bearer ${session.access_token}`
@@ -293,9 +291,7 @@ export default function CheckoutPage() {
   const removePromo = async () => {
     setPromoError('')
     setPromoSuccess('')
-    const {
-      data: { session },
-    } = await supabaseAuth.auth.getSession()
+    const session = await getSettledBrowserSession()
     if (session?.access_token) {
       await fetch('/api/discount/remove', {
         method: 'DELETE',
@@ -318,9 +314,8 @@ export default function CheckoutPage() {
     try {
       await new Promise((resolve) => window.setTimeout(resolve, 800))
 
-      const {
-        data: { user },
-      } = await supabaseAuth.auth.getUser()
+      const session = await getSettledBrowserSession()
+      const user = session?.user || null
 
       if (!user) {
         setStep(3)
@@ -345,10 +340,6 @@ export default function CheckoutPage() {
       }
 
       const orderNumber = `JB-${Date.now().toString().slice(-6)}`
-      const {
-        data: { session },
-      } = await supabaseAuth.auth.getSession()
-
       if (!session?.access_token) {
         setError('Please sign in again before placing your order.')
         setIsPlacing(false)

@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { useToast } from '@/context/ToastContext'
-import { supabaseAuth } from '@/lib/auth'
+import { getSettledBrowserSession } from '@/lib/supabase'
 
 type ConversationStatus = 'open' | 'replied' | 'resolved'
 
@@ -45,9 +45,7 @@ export default function AdminSupportThreadPage() {
   const [isSending, setIsSending] = useState(false)
 
   const getAccessToken = async () => {
-    const {
-      data: { session },
-    } = await supabaseAuth.auth.getSession()
+    const session = await getSettledBrowserSession()
     return session?.access_token || null
   }
 

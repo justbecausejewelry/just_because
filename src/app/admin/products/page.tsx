@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Gem, Pencil, Search, Trash2 } from 'lucide-react'
-import { supabaseAuth } from '@/lib/auth'
+import { getSettledBrowserSession } from '@/lib/supabase'
 
 type Product = {
   id: string
@@ -37,8 +37,8 @@ function prettify(value: string) {
 }
 
 async function getAdminToken() {
-  const { data } = await supabaseAuth.auth.getSession()
-  return data.session?.access_token || null
+  const session = await getSettledBrowserSession()
+  return session?.access_token || null
 }
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {

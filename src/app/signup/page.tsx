@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { supabaseAuth } from '@/lib/auth'
 import { getAuthErrorMessage, isAlreadyRegisteredError, readFriendlyApiError } from '@/lib/errors'
-import { persistBrowserSession } from '@/lib/supabase'
+import { getSettledBrowserSession, persistBrowserSession } from '@/lib/supabase'
 import { useToast } from '@/context/ToastContext'
 import { useFormPersistence } from '@/hooks/useFormPersistence'
 import { BrandLogo } from '@/components/ui/BrandLogo'
@@ -250,13 +250,13 @@ export default function SignupPage() {
       persistBrowserSession(signInData.session)
       await delay(500)
 
-      const { data: sessionData, error: sessionError } = await withTimeout(
-        supabaseAuth.auth.getSession(),
+      const session = await withTimeout(
+        getSettledBrowserSession(),
         'Checking your session timed out. Please sign in manually.'
       )
 
-      if (sessionError || !sessionData.session) {
-        console.error('[signup] session check after verification failed:', sessionError)
+      if (!session) {
+        console.error('[signup] session check after verification failed: null session')
         setError('Email verified, but your session did not persist. Please sign in manually.')
         setLoading(false)
         return

@@ -7,7 +7,7 @@ import {
   useEffect,
   useState,
 } from 'react'
-import { supabase } from '@/lib/supabase'
+import { getSettledBrowserSession, supabase } from '@/lib/supabase'
 import {
   addToCart as addGuestCartItem,
   clearCart as clearGuestCart,
@@ -179,16 +179,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [isMiniCartOpen, setIsMiniCartOpen] = useState(false)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUserId(user?.id || null)
+    getSettledBrowserSession().then((session) => {
+      setUserId(session?.user?.id || null)
     })
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
-        setItems([])
-        setUserId(null)
+        void getSettledBrowserSession().then((settledSession) => {
+          if (settledSession?.user) {
+            setUserId(settledSession.user.id)
+            return
+          }
+          setItems([])
+          setUserId(null)
+        })
       } else if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
         setUserId(session?.user?.id || null)
       }

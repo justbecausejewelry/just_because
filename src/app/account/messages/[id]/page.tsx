@@ -4,7 +4,6 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
-import { supabaseAuth } from '@/lib/auth'
 import { getSettledBrowserSession } from '@/lib/supabase'
 import { useToast } from '@/context/ToastContext'
 
@@ -66,7 +65,14 @@ export default function MessageThreadPage() {
     }, 30000)
     const fallbackTimer = window.setTimeout(() => {
       if (loadedRef.current) return
-      router.replace(`/login?redirect=/account/messages/${params.id}`)
+      void getSettledBrowserSession(1000).then((session) => {
+        if (loadedRef.current) return
+        if (session?.user && session.access_token) {
+          void loadConversation()
+          return
+        }
+        router.replace(`/login?redirect=/account/messages/${params.id}`)
+      })
     }, 5000)
     return () => {
       window.clearInterval(interval)

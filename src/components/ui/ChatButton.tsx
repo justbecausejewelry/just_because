@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { supabaseAuth } from '@/lib/auth'
+import { getSettledBrowserSession } from '@/lib/supabase'
 
 export default function ChatButton() {
   const router = useRouter()
@@ -23,9 +23,8 @@ export default function ChatButton() {
   }, [])
 
   const handleClick = async () => {
-    const {
-      data: { user },
-    } = await supabaseAuth.auth.getUser()
+    const session = await getSettledBrowserSession()
+    const user = session?.user || null
 
     if (user) {
       router.push('/account/messages/new?type=general')

@@ -5,7 +5,6 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
-import { supabaseAuth } from '@/lib/auth'
 import { getGeneralErrorMessage } from '@/lib/errors'
 import { getSettledBrowserSession } from '@/lib/supabase'
 import { useToast } from '@/context/ToastContext'
@@ -94,8 +93,17 @@ function NewMessageContent() {
 
     const fallbackTimer = window.setTimeout(() => {
       if (cancelled || checkedUserRef.current) return
-      const currentPath = `/account/messages/new?${searchParams.toString()}`
-      router.replace(`/login?redirect=${encodeURIComponent(currentPath)}`)
+      void getSettledBrowserSession(1000).then((session) => {
+        if (cancelled || checkedUserRef.current) return
+        if (session?.user) {
+          checkedUserRef.current = true
+          setUserEmail(session.user.email || '')
+          setIsChecking(false)
+          return
+        }
+        const currentPath = `/account/messages/new?${searchParams.toString()}`
+        router.replace(`/login?redirect=${encodeURIComponent(currentPath)}`)
+      })
     }, 5000)
 
     return () => {

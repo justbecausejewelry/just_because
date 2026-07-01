@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Eye, RotateCcw, X } from 'lucide-react'
-import { supabaseAuth } from '@/lib/auth'
+import { getSettledBrowserSession } from '@/lib/supabase'
 import {
   RETURN_STATUS_LABELS,
   normalizeReturnStatus,
@@ -101,8 +101,8 @@ export default function AdminReturnsPage() {
     setError('')
 
     try {
-      const { data: sessionData } = await supabaseAuth.auth.getSession()
-      const token = sessionData.session?.access_token
+      const session = await getSettledBrowserSession()
+      const token = session?.access_token
       if (!token) throw new Error('Admin session expired. Please sign in again.')
 
       const response = await fetch('/api/admin/returns', {
@@ -150,8 +150,8 @@ export default function AdminReturnsPage() {
   }, [returns])
 
   const runAction = async (returnRequest: ReturnRequest, action: AdminAction, extra?: { rejectionReason?: string; refundAmount?: number }) => {
-    const { data: sessionData } = await supabaseAuth.auth.getSession()
-    const token = sessionData.session?.access_token
+    const session = await getSettledBrowserSession()
+    const token = session?.access_token
     if (!token) {
       setError('Admin session expired. Please sign in again.')
       return
@@ -383,4 +383,3 @@ function ReturnDetailPanel({
     </div>
   )
 }
-
