@@ -32,22 +32,61 @@ type MetalPricingEntry = {
 }
 
 type ProductRow = {
+  id?: string | null
   title?: string | null
   description?: string | null
   productType?: string | null
   category?: string | null
+  basePrice?: number | null
   images?: string[] | null
   metalImages?: unknown
   availableMetals?: string[] | null
   availableShapes?: string[] | null
   metalPricing?: Record<string, MetalPricingEntry> | null
+  isBestSeller?: boolean | null
+  isFeatured?: boolean | null
+  isNewArrival?: boolean | null
+  isGift?: boolean | null
+  collections?: string[] | null
 }
+
+type ProductLoadResult =
+  | {
+      products: ProductRow[]
+      totalCount: number
+    }
+  | {
+      error: {
+        message: string
+      }
+    }
 
 const BROKEN_UNSPLASH_IMAGE_ID = 'photo-1573408301185'
 const PRODUCT_IMAGE_FALLBACK = '/images/hero-ring.jpg'
 const PRODUCT_TYPE_CATEGORY_MAP: Record<string, string> = {
   engagement_ring: 'engagement_ring',
   wedding_ring: 'wedding_ring',
+}
+const COLLECTION_COLUMNS = ['isBestSeller', 'isGift', 'collections']
+
+function getMissingColumn(message: string) {
+  const quotedColumn = message.match(/'([^']+)' column/)
+  if (quotedColumn?.[1]) {
+    return quotedColumn[1]
+  }
+
+  const schemaCacheColumn = message.match(/Could not find the '([^']+)' column/)
+  if (schemaCacheColumn?.[1]) {
+    return schemaCacheColumn[1]
+  }
+
+  const postgresColumn = message.match(/column Product\.([A-Za-z0-9_]+) does not exist/)
+  return postgresColumn?.[1] || null
+}
+
+function isMissingCollectionColumn(message: string) {
+  const missingColumn = getMissingColumn(message)
+  return COLLECTION_COLUMNS.includes(missingColumn || '')
 }
 
 function normalizeToken(value: string) {
@@ -97,9 +136,14 @@ function sanitizeProductImages(product: ProductRow): ProductRow {
   }
 }
 
-export async function GET(request: NextRequest) {
+async function loadProducts(request: NextRequest, useCollectionFields: boolean): Promise<ProductLoadResult> {
   const { searchParams } = new URL(request.url)
   const featured = searchParams.get('featured')
+  const bestSeller = searchParams.get('bestSeller')
+  const newArrival = searchParams.get('newArrival')
+  const gift = searchParams.get('gift')
+  const collection = searchParams.get('collection')
+  const exclude = searchParams.get('exclude')
   const type = searchParams.get('type')
   const category = searchParams.get('category')
   const shape = searchParams.get('shape')
@@ -111,13 +155,39 @@ export async function GET(request: NextRequest) {
   const limit = Number.parseInt(searchParams.get('limit') || '20')
   const offset = Number.parseInt(searchParams.get('offset') || '0')
 
+  if (!useCollectionFields && (bestSeller === 'true' || gift === 'true' || collection)) {
+    return { products: [], totalCount: 0 }
+  }
+
   let query = supabase
     .from('Product')
     .select('*')
     .eq('isActive', true)
 
   if (featured === 'true') {
-    query = query.eq('isFeatured', true)
+    query = useCollectionFields
+      ? query.or('isBestSeller.eq.true,isFeatured.eq.true')
+      : query.eq('isFeatured', true)
+  }
+
+  if (useCollectionFields && bestSeller === 'true') {
+    query = query.eq('isBestSeller', true)
+  }
+
+  if (newArrival === 'true') {
+    query = query.eq('isNewArrival', true)
+  }
+
+  if (useCollectionFields && gift === 'true') {
+    query = query.eq('isGift', true)
+  }
+
+  if (useCollectionFields && collection) {
+    query = query.contains('collections', [normalizeToken(collection)])
+  }
+
+  if (exclude) {
+    query = query.neq('id', exclude).neq('slug', exclude)
   }
 
   if (type) {
@@ -145,9 +215,13 @@ export async function GET(request: NextRequest) {
     query = query.order('basePrice', { ascending: true })
   } else if (sort === 'price_high' || sort === 'price-desc') {
     query = query.order('basePrice', { ascending: false })
-  } else if (sort === 'newest') {
+  } else if (sort === 'newest' || sort === 'new') {
     query = query.order('createdAt', { ascending: false })
   } else {
+    if (useCollectionFields) {
+      query = query.order('isBestSeller', { ascending: false })
+    }
+
     query = query
       .order('isFeatured', { ascending: false })
       .order('sortOrder', { ascending: true })
@@ -157,7 +231,7 @@ export async function GET(request: NextRequest) {
   const { data, error } = await query
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return { error: { message: error.message } }
   }
 
   let products = (data || []) as ProductRow[]
@@ -185,8 +259,34 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  return NextResponse.json({
+  if (useCollectionFields && bestSeller === 'priority') {
+    products = [...products].sort((left, right) => Number(Boolean(right.isBestSeller)) - Number(Boolean(left.isBestSeller)))
+  }
+
+  return {
     products: products.slice(offset, offset + limit).map(sanitizeProductImages),
     totalCount: products.length,
-  })
+  }
+}
+
+export async function GET(request: NextRequest) {
+  const result = await loadProducts(request, true)
+
+  if ('error' in result) {
+    if (isMissingCollectionColumn(result.error.message)) {
+      const fallback = await loadProducts(request, false)
+      if (!('error' in fallback)) {
+        return NextResponse.json({
+          ...fallback,
+          omittedColumns: [getMissingColumn(result.error.message)],
+        })
+      }
+
+      return NextResponse.json({ error: fallback.error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ error: result.error.message }, { status: 500 })
+  }
+
+  return NextResponse.json(result)
 }

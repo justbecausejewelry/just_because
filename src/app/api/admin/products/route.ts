@@ -20,6 +20,10 @@ function getMissingColumn(message: string) {
   return schemaCacheColumn?.[1] || null
 }
 
+function isCollectionColumn(column: string | null) {
+  return ['isBestSeller', 'isNewArrival', 'isFeatured', 'isGift', 'collections'].includes(column || '')
+}
+
 async function writeWithSchemaRetry(
   payload: Record<string, unknown>,
   write: (saveData: Record<string, unknown>) => Promise<SupabaseWriteResult>
@@ -53,8 +57,22 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await auth.admin
     .from('Product')
-    .select('id, sku, title, slug, productType, category, basePrice, isActive, isFeatured, images')
+    .select('id, sku, title, slug, productType, category, basePrice, isActive, isBestSeller, isNewArrival, isFeatured, isGift, collections, images')
     .order('createdAt', { ascending: false })
+
+  const missingColumn = error ? getMissingColumn(error.message) : null
+  if (error && isCollectionColumn(missingColumn)) {
+    const fallback = await auth.admin
+      .from('Product')
+      .select('id, sku, title, slug, productType, category, basePrice, isActive, isFeatured, isNewArrival, images')
+      .order('createdAt', { ascending: false })
+
+    if (fallback.error) {
+      return NextResponse.json({ error: fallback.error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ products: fallback.data || [], omittedColumns: [missingColumn] })
+  }
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })

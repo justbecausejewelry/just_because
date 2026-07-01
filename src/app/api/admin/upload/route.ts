@@ -19,7 +19,8 @@ export async function POST(request: NextRequest) {
   }
 
   const isVideo = bucket === 'product-videos'
-  const bucketName = isVideo ? 'product-videos' : 'product-images'
+  const isRingSetting = bucket === 'ring-settings'
+  const bucketName = isVideo ? 'product-videos' : isRingSetting ? 'ring-settings' : 'product-images'
 
   await auth.admin.storage.createBucket(bucketName, {
     public: true,
@@ -29,7 +30,8 @@ export async function POST(request: NextRequest) {
       : ['image/png', 'image/jpeg', 'image/webp'],
   })
 
-  const path = `products/${safeName(slug)}/${Date.now()}-${safeName(file.name)}`
+  const folder = isRingSetting ? 'settings' : 'products'
+  const path = `${folder}/${safeName(slug)}/${Date.now()}-${safeName(file.name)}`
   const { error } = await auth.admin.storage
     .from(bucketName)
     .upload(path, file, { upsert: true })

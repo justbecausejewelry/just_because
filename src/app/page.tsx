@@ -6,10 +6,10 @@ import { Categories } from '@/components/home/Categories'
 import { EditorialSplit } from '@/components/home/EditorialSplit'
 import { GalleryTileImage } from '@/components/home/GalleryTileImage'
 import { Hero } from '@/components/home/Hero'
+import { NewArrivals } from '@/components/home/NewArrivals'
 import { Reviews } from '@/components/home/Reviews'
 import { ShopByShape } from '@/components/home/ShopByShape'
 import StatsCounter from '@/components/home/StatsCounter'
-import { VideoStory } from '@/components/home/VideoStory'
 
 const galleryFiles = Array.from({ length: 20 }, (_, index) => {
   const imageNumber = String(index + 1).padStart(2, '0')
@@ -107,12 +107,12 @@ export default function Home() {
         <Hero />
         <StatsCounter />
         <ShopByShape />
-        <Categories />
-        <VideoStory />
         <BestSellers />
+        <NewArrivals />
         <InfiniteJewelryGallery />
         <Reviews />
         <EditorialSplit />
+        <Categories />
       </div>
     </>
   )

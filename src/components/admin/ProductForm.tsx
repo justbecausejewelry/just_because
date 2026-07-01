@@ -50,8 +50,11 @@ type ProductFormData = {
   videos: string[]
   certificateUrl: string
   isActive: boolean
+  isBestSeller: boolean
   isFeatured: boolean
   isNewArrival: boolean
+  isGift: boolean
+  collections: string[]
   internalNotes: string
   tags: string[]
   sortOrder: string | number
@@ -120,6 +123,13 @@ const metalModifierOptions: Array<{
 ]
 
 const ringSizeOptions = ['3', '3.5', '4', '4.5', '5', '5.5', '6', '6.5', '7', '7.5', '8', '8.5', '9', '9.5', '10']
+
+const collectionTagOptions = [
+  { label: 'Under $1,000', value: 'under_1000' },
+  { label: 'Under $2,000', value: 'under_2000' },
+  { label: 'Engagement', value: 'engagement' },
+  { label: 'Wedding', value: 'wedding' },
+]
 
 type ProductTypeConfig = {
   label: string
@@ -310,8 +320,11 @@ function blankProduct(): ProductFormData {
     videos: [],
     certificateUrl: '',
     isActive: true,
+    isBestSeller: false,
     isFeatured: false,
     isNewArrival: false,
+    isGift: false,
+    collections: [],
     internalNotes: '',
     tags: [],
     sortOrder: '',
@@ -392,6 +405,57 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (checked: b
     <button type="button" onClick={() => onChange(!checked)} style={{ backgroundColor: checked ? '#C9A961' : '#D8CFC8', borderRadius: '999px', height: '24px', padding: '2px', width: '46px' }}>
       <span style={{ backgroundColor: '#FBF5F0', borderRadius: '50%', display: 'block', height: '20px', transform: checked ? 'translateX(22px)' : 'translateX(0)', transition: 'all 0.2s', width: '20px' }} />
     </button>
+  )
+}
+
+function AdminCheckbox({
+  checked,
+  description,
+  label,
+  onChange,
+}: {
+  checked: boolean
+  description?: string
+  label: string
+  onChange: (checked: boolean) => void
+}) {
+  return (
+    <label
+      style={{
+        alignItems: 'flex-start',
+        backgroundColor: checked ? 'rgba(201,169,97,0.10)' : '#FDF8F2',
+        border: checked ? '0.5px solid #C9A961' : '0.5px solid #EDD9AF',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        display: 'flex',
+        gap: '12px',
+        padding: '14px 16px',
+        transition: 'border-color 0.2s ease, background-color 0.2s ease',
+      }}
+    >
+      <input
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        type="checkbox"
+        style={{
+          accentColor: '#C9A961',
+          flexShrink: 0,
+          height: '16px',
+          marginTop: '2px',
+          width: '16px',
+        }}
+      />
+      <span style={{ display: 'grid', gap: '4px' }}>
+        <span style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px', fontWeight: 500 }}>
+          {label}
+        </span>
+        {description ? (
+          <span style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', lineHeight: 1.5 }}>
+            {description}
+          </span>
+        ) : null}
+      </span>
+    </label>
   )
 }
 
@@ -608,6 +672,15 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
   const setField = <K extends keyof ProductFormData>(key: K, value: ProductFormData[K]) => {
     setForm((current) => ({ ...current, [key]: value }))
     setValidationErrors((current) => current.filter((error) => error.field !== key))
+  }
+
+  const toggleCollection = (value: string, checked: boolean) => {
+    const currentCollections = form.collections || []
+    const nextCollections = checked
+      ? Array.from(new Set([...currentCollections, value]))
+      : currentCollections.filter((collection) => collection !== value)
+
+    setField('collections', nextCollections)
   }
 
   const handleProductTypeChange = (value: string) => {
@@ -1339,12 +1412,54 @@ export function ProductForm({ product, mode }: { product?: IncomingProduct; mode
 
         {activeTab === 3 && (
           <section className="grid gap-5" style={{ backgroundColor: '#FBF5F0', border: '0.5px solid #EDD9AF', borderRadius: '4px', padding: '24px' }}>
-            {[['Show to customers', 'isActive'], ['Featured product', 'isFeatured'], ['New Arrival', 'isNewArrival']].map(([label, key]) => (
-              <div key={key} className="flex items-center justify-between" style={{ borderBottom: '0.5px solid #EDD9AF', paddingBottom: '14px' }}>
-                <span style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px' }}>{label}</span>
-                <Toggle checked={Boolean(form[key as keyof ProductFormData])} onChange={(checked) => setField(key as 'isActive' | 'isFeatured' | 'isNewArrival', checked)} />
+            <div className="flex items-center justify-between" style={{ borderBottom: '0.5px solid #EDD9AF', paddingBottom: '14px' }}>
+              <span style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '13px' }}>Show to customers</span>
+              <Toggle checked={Boolean(form.isActive)} onChange={(checked) => setField('isActive', checked)} />
+            </div>
+            <div style={{ backgroundColor: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '4px', padding: '22px' }}>
+              <div style={{ marginBottom: '18px' }}>
+                <span style={{ color: '#C9A961', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '8px' }}>
+                  COLLECTIONS & TAGS
+                </span>
+                <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', lineHeight: 1.7, margin: 0 }}>
+                  Control where this product appears across homepage collections, curated pages, and product badges.
+                </p>
               </div>
-            ))}
+              <div style={{ display: 'grid', gap: '12px', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))' }}>
+                <AdminCheckbox
+                  checked={Boolean(form.isBestSeller)}
+                  description="Adds the BEST SELLER badge and best-seller placement."
+                  label="Best Seller"
+                  onChange={(checked) => setField('isBestSeller', checked)}
+                />
+                <AdminCheckbox
+                  checked={Boolean(form.isNewArrival)}
+                  description="Adds the NEW badge and New Arrivals placement."
+                  label="New Arrival"
+                  onChange={(checked) => setField('isNewArrival', checked)}
+                />
+                <AdminCheckbox
+                  checked={Boolean(form.isFeatured)}
+                  description="Shows on homepage curated sections."
+                  label="Featured (shows on homepage)"
+                  onChange={(checked) => setField('isFeatured', checked)}
+                />
+                <AdminCheckbox
+                  checked={Boolean(form.isGift)}
+                  description="Includes this piece in gift-focused collections."
+                  label="Gift Idea"
+                  onChange={(checked) => setField('isGift', checked)}
+                />
+                {collectionTagOptions.map((option) => (
+                  <AdminCheckbox
+                    checked={(form.collections || []).includes(option.value)}
+                    key={option.value}
+                    label={option.label}
+                    onChange={(checked) => toggleCollection(option.value, checked)}
+                  />
+                ))}
+              </div>
+            </div>
             <TextInput label="SORT ORDER" value={form.sortOrder} type="number" onChange={(value) => setField('sortOrder', value)} />
             <label>
               <span style={{ color: '#C9A961', display: 'block', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.3em', marginBottom: '8px' }}>INTERNAL NOTES</span>

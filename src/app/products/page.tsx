@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Gem, SlidersHorizontal, X } from 'lucide-react'
+import { ProductBadges } from '@/components/products/ProductBadges'
 import { useToast } from '@/context/ToastContext'
 import { useWishlist } from '@/context/WishlistContext'
 import { METALS, getMetalLabel, normalizeMetalSelection } from '@/config/productOptions'
@@ -61,6 +62,7 @@ type Product = {
   } | null
   availableMetals: string[]
   availableShapes: string[]
+  isBestSeller: boolean
   isNewArrival: boolean
   isFeatured: boolean
   isActive?: boolean
@@ -209,7 +211,6 @@ function ProductCard({ product }: { product: Product }) {
   const { showToast } = useToast()
   const image = product.metalImages?.white_gold?.[0] || product.images?.[0]
   const imagePosition = product.productType?.includes('necklace') ? 'center top' : 'center center'
-  const badge = product.isNewArrival ? 'NEW' : product.basePrice < 2000 ? 'POPULAR' : null
   const wishlisted = isWishlisted(product.slug)
 
   const toggleWishlist = () => {
@@ -278,24 +279,7 @@ function ProductCard({ product }: { product: Product }) {
             ) : (
               <ProductPlaceholder />
             )}
-            {badge && (
-              <span
-                style={{
-                  position: 'absolute',
-                  top: '12px',
-                  left: '12px',
-                  backgroundColor: badge === 'NEW' ? '#1A1014' : '#E8C4D0',
-                  color: badge === 'NEW' ? '#FBF5F0' : '#6B2D44',
-                  fontFamily: 'var(--font-inter)',
-                  fontSize: '11px',
-                  fontWeight: 500,
-                  letterSpacing: '0.15em',
-                  padding: '4px 10px',
-                }}
-              >
-                {badge}
-              </span>
-            )}
+            <ProductBadges isBestSeller={product.isBestSeller} isNewArrival={product.isNewArrival} />
           </div>
           <div style={{ display: 'flex', flex: 1, flexDirection: 'column', padding: '20px 16px 16px' }}>
             <p style={{ color: '#C9A961', flexShrink: 0, fontFamily: 'var(--font-jost)', fontSize: '11px', fontWeight: 500, height: '16px', letterSpacing: '0.2em', marginBottom: '8px', textTransform: 'uppercase' }}>

@@ -9,29 +9,8 @@ import { useToast } from '@/context/ToastContext'
 import { METALS, MetalValue, getMetalLabel, isMetalValue, metalMatches, normalizeMetalSelection } from '@/config/productOptions'
 import { useFormPersistence } from '@/hooks/useFormPersistence'
 import { ALL_DIAMONDS, Diamond, SHAPE_DATA } from '@/lib/diamondCatalog'
+import { normalizeImageKey, type RingSetting } from '@/lib/ringSettings'
 import { supabase } from '@/lib/supabase'
-
-type RingProduct = {
-  id: string
-  slug: string
-  title: string
-  category: string
-  productType: string
-  basePrice: number
-  images: string[]
-  metalImages?: {
-    white_gold?: string[]
-    yellow_gold?: string[]
-    rose_gold?: string[]
-    platinum?: string[]
-  } | null
-  availableMetals?: string[]
-  availableSizes?: string[]
-}
-
-type ProductListResponse = {
-  products?: RingProduct[]
-}
 
 const ringSizes = ['4', '4.5', '5', '5.5', '6', '6.5', '7', '7.5', '8', '8.5', '9']
 
@@ -45,37 +24,23 @@ function formatMoney(value: number) {
 
 type BuilderMetalValue = MetalValue | ''
 
-function availableMetalsForRing(ring: RingProduct | null) {
-  if (!ring?.availableMetals?.length) return [...METALS]
-  return METALS.filter((metal) => ring.availableMetals?.some((option) => metalMatches(option, metal.value)))
+function availableMetalsForRing(ring: RingSetting | null) {
+  if (!ring?.metals?.length) return [...METALS]
+  return METALS.filter((metal) => ring.metals.some((option) => metalMatches(option, metal.value)))
 }
 
-function availableSizesForRing(ring: RingProduct | null) {
-  return ring?.availableSizes?.length ? ring.availableSizes : ringSizes
+function availableSizesForRing(_ring: RingSetting | null) {
+  return ringSizes
 }
 
-function imageForRing(ring: RingProduct, metal: BuilderMetalValue) {
-  if (!metal) return ring.images?.[0] || ''
-  return ring.metalImages?.[metal]?.[0] || ring.images?.[0] || ''
+function imageForRing(ring: RingSetting, metal: BuilderMetalValue) {
+  if (!metal) return ring.imageUrl || ''
+  return ring.images?.[normalizeImageKey(metal)] || ring.imageUrl || ''
 }
 
-function isRingProduct(product: RingProduct) {
-  const productType = product.productType?.toLowerCase() || ''
-  const category = product.category?.toLowerCase() || ''
-
-  return (
-    ['engagement_ring', 'wedding_ring', 'ring', 'solitaire'].includes(productType) ||
-    productType.includes('ring') ||
-    category.includes('ring') ||
-    category.includes('solitaire') ||
-    category.includes('halo') ||
-    category.includes('pave')
-  )
-}
-
-function ringProductsOrAll(products: RingProduct[]) {
-  const ringMatches = products.filter(isRingProduct)
-  return ringMatches.length > 0 ? ringMatches : products
+function settingSlug(setting: RingSetting) {
+  const base = setting.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+  return base || setting.id
 }
 
 function isStoredDiamond(value: unknown): value is Diamond {
@@ -225,10 +190,10 @@ function BuildContent() {
   const actionBarRef = useRef<HTMLDivElement | null>(null)
   const [step, setStep] = useState(1)
   const [selectedDiamond, setSelectedDiamond] = useState<Diamond | null>(null)
-  const [selectedSetting, setSelectedSetting] = useState<RingProduct | null>(null)
+  const [selectedSetting, setSelectedSetting] = useState<RingSetting | null>(null)
   const [selectedMetal, setSelectedMetal] = useState<BuilderMetalValue>('')
   const [selectedSize, setSelectedSize] = useState('')
-  const [rings, setRings] = useState<RingProduct[]>([])
+  const [rings, setRings] = useState<RingSetting[]>([])
   const [loadingRings, setLoadingRings] = useState(true)
   const activeShape = shapeFromParam(searchParams.get('shape'))
   const builderDraft = useMemo(() => ({ step, selectedMetal, selectedSize }), [selectedMetal, selectedSize, step])
@@ -271,40 +236,14 @@ function BuildContent() {
   useEffect(() => {
     const loadRings = async () => {
       setLoadingRings(true)
-      const { data, error } = await supabase
-        .from('Product')
+      const { data } = await supabase
+        .from('RingSetting')
         .select('*')
         .eq('isActive', true)
-        .or('productType.eq.engagement_ring,productType.eq.wedding_ring,productType.eq.ring')
-        .order('isFeatured', { ascending: false })
-        .order('basePrice', { ascending: true })
+        .order('sortOrder', { ascending: true })
+        .order('createdAt', { ascending: false })
 
-      let nextRings = !error && data ? (data as RingProduct[]) : []
-
-      if (nextRings.length === 0) {
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('Product')
-          .select('*')
-          .eq('isActive', true)
-          .order('basePrice', { ascending: true })
-
-        const activeProducts = !fallbackError && fallbackData ? (fallbackData as RingProduct[]) : []
-        nextRings = ringProductsOrAll(activeProducts)
-      }
-
-      if (nextRings.length === 0) {
-        try {
-          const response = await fetch('/api/products?limit=100', { cache: 'no-store' })
-          if (response.ok) {
-            const payload = (await response.json()) as ProductListResponse
-            nextRings = ringProductsOrAll(Array.isArray(payload.products) ? payload.products : [])
-          }
-        } catch {
-          nextRings = []
-        }
-      }
-
-      setRings(nextRings)
+      setRings(Array.isArray(data) ? (data as RingSetting[]) : [])
       setLoadingRings(false)
     }
 
@@ -403,8 +342,8 @@ function BuildContent() {
 
     await addItem({
       productId: selectedSetting.id,
-      productSlug: `custom-${selectedSetting.slug}-${selectedDiamond.id.toLowerCase()}`,
-      productTitle: `Custom ${selectedSetting.title}`,
+      productSlug: `custom-${settingSlug(selectedSetting)}-${selectedDiamond.id.toLowerCase()}`,
+      productTitle: `Custom ${selectedSetting.name}`,
       productImage: ringImage || selectedDiamond.img,
       selectedMetal,
       selectedCarat: selectedDiamond.carat,
@@ -547,12 +486,12 @@ function BuildContent() {
             <div style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', padding: '60px 0' }}>Loading ring settings...</div>
           ) : rings.length === 0 ? (
             <div style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', padding: '36px', textAlign: 'center' }}>
-              <h3 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '26px', fontWeight: 400, margin: '0 0 10px' }}>No ring settings found</h3>
+              <h3 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '26px', fontWeight: 400, margin: '0 0 10px' }}>Settings coming soon</h3>
               <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '13px', lineHeight: 1.7, margin: '0 auto 22px', maxWidth: '480px' }}>
-                Add an active ring product so the builder has a setting to pair with a diamond.
+                Settings coming soon. Contact us at support@justbecausejewelry.com to discuss custom settings.
               </p>
-              <Link href="/admin/products/new" style={{ ...selectButtonStyle, display: 'inline-block', textDecoration: 'none', width: 'auto' }}>
-                ADD RING PRODUCT -
+              <Link href="mailto:support@justbecausejewelry.com" style={{ ...selectButtonStyle, display: 'inline-block', textDecoration: 'none', width: 'auto' }}>
+                EMAIL SUPPORT -
               </Link>
             </div>
           ) : (
@@ -563,11 +502,16 @@ function BuildContent() {
                 return (
                   <article key={ring.id} style={{ background: '#FDF8F2', border: selectedSetting?.id === ring.id ? '1px solid #C9A961' : '0.5px solid #EDD9AF', borderRadius: '2px', overflow: 'hidden' }}>
                     <div style={{ aspectRatio: '1', position: 'relative', background: '#FBF5F0' }}>
-                      {image ? <Image src={image} alt={ring.title} fill sizes="(max-width: 768px) 100vw, 25vw" style={{ objectFit: 'cover' }} quality={90} /> : null}
+                      {image ? <Image src={image} alt={ring.name} fill sizes="(max-width: 768px) 100vw, 25vw" style={{ objectFit: 'cover' }} quality={90} /> : null}
                     </div>
                     <div style={{ padding: '18px' }}>
-                      <div style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.2em', marginBottom: '7px' }}>{ring.category.replace(/_/g, ' ').toUpperCase()}</div>
-                      <h3 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '20px', fontWeight: 400, margin: '0 0 10px' }}>{ring.title}</h3>
+                      <div style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '9px', letterSpacing: '0.2em', marginBottom: '7px' }}>{(ring.style || 'Setting').toUpperCase()}</div>
+                      <h3 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '20px', fontWeight: 400, margin: '0 0 10px' }}>{ring.name}</h3>
+                      {ring.description ? (
+                        <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px', lineHeight: 1.6, margin: '0 0 14px' }}>
+                          {ring.description}
+                        </p>
+                      ) : null}
                       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '14px' }}>
                         {ringMetalOptions.map((metal) => (
                           <button
@@ -623,7 +567,7 @@ function BuildContent() {
 
             <div className="builder-preview-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '28px' }}>
               <div style={{ aspectRatio: '1', position: 'relative', background: '#FBF5F0', border: '0.5px solid #EDD9AF' }}>
-                {ringImage ? <Image src={ringImage} alt={selectedSetting.title} fill sizes="360px" style={{ objectFit: 'cover' }} quality={90} /> : null}
+                {ringImage ? <Image src={ringImage} alt={selectedSetting.name} fill sizes="360px" style={{ objectFit: 'cover' }} quality={90} /> : null}
               </div>
               <div style={{ aspectRatio: '1', position: 'relative', background: '#FBF5F0', border: '0.5px solid #EDD9AF' }}>
                 <Image src={selectedDiamond.img} alt={`${selectedDiamond.shape} diamond`} fill sizes="360px" style={{ objectFit: 'contain', padding: '42px' }} quality={90} />
@@ -634,7 +578,7 @@ function BuildContent() {
               <div>
                 {[
                   ['Diamond', `${selectedDiamond.carat}ct ${selectedDiamond.shape}, ${selectedDiamond.color}, ${selectedDiamond.clarity}`],
-                  ['Setting', selectedSetting.title],
+                  ['Setting', selectedSetting.name],
                   ['Metal', selectedMetalLabel || 'Select metal'],
                 ].map(([label, value]) => (
                   <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', padding: '10px 0', borderBottom: '0.5px solid #EDD9AF', fontFamily: 'var(--font-inter)', fontSize: '13px' }}>

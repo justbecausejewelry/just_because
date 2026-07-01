@@ -1,503 +1,277 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import Image from 'next/image'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
-import { useToast } from '@/context/ToastContext'
-import { useWishlist } from '@/context/WishlistContext'
+import { AnimatePresence, motion } from 'framer-motion'
+import {
+  HomeProductCard,
+  HomeProductSkeletonCard,
+  type HomeMerchProduct,
+} from '@/components/home/HomeProductCard'
 
-type Product = {
-  id: string
-  slug: string
-  title: string
-  category: string
-  productType: string
-  basePrice: number
-  images: string[]
-  metalImages?: {
-    white_gold?: string[]
-    yellow_gold?: string[]
-    rose_gold?: string[]
-    platinum?: string[]
-  } | null
-  availableMetals: string[]
-  isNewArrival: boolean
+type BestSellerFilter = {
+  label: string
+  value: 'all' | 'rings' | 'necklaces' | 'earrings' | 'bracelets'
 }
 
-const metalSwatches: Record<string, string> = {
-  'White Gold': '#E8E8E8',
-  'Yellow Gold': '#C9A961',
-  'Rose Gold': '#E8B5A8',
-  Platinum: '#D0D0D0',
-}
+const filters: BestSellerFilter[] = [
+  { label: 'All', value: 'all' },
+  { label: 'Rings', value: 'rings' },
+  { label: 'Necklaces', value: 'necklaces' },
+  { label: 'Earrings', value: 'earrings' },
+  { label: 'Bracelets', value: 'bracelets' },
+]
 
-function formatCategory(category: string) {
-  return category.replace(/_/g, ' ').toUpperCase()
-}
-
-function formatPrice(price: number) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(price)
-}
-
-function ProductPlaceholder() {
-  return (
-    <div style={{
-      width: '100%',
-      height: '100%',
-      background: 'linear-gradient(135deg, #F5E8ED, #FDF8F2)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-    }}>
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,97,0.4)" strokeWidth="0.8">
-        <path d="M6 3h12l4 6-10 13L2 9z" />
-        <path d="M2 9h20" />
-      </svg>
-    </div>
-  )
-}
-
-function SkeletonCard() {
-  return (
-    <div
-      style={{
-        backgroundColor: '#FDF8F2',
-        border: '0.5px solid #EDD9AF',
-        borderRadius: '2px',
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: '480px',
-        overflow: 'hidden',
-      }}
-    >
-      <div
-        className="just-because-shimmer"
-        style={{ flexShrink: 0, height: '280px', width: '100%' }}
-      />
-      <div style={{ display: 'flex', flex: 1, flexDirection: 'column', padding: '20px 16px 16px' }}>
-        <div
-          className="just-because-shimmer"
-          style={{ height: '9px', width: '45%', marginBottom: '10px' }}
-        />
-        <div
-          className="just-because-shimmer"
-          style={{ height: '18px', width: '75%', marginBottom: '12px' }}
-        />
-        <div
-          className="just-because-shimmer"
-          style={{ height: '14px', width: '38%' }}
-        />
-        <div style={{ flex: 1 }} />
-        <div
-          className="just-because-shimmer"
-          style={{ height: '46px', width: '100%' }}
-        />
-      </div>
-    </div>
-  )
-}
-
-function ProductCard({ product }: { product: Product }) {
-  const { toggleItem, isWishlisted } = useWishlist()
-  const { showToast } = useToast()
-  const image = product.metalImages?.white_gold?.[0] || product.images?.[0]
-  const imagePosition = product.productType?.includes('necklace') ? 'center top' : 'center center'
-  const badge = product.isNewArrival
-    ? 'NEW'
-    : product.basePrice < 2000
-      ? 'POPULAR'
-      : null
-  const wishlisted = isWishlisted(product.slug)
-
-  const toggleWishlist = () => {
-    toggleItem({
-      id: product.id,
-      productSlug: product.slug,
-      productTitle: product.title,
-      productImage: image || '',
-      basePrice: product.basePrice,
-      category: product.category,
-      productType: product.productType,
-    })
-    showToast(
-      wishlisted ? 'Removed from wishlist' : 'Added to wishlist ♡',
-      wishlisted ? 'info' : 'wishlist'
-    )
+function matchesFilter(product: HomeMerchProduct, filter: BestSellerFilter['value']) {
+  if (filter === 'all') return true
+  if (filter === 'rings') {
+    return product.productType === 'ring' || product.productType === 'engagement_ring'
   }
-
-  return (
-    <motion.div
-      whileHover={{
-        y: -8,
-        boxShadow: '0 16px 40px rgba(26,16,20,0.12)',
-      }}
-      transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-      className="best-seller-card jb-card-hover group relative h-full"
-    >
-      <Link
-        href={`/products/${product.slug}`}
-        className="block h-full"
-        style={{ textDecoration: 'none' }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            height: '100%',
-            minHeight: '480px',
-            position: 'relative',
-            overflow: 'hidden',
-            background: '#FDF8F2',
-            border: '0.5px solid #EDD9AF',
-            borderRadius: '2px',
-            cursor: 'pointer',
-            transition:
-              'border-color 0.4s cubic-bezier(0.4,0,0.2,1), box-shadow 0.4s cubic-bezier(0.4,0,0.2,1)',
-          }}
-        >
-          <div
-            className={`product-img-wrap ${imagePosition === 'center top' ? 'is-top' : ''}`}
-            style={{
-              width: '100%',
-              height: '280px',
-              flexShrink: 0,
-              position: 'relative',
-              overflow: 'hidden',
-              backgroundColor: '#FDF8F2',
-            }}
-          >
-            {image ? (
-              <Image
-                src={image}
-                alt={product.title}
-                fill
-                sizes="(max-width: 768px) 100vw, 33vw"
-                quality={90}
-                className={`img-cover ${imagePosition === 'center top' ? 'is-top' : ''}`}
-                style={{
-                  objectFit: 'cover',
-                  objectPosition: imagePosition,
-                  transition: 'transform 0.6s cubic-bezier(0.4,0,0.2,1)',
-                }}
-              />
-            ) : (
-              <ProductPlaceholder />
-            )}
-
-            {badge && (
-              <span
-                style={{
-                  position: 'absolute',
-                  top: '10px',
-                  left: '10px',
-                  backgroundColor: badge === 'NEW' ? '#1A1014' : '#E8C4D0',
-                  color: badge === 'NEW' ? '#FBF5F0' : '#6B2D44',
-                  fontFamily: 'var(--font-jost)',
-                  fontSize: '9px',
-                  letterSpacing: '0.15em',
-                  padding: '4px 10px',
-                }}
-              >
-                {badge}
-              </span>
-            )}
-
-          </div>
-
-          <div style={{ display: 'flex', flex: 1, flexDirection: 'column', padding: '20px 16px 16px' }}>
-            <p
-              style={{
-                color: '#C9A961',
-                flexShrink: 0,
-                fontFamily: 'var(--font-jost)',
-                fontSize: '11px',
-                fontWeight: 500,
-                height: '16px',
-                letterSpacing: '0.2em',
-                marginBottom: '8px',
-                textTransform: 'uppercase',
-              }}
-            >
-              {formatCategory(product.category)}
-            </p>
-            <h3
-              style={{
-                color: '#1A1014',
-                display: '-webkit-box',
-                flexShrink: 0,
-                fontFamily: 'var(--font-cormorant)',
-                fontSize: '18px',
-                fontWeight: 500,
-                height: '50px',
-                lineHeight: 1.35,
-                marginBottom: '12px',
-                overflow: 'hidden',
-                WebkitBoxOrient: 'vertical',
-                WebkitLineClamp: 2,
-              }}
-            >
-              {product.title}
-            </h3>
-
-            <div style={{ display: 'flex', flexShrink: 0, gap: '6px', height: '16px', marginBottom: '12px' }}>
-              {product.availableMetals?.slice(0, 4).map((metal) => (
-                <span
-                  key={metal}
-                  title={metal}
-                  style={{
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    backgroundColor: metalSwatches[metal] || '#EDD9AF',
-                    border: '0.5px solid #EDD9AF',
-                  }}
-                />
-              ))}
-            </div>
-
-            <div style={{ alignItems: 'center', display: 'flex', flexShrink: 0, gap: '6px', height: '32px', marginBottom: '16px' }}>
-              <p style={{ margin: 0 }}>
-                <span
-                  style={{
-                    color: 'var(--color-muted-text)',
-                    fontFamily: 'var(--font-jost)',
-                    fontSize: '13px',
-                    marginRight: '6px',
-                  }}
-                >
-                  From
-                </span>
-                <span
-                  style={{
-                    color: '#1A1014',
-                    fontFamily: 'var(--font-jost)',
-                    fontSize: '17px',
-                    fontWeight: 500,
-                  }}
-                >
-                  {formatPrice(product.basePrice)}
-                </span>
-              </p>
-            </div>
-
-            <div style={{ flex: 1 }} />
-
-            <div
-              data-hover-cta
-              style={{
-                background: '#1A1014',
-                border: 'none',
-                color: '#FBF5F0',
-                cursor: 'pointer',
-                flexShrink: 0,
-                fontFamily: 'var(--font-jost)',
-                fontSize: '12px',
-                fontWeight: 500,
-                letterSpacing: '0.12em',
-                marginTop: 'auto',
-                padding: '14px',
-                textAlign: 'center',
-                textTransform: 'uppercase',
-                width: '100%',
-              }}
-            >
-              Customize →
-            </div>
-          </div>
-        </div>
-      </Link>
-      <button
-        className="jb-wishlist-button"
-        onClick={(event) => {
-          event.preventDefault()
-          event.stopPropagation()
-          toggleWishlist()
-        }}
-        style={{
-          position: 'absolute',
-          top: '10px',
-          right: '10px',
-          width: '34px',
-          height: '34px',
-          borderRadius: '50%',
-          background: 'rgba(253,248,242,0.92)',
-          border: wishlisted ? '1px solid #E8C4D0' : '1px solid transparent',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          zIndex: 10,
-          transition: 'all 0.3s ease',
-          backdropFilter: 'blur(4px)',
-        }}
-        onMouseEnter={(event) => {
-          event.currentTarget.style.background = '#FBF5F0'
-          event.currentTarget.style.borderColor = '#E8C4D0'
-          event.currentTarget.style.transform = 'scale(1.1)'
-        }}
-        onMouseLeave={(event) => {
-          event.currentTarget.style.background = 'rgba(253,248,242,0.92)'
-          event.currentTarget.style.borderColor = wishlisted ? '#E8C4D0' : 'transparent'
-          event.currentTarget.style.transform = 'scale(1)'
-        }}
-        title={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-      >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill={wishlisted ? '#E8C4D0' : 'none'}
-          stroke={wishlisted ? '#C9A5B5' : '#B8A090'}
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-        </svg>
-      </button>
-    </motion.div>
-  )
+  if (filter === 'necklaces') return product.productType === 'necklace'
+  if (filter === 'earrings') return product.productType === 'earring'
+  return product.productType === 'bracelet'
 }
 
 export function BestSellers() {
-  const [products, setProducts] = useState<Product[]>([])
+  const [activeFilter, setActiveFilter] = useState<BestSellerFilter['value']>('all')
+  const [products, setProducts] = useState<HomeMerchProduct[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const loadProducts = async () => {
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      const response = await fetch('/api/products?featured=true&limit=5')
-      const payload = (await response.json()) as {
-        products?: Product[]
-        error?: string
-      }
-
-      if (!response.ok) {
-        throw new Error(payload.error || 'Unable to load best sellers.')
-      }
-
-      setProducts(payload.products || [])
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Unable to load best sellers.')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   useEffect(() => {
+    let cancelled = false
+
+    const loadProducts = async () => {
+      setIsLoading(true)
+      setError(null)
+
+      try {
+        const response = await fetch('/api/products?bestSeller=true&sort=newest&limit=8')
+        const payload = (await response.json()) as { products?: HomeMerchProduct[]; error?: string }
+
+        if (!response.ok) {
+          throw new Error(payload.error || 'Unable to load best sellers.')
+        }
+
+        if (!cancelled) {
+          setProducts(payload.products || [])
+        }
+      } catch (caught) {
+        if (!cancelled) {
+          setProducts([])
+          setError(caught instanceof Error ? caught.message : 'Unable to load best sellers.')
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false)
+        }
+      }
+    }
+
     void loadProducts()
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
+  const visibleProducts = useMemo(
+    () => products.filter((product) => matchesFilter(product, activeFilter)).slice(0, 8),
+    [activeFilter, products]
+  )
+
   return (
-    <motion.section
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-120px' }}
-      transition={{ duration: 0.55, ease: [0.4, 0, 0.2, 1] }}
-      className="px-6 py-12 md:px-10 md:py-[60px] lg:px-20 lg:py-24"
+    <section
+      className="px-5 py-12 md:px-10 md:py-20 lg:px-20"
       style={{ backgroundColor: '#FBF5F0' }}
     >
       <style jsx global>{`
-        .just-because-shimmer {
-          animation: justBecausePulse 1.5s ease-in-out infinite;
-          background: linear-gradient(90deg, #F5E8ED 0%, #FBF5F0 50%, #F5E8ED 100%);
-          background-size: 200% 100%;
+        .home-merch-shimmer {
+          animation: homeMerchPulse 1.4s ease-in-out infinite;
+          background: linear-gradient(90deg, rgba(184,160,144,0.18), rgba(237,217,175,0.28), rgba(184,160,144,0.18));
+          background-size: 220% 100%;
         }
 
-        @keyframes justBecausePulse {
-          0% {
-            background-position: 200% 0;
+        .home-product-card:hover .home-product-img {
+          transform: scale(1.03);
+        }
+
+        .home-product-card:hover .home-product-image button {
+          transform: scale(1.06);
+        }
+
+        .best-seller-tabs {
+          justify-content: flex-start;
+          scrollbar-width: none;
+        }
+
+        .best-seller-tabs::-webkit-scrollbar {
+          display: none;
+        }
+
+        @media (min-width: 768px) {
+          .best-seller-tabs {
+            justify-content: center;
           }
-          100% {
-            background-position: -200% 0;
-          }
+        }
+
+        @keyframes homeMerchPulse {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
         }
       `}</style>
 
-      <div className="flex flex-col justify-between gap-3 md:flex-row md:items-end">
-        <div>
+      <div className="mx-auto max-w-[1440px]">
+        <div className="text-center">
           <p
             style={{
               color: '#C9A961',
-              fontFamily: 'var(--font-jost)',
-              fontSize: '11px',
+              fontFamily: 'var(--font-inter)',
+              fontSize: '10px',
               fontWeight: 500,
-              letterSpacing: '0.2em',
-              marginBottom: '10px',
+              letterSpacing: '0.3em',
+              marginBottom: '14px',
+              textTransform: 'uppercase',
             }}
           >
             BEST SELLERS
           </p>
+          <div style={{ backgroundColor: '#C9A961', height: '1px', margin: '0 auto 18px', width: '60px' }} />
           <h2
             style={{
               color: '#1A1014',
-              fontFamily: 'var(--font-cormorant)',
-              fontSize: 'clamp(2rem, 4vw, 3.5rem)',
+              fontFamily: 'var(--font-playfair)',
+              fontSize: 'clamp(2rem, 5vw, 4rem)',
               fontWeight: 400,
-              lineHeight: 1.15,
+              lineHeight: 1.05,
               margin: 0,
             }}
           >
-            Loved by everyone
+            Loved by everyone.
           </h2>
-        </div>
-        <Link
-          href="/products"
-          className="jb-gold-link"
-          style={{
-            color: '#C9A961',
-            fontFamily: 'var(--font-jost)',
-            fontSize: '13px',
-            letterSpacing: '0.12em',
-            textDecoration: 'none',
-          }}
-        >
-          View all pieces →
-        </Link>
-      </div>
-
-      {error ? (
-        <div
-          className="mt-12 flex flex-col items-center justify-center gap-4 py-16"
-          style={{
-            backgroundColor: '#FDF8F2',
-            border: '0.5px solid #EDD9AF',
-            color: 'var(--color-muted-text)',
-            fontFamily: 'var(--font-inter)',
-          }}
-        >
-          <p>{error}</p>
-          <button
-            onClick={loadProducts}
+          <p
             style={{
-              backgroundColor: '#1A1014',
-              color: '#FBF5F0',
+              color: '#1A1014',
               fontFamily: 'var(--font-inter)',
-              fontSize: '11px',
-              letterSpacing: '0.18em',
-              padding: '12px 18px',
+              fontSize: '15px',
+              lineHeight: 1.8,
+              margin: '10px 0 0',
             }}
           >
-            RETRY
-          </button>
+            For good reason.
+          </p>
         </div>
-      ) : (
-        <div className="best-sellers-grid mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5" style={{ alignItems: 'stretch' }}>
-          {isLoading
-            ? Array.from({ length: 5 }, (_, index) => <SkeletonCard key={index} />)
-            : products.map((product) => (
-                <ProductCard key={product.id} product={product} />
+
+        <div
+          className="best-seller-tabs mt-9 flex gap-3 overflow-x-auto pb-1"
+        >
+          {filters.map((filter) => {
+            const active = activeFilter === filter.value
+            return (
+              <button
+                key={filter.value}
+                onClick={() => setActiveFilter(filter.value)}
+                style={{
+                  backgroundColor: active ? '#1A1014' : 'transparent',
+                  border: `1px solid ${active ? '#1A1014' : '#B8A090'}`,
+                  color: active ? '#FBF5F0' : '#B8A090',
+                  cursor: 'pointer',
+                  flex: '0 0 auto',
+                  fontFamily: 'var(--font-inter)',
+                  fontSize: '11px',
+                  fontWeight: 500,
+                  letterSpacing: '0.1em',
+                  padding: '8px 20px',
+                  textTransform: 'uppercase',
+                  transition: 'border-color 0.3s ease, color 0.3s ease, background-color 0.3s ease',
+                }}
+                onMouseEnter={(event) => {
+                  if (!active) {
+                    event.currentTarget.style.borderColor = '#1A1014'
+                    event.currentTarget.style.color = '#1A1014'
+                  }
+                }}
+                onMouseLeave={(event) => {
+                  if (!active) {
+                    event.currentTarget.style.borderColor = '#B8A090'
+                    event.currentTarget.style.color = '#B8A090'
+                  }
+                }}
+              >
+                {filter.label}
+              </button>
+            )
+          })}
+        </div>
+
+        {error ? (
+          <div
+            className="mt-10 py-16 text-center"
+            style={{
+              border: '0.5px solid #EDD9AF',
+              color: '#B8A090',
+              fontFamily: 'var(--font-inter)',
+              fontSize: '14px',
+            }}
+          >
+            {error}
+          </div>
+        ) : isLoading ? (
+          <div className="mt-10 grid grid-cols-2 gap-6 lg:grid-cols-4">
+            {Array.from({ length: 4 }, (_, index) => <HomeProductSkeletonCard key={index} />)}
+          </div>
+        ) : visibleProducts.length ? (
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeFilter}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+              className="mt-10 grid grid-cols-2 gap-6 lg:grid-cols-4"
+            >
+              {visibleProducts.map((product) => (
+                <HomeProductCard
+                  badgeLabel="BEST SELLER"
+                  badgeTone="noir"
+                  key={product.id}
+                  product={product}
+                />
               ))}
+            </motion.div>
+          </AnimatePresence>
+        ) : (
+          <div
+            className="mt-10 py-16 text-center"
+            style={{
+              border: '0.5px solid #EDD9AF',
+              color: '#B8A090',
+              fontFamily: 'var(--font-inter)',
+              fontSize: '14px',
+              lineHeight: 1.8,
+            }}
+          >
+            Coming soon. Check back for our most loved pieces.
+          </div>
+        )}
+
+        <div className="mt-12 text-center">
+          <Link
+            href="/best-sellers"
+            style={{
+              color: '#C9A961',
+              fontFamily: 'var(--font-inter)',
+              fontSize: '11px',
+              fontWeight: 500,
+              letterSpacing: '0.15em',
+              textDecoration: 'none',
+              textTransform: 'uppercase',
+            }}
+          >
+            View all best sellers -&gt;
+          </Link>
         </div>
-      )}
-    </motion.section>
+      </div>
+    </section>
   )
 }

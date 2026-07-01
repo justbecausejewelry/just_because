@@ -58,6 +58,23 @@ export default function RingSizeGuidePage() {
           box-shadow: 0 12px 32px rgba(26,16,20,0.06);
         }
 
+        .ring-size-illustration-shell {
+          align-items: center;
+          background: #FDF8F2;
+          border-left: 0.5px solid #EDD9AF;
+          display: flex;
+          height: 100%;
+          justify-content: center;
+          padding: clamp(32px, 6vw, 72px);
+        }
+
+        .ring-size-illustration {
+          filter: drop-shadow(0 18px 48px rgba(26,16,20,0.08));
+          height: min(58vh, 520px);
+          max-width: 520px;
+          width: 100%;
+        }
+
         @media (max-width: 768px) {
           .ring-size-hero,
           .ring-size-tips {
@@ -74,6 +91,17 @@ export default function RingSizeGuidePage() {
           .ring-size-hero-image {
             height: 340px !important;
             order: -1;
+          }
+
+          .ring-size-illustration-shell {
+            border-bottom: 0.5px solid #EDD9AF;
+            border-left: 0;
+            padding: 28px;
+          }
+
+          .ring-size-illustration {
+            height: 100%;
+            max-height: 300px;
           }
 
           .ring-size-methods {
@@ -117,14 +145,14 @@ export default function RingSizeGuidePage() {
         </div>
 
         <div className="ring-size-hero-image" style={{ height: '70vh', overflow: 'hidden', position: 'relative' }}>
-          <Image
-            src="https://images.unsplash.com/photo-1591209627864-d2c34a36e0c5?w=900&q=85"
-            alt="Ring sizing"
-            fill
-            priority
-            sizes="(max-width: 768px) 100vw, 50vw"
-            style={{ objectFit: 'cover' }}
-          />
+          <div className="ring-size-illustration-shell">
+            <Image
+              src="/images/education/ring-size-guide.jpg"
+              alt="Ring sizing guide"
+              width={500}
+              height={500}
+            />
+          </div>
         </div>
       </section>
 
@@ -216,26 +244,6 @@ export default function RingSizeGuidePage() {
             </ul>
           </div>
 
-          <div style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', padding: '40px 32px' }}>
-            <div style={{ fontFamily: 'var(--font-playfair)', fontSize: '24px', color: '#1A1014', marginBottom: '8px' }}>
-              Need a free sizer?
-            </div>
-            <p style={{ fontSize: '13px', color: 'var(--color-muted-text)', lineHeight: 1.75, marginBottom: '24px', fontFamily: 'var(--font-inter)' }}>
-              We will mail you a complimentary plastic ring sizer with 27 ring sizes to find your perfect fit.
-            </p>
-
-            <input
-              placeholder="your@email.com"
-              style={{ width: '100%', padding: '12px 16px', background: '#FBF5F0', border: '0.5px solid #EDD9AF', fontSize: '13px', marginBottom: '12px', outline: 'none', fontFamily: 'var(--font-inter)', color: '#1A1014' }}
-            />
-            <button style={{ width: '100%', padding: '14px', background: '#1A1014', color: '#FBF5F0', border: 'none', fontSize: '11px', letterSpacing: '0.2em', cursor: 'pointer', fontFamily: 'var(--font-inter)' }}>
-              REQUEST FREE SIZER
-            </button>
-
-            <p style={{ fontSize: '10px', color: 'var(--color-muted-text)', marginTop: '12px', textAlign: 'center', fontFamily: 'var(--font-inter)' }}>
-              Ships in 2-3 days / Free worldwide
-            </p>
-          </div>
         </div>
       </section>
 

@@ -71,8 +71,8 @@ const megaMenuData: Record<string, MegaMenuEntry> = {
       {
         title: 'EXPLORE',
         links: [
-          { label: 'Best Sellers', href: '/products?sort=featured&type=engagement_ring' },
-          { label: 'New Arrivals', href: '/products?sort=new&type=engagement_ring' },
+          { label: 'Best Sellers', href: '/best-sellers' },
+          { label: 'New Arrivals', href: '/new-arrivals' },
           { label: 'Under $3,000', href: '/products?maxPrice=3000&type=engagement_ring' },
           { label: 'Ring Size Guide', href: '/education/ring-size' },
         ],
@@ -82,12 +82,12 @@ const megaMenuData: Record<string, MegaMenuEntry> = {
       {
         src: '/images/navbar/best-sellers.jpg',
         label: 'BEST SELLERS',
-        href: '/products?sort=featured&type=engagement_ring',
+        href: '/best-sellers',
       },
       {
         src: '/images/navbar/new-arrivals.jpg',
         label: 'NEW ARRIVALS',
-        href: '/products?sort=new&type=engagement_ring',
+        href: '/new-arrivals',
       },
     ],
   },
@@ -455,7 +455,7 @@ export function Navbar() {
         >
           <BrandLogo size="md" href="/" />
 
-          <nav className="desktop-nav-center desktop-mega-nav" style={{ gap: '28px', alignItems: 'center', minWidth: 0, overflow: 'hidden', position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
+          <nav className="desktop-nav-center desktop-mega-nav" style={{ gap: '22px', alignItems: 'center', minWidth: 0, overflow: 'hidden', position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
             {menuLabels.map((label) => (
               <div
                 key={label}
@@ -468,6 +468,14 @@ export function Navbar() {
                 </span>
               </div>
             ))}
+
+            <Link href="/best-sellers" className="nav-link-item" style={{ color: '#1A1014', fontFamily: 'var(--font-jost)', fontSize: '13.5px', fontWeight: 400, letterSpacing: '0.02em', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+              Best Sellers
+            </Link>
+
+            <Link href="/new-arrivals" className="nav-link-item" style={{ color: '#1A1014', fontFamily: 'var(--font-jost)', fontSize: '13.5px', fontWeight: 400, letterSpacing: '0.02em', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+              New Arrivals
+            </Link>
 
             <Link href="/products?category=gifts" className="mr-4" style={{ fontSize: '13.5px', color: '#C9A961', textDecoration: 'none', fontFamily: 'var(--font-jost)', fontWeight: 500, letterSpacing: '0.02em', whiteSpace: 'nowrap', marginRight: '16px' }}>
               * Gifts
@@ -649,6 +657,8 @@ export function Navbar() {
               { label: 'Necklaces', href: '/products?type=necklace' },
               { label: 'Bracelets', href: '/products?type=bracelet' },
               { label: 'Diamonds', href: '/diamonds' },
+              { label: 'Best Sellers', href: '/best-sellers' },
+              { label: 'New Arrivals', href: '/new-arrivals' },
             ].map((item) => (
               <Link
                 key={item.label}

@@ -6,6 +6,8 @@ const columns = [
     title: 'SHOP',
     links: [
       { label: 'Engagement', href: '/products?type=engagement_ring' },
+      { label: 'Best Sellers', href: '/best-sellers' },
+      { label: 'New Arrivals', href: '/new-arrivals' },
       { label: 'Rings', href: '/products?type=ring' },
       { label: 'Necklaces', href: '/products?type=necklace' },
       { label: 'Earrings', href: '/products?type=earring' },

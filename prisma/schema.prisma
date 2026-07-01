@@ -58,8 +58,11 @@ model Product {
 
   // Admin controls
   isActive      Boolean @default(true)
+  isBestSeller  Boolean @default(false)
   isFeatured    Boolean @default(false)
   isNewArrival  Boolean @default(false)
+  isGift        Boolean @default(false)
+  collections   String[]
   internalNotes String?
   tags          String[]
   sortOrder     Int     @default(0)
@@ -77,6 +80,22 @@ model Product {
   reviews      Review[]
   cartItems    CartItem[]
   orderItems   OrderItem[]
+}
+
+model RingSetting {
+  id               String   @id @default(uuid()) @db.Uuid
+  name             String
+  style            String?
+  description      String?
+  basePrice        Float    @default(0)
+  metals           String[]
+  compatibleShapes String[]
+  imageUrl         String?
+  images           Json     @default("{}")
+  isActive         Boolean  @default(true)
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 // ─── DIAMOND INVENTORY ───────────────────────────────

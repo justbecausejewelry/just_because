@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Gem, Heart, RotateCcw, Share2, ShieldCheck, Sparkles, Star } from 'lucide-react'
 import ProductAccordion from '@/components/product/ProductAccordion'
 import ShareModal from '@/components/product/ShareModal'
+import { ProductBadges } from '@/components/products/ProductBadges'
 import ProductCustomizer, { productNeedsRingSize } from '@/components/products/ProductCustomizer'
 import { useCart } from '@/context/CartContext'
 import { useToast } from '@/context/ToastContext'
@@ -51,6 +52,8 @@ type Product = {
   metalKarat?: string | null
   settingStyle?: string | null
   dimensions?: string | null
+  isBestSeller?: boolean | null
+  isNewArrival?: boolean | null
 }
 
 type Review = {
@@ -151,6 +154,91 @@ function SkeletonDetail() {
   )
 }
 
+function RecommendationSkeletonCard() {
+  return (
+    <div style={{ backgroundColor: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '2px', display: 'flex', flexDirection: 'column', minHeight: '420px', overflow: 'hidden' }}>
+      <div className="just-because-shimmer" style={{ flexShrink: 0, height: '240px', width: '100%' }} />
+      <div style={{ display: 'flex', flex: 1, flexDirection: 'column', padding: '18px 14px 14px' }}>
+        <div className="just-because-shimmer" style={{ height: '10px', marginBottom: '12px', width: '42%' }} />
+        <div className="just-because-shimmer" style={{ height: '20px', marginBottom: '14px', width: '76%' }} />
+        <div className="just-because-shimmer" style={{ height: '16px', width: '34%' }} />
+        <div style={{ flex: 1 }} />
+        <div className="just-because-shimmer" style={{ height: '42px', width: '100%' }} />
+      </div>
+    </div>
+  )
+}
+
+function RecommendationCard({
+  product,
+  onAddToCart,
+}: {
+  product: Product
+  onAddToCart: (product: Product) => Promise<void>
+}) {
+  const image = product.metalImages?.white_gold?.[0] || product.images?.[0]
+  const imagePosition = product.productType?.includes('necklace') || product.productType?.includes('pendant')
+    ? 'center top'
+    : 'center center'
+
+  return (
+    <motion.article
+      whileHover={{ y: -6, boxShadow: '0 14px 34px rgba(26,16,20,0.10)' }}
+      transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+      style={{ backgroundColor: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '2px', display: 'flex', flexDirection: 'column', minHeight: '420px', overflow: 'hidden' }}
+    >
+      <Link href={`/products/${product.slug}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+        <div style={{ backgroundColor: '#FDF8F2', height: '240px', overflow: 'hidden', position: 'relative' }}>
+          {image ? (
+            <Image
+              src={image}
+              alt={product.title}
+              fill
+              sizes="(max-width: 480px) 100vw, (max-width: 900px) 50vw, 25vw"
+              quality={90}
+              className={`img-cover ${imagePosition === 'center top' ? 'is-top' : ''}`}
+              style={{ objectFit: 'cover', objectPosition: imagePosition, transition: 'transform 0.6s cubic-bezier(0.4,0,0.2,1)' }}
+            />
+          ) : (
+            <ProductPlaceholder size={56} />
+          )}
+          <ProductBadges isBestSeller={product.isBestSeller} isNewArrival={product.isNewArrival} />
+        </div>
+      </Link>
+
+      <div style={{ display: 'flex', flex: 1, flexDirection: 'column', padding: '18px 14px 14px' }}>
+        <p style={{ color: '#C9A961', flexShrink: 0, fontFamily: 'var(--font-inter)', fontSize: '10px', fontWeight: 500, letterSpacing: '0.2em', marginBottom: '8px', textTransform: 'uppercase' }}>
+          {prettify(product.category)}
+        </p>
+        <Link href={`/products/${product.slug}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+          <h3 style={{ color: '#1A1014', display: '-webkit-box', flexShrink: 0, fontFamily: 'var(--font-playfair)', fontSize: '17px', fontWeight: 400, lineHeight: 1.35, marginBottom: '10px', overflow: 'hidden', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2 }}>
+            {product.title}
+          </h3>
+        </Link>
+        <p style={{ alignItems: 'baseline', display: 'flex', flexShrink: 0, gap: '6px', margin: '0 0 16px' }}>
+          <span style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>From</span>
+          <span style={{ color: '#1A1014', fontFamily: 'var(--font-inter)', fontSize: '16px', fontWeight: 500 }}>{formatPrice(product.basePrice)}</span>
+        </p>
+        <div style={{ flex: 1 }} />
+        <button
+          onClick={() => {
+            void onAddToCart(product)
+          }}
+          style={{ backgroundColor: '#1A1014', color: '#FBF5F0', fontFamily: 'var(--font-inter)', fontSize: '11px', fontWeight: 500, letterSpacing: '0.16em', padding: '13px', textAlign: 'center', textTransform: 'uppercase', transition: 'background-color 0.3s ease', width: '100%' }}
+          onMouseEnter={(event) => {
+            event.currentTarget.style.backgroundColor = '#2A1E24'
+          }}
+          onMouseLeave={(event) => {
+            event.currentTarget.style.backgroundColor = '#1A1014'
+          }}
+        >
+          ADD TO CART
+        </button>
+      </div>
+    </motion.article>
+  )
+}
+
 export default function ProductDetailPage() {
   const params = useParams<{ slug: string }>()
   const router = useRouter()
@@ -171,6 +259,9 @@ export default function ProductDetailPage() {
   const [calculatedPrice, setCalculatedPrice] = useState(0)
   const [addedToCart, setAddedToCart] = useState(false)
   const [shareModalOpen, setShareModalOpen] = useState(false)
+  const [recommendations, setRecommendations] = useState<Product[]>([])
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false)
+  const [recommendationsError, setRecommendationsError] = useState<string | null>(null)
   const imageRef = useRef<HTMLDivElement>(null)
   const touchStartX = useRef(0)
   const touchEndX = useRef(0)
@@ -213,6 +304,47 @@ export default function ProductDetailPage() {
   useEffect(() => {
     void loadProduct()
   }, [loadProduct])
+
+  useEffect(() => {
+    if (!product) return
+
+    let cancelled = false
+    const params = new URLSearchParams({
+      bestSeller: 'priority',
+      exclude: product.id,
+      limit: '4',
+      type: product.productType,
+    })
+
+    setRecommendationsLoading(true)
+    setRecommendationsError(null)
+
+    fetch(`/api/products?${params.toString()}`)
+      .then(async (response) => {
+        const payload = (await response.json()) as { products?: Product[]; error?: string }
+        if (!response.ok) {
+          throw new Error(payload.error || 'Unable to load recommendations.')
+        }
+        if (!cancelled) {
+          setRecommendations(payload.products || [])
+        }
+      })
+      .catch((caught) => {
+        if (!cancelled) {
+          setRecommendations([])
+          setRecommendationsError(caught instanceof Error ? caught.message : 'Unable to load recommendations.')
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setRecommendationsLoading(false)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [product])
 
   const images = useMemo(() => {
     if (!product) return []
@@ -391,6 +523,39 @@ export default function ProductDetailPage() {
     window.setTimeout(() => setAddedToCart(false), 2500)
   }
 
+  const handleAddRecommendationToCart = async (recommendedProduct: Product) => {
+    const recommendedImage = recommendedProduct.metalImages?.white_gold?.[0] || recommendedProduct.images?.[0] || ''
+    const recommendedMetal = defaultMetalSelection(recommendedProduct.availableMetals)
+    const recommendedIsRing = isRingProduct(recommendedProduct.productType, recommendedProduct.category)
+
+    await addItem({
+      productId: recommendedProduct.id,
+      productSlug: recommendedProduct.slug,
+      productTitle: recommendedProduct.title,
+      productImage: recommendedImage,
+      selectedMetal: recommendedMetal,
+      selectedCarat: 0,
+      selectedShape: recommendedIsRing
+        ? recommendedProduct.diamondShape || recommendedProduct.availableShapes?.[0] || 'Round'
+        : undefined,
+      selectedColor: undefined,
+      selectedClarity: undefined,
+      ringSize: undefined,
+      engraving: undefined,
+      quantity: 1,
+      unitPrice: recommendedProduct.basePrice,
+      priceBreakdown: {
+        base: recommendedProduct.basePrice,
+        metal: 0,
+        carat: 0,
+        shape: 0,
+        color: 0,
+        clarity: 0,
+      },
+    })
+    showToast('Added to cart successfully', 'success')
+  }
+
   const handleBuyNow = async () => {
     if (!canAddToCart) return
 
@@ -493,6 +658,36 @@ export default function ProductDetailPage() {
       transition={{ duration: 0.55, ease: [0.4, 0, 0.2, 1] }}
       style={{ backgroundColor: '#FBF5F0', minHeight: '100vh' }}
     >
+      <style jsx global>{`
+        .just-because-shimmer {
+          animation: justBecausePulse 1.5s ease-in-out infinite;
+          background: linear-gradient(90deg, #F5E8ED 0%, #FBF5F0 50%, #F5E8ED 100%);
+          background-size: 200% 100%;
+        }
+
+        @keyframes justBecausePulse {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+
+        .you-may-like-grid {
+          display: grid;
+          gap: 16px;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        @media (max-width: 900px) {
+          .you-may-like-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
+
+        @media (max-width: 480px) {
+          .you-may-like-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
       <div className="product-backbar" style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -1225,6 +1420,41 @@ export default function ProductDetailPage() {
               </div>
             )}
           </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-[1400px] px-6 pb-24 md:px-10 lg:px-20">
+        <div style={{ borderTop: '0.5px solid #EDD9AF', paddingTop: '56px' }}>
+          <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', fontWeight: 500, letterSpacing: '0.3em', marginBottom: '10px', textTransform: 'uppercase' }}>
+            DISCOVER MORE
+          </p>
+          <h2 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: 'clamp(2rem, 4vw, 3.25rem)', fontWeight: 400, lineHeight: 1.12, margin: '0 0 28px' }}>
+            You may also like
+          </h2>
+
+          {recommendationsError ? (
+            <div style={{ backgroundColor: '#FDF8F2', border: '0.5px solid #EDD9AF', color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '14px', lineHeight: 1.7, padding: '24px' }}>
+              {recommendationsError}
+            </div>
+          ) : recommendationsLoading ? (
+            <div className="you-may-like-grid">
+              {Array.from({ length: 4 }, (_, index) => <RecommendationSkeletonCard key={index} />)}
+            </div>
+          ) : recommendations.length ? (
+            <div className="you-may-like-grid">
+              {recommendations.map((recommendedProduct) => (
+                <RecommendationCard
+                  key={recommendedProduct.id}
+                  product={recommendedProduct}
+                  onAddToCart={handleAddRecommendationToCart}
+                />
+              ))}
+            </div>
+          ) : (
+            <div style={{ backgroundColor: '#FDF8F2', border: '0.5px solid #EDD9AF', color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '14px', lineHeight: 1.7, padding: '24px' }}>
+              More pieces in this style will appear here as the collection grows.
+            </div>
+          )}
         </div>
       </section>
 

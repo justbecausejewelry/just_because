@@ -22,6 +22,7 @@ import {
   Menu,
   X,
   ExternalLink,
+  Gem,
 } from 'lucide-react'
 
 type SidebarLink = {
@@ -34,6 +35,7 @@ type SidebarLink = {
 const sidebarLinks: SidebarLink[] = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { href: '/admin/products', label: 'Products', icon: Package },
+  { href: '/admin/ring-settings', label: 'Ring Settings', icon: Gem },
   { href: '/admin/orders', label: 'Orders', icon: ShoppingBag },
   { href: '/admin/returns', label: 'Returns', icon: RotateCcw },
   { href: '/admin/analytics', label: 'Analytics', icon: BarChart2 },
