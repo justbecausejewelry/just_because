@@ -147,8 +147,13 @@ function ReturnRequestContent() {
         return
       }
 
-      setUser(session.user)
-      void loadOrder(session.user)
+      void getSettledBrowserSession().then((settledSession) => {
+        if (cancelled) return
+        if (settledSession?.user) {
+          setUser(settledSession.user)
+          void loadOrder(settledSession.user)
+        }
+      })
     })
 
     const fallbackTimer = window.setTimeout(() => {

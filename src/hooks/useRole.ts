@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { getSettledBrowserSession, supabase } from '@/lib/supabase'
 
 export type UserRole = 'user' | 'admin' | 'super_admin'
 
@@ -23,10 +23,7 @@ export function useRole() {
       try {
         await new Promise((resolve) => globalThis.setTimeout(resolve, 500))
 
-        const {
-          data: { session },
-        } = await supabase.auth.getSession()
-
+        const session = await getSettledBrowserSession()
         const user = session?.user || null
 
         if (!user?.email) {

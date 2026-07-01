@@ -339,7 +339,17 @@ export default function AccountPage() {
         return
       }
 
-      hydrateAccount(session.user)
+      void (async () => {
+        const settledSession = await getSettledBrowserSession(1000)
+        if (cancelled) return
+
+        if (settledSession?.user) {
+          hydrateAccount(settledSession.user)
+          return
+        }
+
+        hydrateAccount(session.user, false)
+      })()
     })
 
     return () => {

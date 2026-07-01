@@ -7,8 +7,12 @@ export const ACCOUNT_USER_STORAGE_KEY = 'jb_account_user_v1'
 const AUTH_SESSION_COOKIE = 'jb_auth_session_v1'
 const ACCOUNT_USER_COOKIE = 'jb_account_user_v1'
 const SESSION_SETTLE_DELAY_MS = 600
+const REFRESH_BACKOFF_MS = 60 * 1000
+const TOKEN_EXPIRY_BUFFER_SECONDS = 90
 
 let supabaseInstance: SupabaseClient | null = null
+let settledSessionPromise: Promise<Session | null> | null = null
+let refreshBackoffUntil = 0
 
 function cookieDomain() {
   if (typeof window === 'undefined') return ''
@@ -71,6 +75,28 @@ function clearLegacyAuthStorage() {
   }
 }
 
+export function clearBrowserAuthState(clearAccountUser = false) {
+  if (typeof window === 'undefined') return
+
+  try {
+    window.localStorage.removeItem(SUPABASE_AUTH_STORAGE_KEY)
+    if (clearAccountUser) {
+      window.localStorage.removeItem(ACCOUNT_USER_STORAGE_KEY)
+    }
+
+    Object.keys(window.localStorage)
+      .filter(isLegacyAuthStorageKey)
+      .forEach((key) => window.localStorage.removeItem(key))
+  } catch {
+    // Some browsers can block storage mutation.
+  }
+
+  setBrowserCookie(AUTH_SESSION_COOKIE, '', 0)
+  if (clearAccountUser) {
+    setBrowserCookie(ACCOUNT_USER_COOKIE, '', 0)
+  }
+}
+
 function bootstrapSessionFromCookie() {
   if (typeof window === 'undefined') return
 
@@ -119,6 +145,22 @@ export function getStoredBrowserSession(): Session | null {
   } catch {
     return null
   }
+}
+
+function isSessionFresh(session: Session | null) {
+  if (!session?.access_token || !session.refresh_token || !session.user) return false
+  if (typeof session.expires_at !== 'number') return true
+  return session.expires_at > Date.now() / 1000 + TOKEN_EXPIRY_BUFFER_SECONDS
+}
+
+function shouldBackOff(error: unknown) {
+  if (!error || typeof error !== 'object') return false
+
+  const status = 'status' in error ? (error as { status?: unknown }).status : undefined
+  if (status === 429) return true
+
+  const message = 'message' in error ? (error as { message?: unknown }).message : undefined
+  return typeof message === 'string' && message.toLowerCase().includes('too many')
 }
 
 export function getSupabaseClient(): SupabaseClient {
@@ -187,12 +229,23 @@ export function persistBrowserSession(session: Session) {
     window.localStorage.setItem(ACCOUNT_USER_STORAGE_KEY, storedAccountUser)
     setBrowserCookie(AUTH_SESSION_COOKIE, storedSession, 30 * 24 * 60 * 60)
     setBrowserCookie(ACCOUNT_USER_COOKIE, storedAccountUser, 30 * 24 * 60 * 60)
+    refreshBackoffUntil = 0
   } catch {
     // Storage can be unavailable in private modes. Supabase still owns in-memory auth.
   }
 }
 
 export async function getSettledBrowserSession(waitMs = SESSION_SETTLE_DELAY_MS): Promise<Session | null> {
+  if (settledSessionPromise) return settledSessionPromise
+
+  settledSessionPromise = settleBrowserSession(waitMs).finally(() => {
+    settledSessionPromise = null
+  })
+
+  return settledSessionPromise
+}
+
+async function settleBrowserSession(waitMs: number): Promise<Session | null> {
   const client = getSupabaseClient()
 
   const readSession = async () => {
@@ -203,23 +256,27 @@ export async function getSettledBrowserSession(waitMs = SESSION_SETTLE_DELAY_MS)
   }
 
   try {
-    const immediateSession = await readSession()
-    if (immediateSession?.user) {
-      persistBrowserSession(immediateSession)
-      return immediateSession
-    }
-
     const storedSession = getStoredBrowserSession()
-    if (storedSession?.access_token && storedSession.refresh_token) {
+    if (isSessionFresh(storedSession)) {
       const { data } = await client.auth.setSession({
-        access_token: storedSession.access_token,
-        refresh_token: storedSession.refresh_token,
+        access_token: storedSession!.access_token,
+        refresh_token: storedSession!.refresh_token,
       })
 
       if (data.session?.user) {
         persistBrowserSession(data.session)
         return data.session
       }
+    }
+
+    if (Date.now() < refreshBackoffUntil) {
+      return null
+    }
+
+    const immediateSession = await readSession()
+    if (immediateSession?.user) {
+      persistBrowserSession(immediateSession)
+      return immediateSession
     }
 
     await new Promise((resolve) => globalThis.setTimeout(resolve, waitMs))
@@ -233,6 +290,9 @@ export async function getSettledBrowserSession(waitMs = SESSION_SETTLE_DELAY_MS)
     return null
   } catch (error) {
     console.error('[auth] settled session check failed:', error)
+    if (shouldBackOff(error)) {
+      refreshBackoffUntil = Date.now() + REFRESH_BACKOFF_MS
+    }
     return null
   }
 }

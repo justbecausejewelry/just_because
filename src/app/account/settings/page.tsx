@@ -145,7 +145,12 @@ export default function AccountSettingsPage() {
         return
       }
 
-      void loadForUser(session.user)
+      void getSettledBrowserSession().then((settledSession) => {
+        if (cancelled) return
+        if (settledSession?.user) {
+          void loadForUser(settledSession.user)
+        }
+      })
     })
 
     const fallbackTimer = window.setTimeout(() => {
