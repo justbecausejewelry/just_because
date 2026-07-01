@@ -83,7 +83,8 @@ export default function LoginPage() {
       }
 
       const accessToken = data.session?.access_token
-      if (!accessToken) {
+      const refreshToken = data.session?.refresh_token
+      if (!accessToken || !refreshToken) {
         setError('Unable to create a secure session. Please try again.')
         setLoading(false)
         return
@@ -93,7 +94,9 @@ export default function LoginPage() {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ accessToken, refreshToken }),
       })
 
       if (!cookieResponse.ok) {
@@ -110,7 +113,8 @@ export default function LoginPage() {
       }
 
       const redirect = new URLSearchParams(window.location.search).get('redirect')
-      router.push(redirect || '/')
+      await new Promise((resolve) => globalThis.setTimeout(resolve, 300))
+      router.replace(redirect || '/')
     }
   }
 

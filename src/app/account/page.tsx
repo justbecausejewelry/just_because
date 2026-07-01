@@ -234,6 +234,7 @@ export default function AccountPage() {
     }
 
     const verifyCurrentSession = async () => {
+      await new Promise((resolve) => globalThis.setTimeout(resolve, 500))
       const { data: { session } } = await supabase.auth.getSession()
       if (cancelled) return
 
@@ -271,16 +272,6 @@ export default function AccountPage() {
       subscription.unsubscribe()
     }
   }, [router])
-
-  useEffect(() => {
-    if (!pageLoading) return
-
-    const fallbackTimer = globalThis.setTimeout(() => {
-      router.push('/login?redirect=/account')
-    }, 3000)
-
-    return () => globalThis.clearTimeout(fallbackTimer)
-  }, [pageLoading, router])
 
   const handleSignOut = async () => {
     await forceSignOut()

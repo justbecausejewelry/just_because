@@ -1,4 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { getOrCreateProfile } from '@/lib/userProfile'
 
@@ -17,9 +18,28 @@ export async function GET(request: NextRequest) {
   }
 
   if (code) {
-    const supabase = createClient(
+    const cookieStore = await cookies()
+    let response = NextResponse.redirect(`${origin}${next}`)
+
+    const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options)
+            })
+            response = NextResponse.redirect(`${origin}${next}`)
+            cookiesToSet.forEach(({ name, value, options }) => {
+              response.cookies.set(name, value, options)
+            })
+          },
+        },
+      }
     )
 
     const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
@@ -29,8 +49,10 @@ export async function GET(request: NextRequest) {
       if (user?.email) {
         await getOrCreateProfile(user.id, user.email, typeof user.user_metadata?.name === 'string' ? user.user_metadata.name : undefined)
       }
-      return NextResponse.redirect(`${origin}${next}`)
+      return response
     }
+
+    console.error('Auth callback exchange failed:', exchangeError.message)
   }
 
   return NextResponse.redirect(`${origin}/login?error=Authentication+failed`)

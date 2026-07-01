@@ -1,8 +1,9 @@
+import { createServerClient } from '@supabase/ssr'
 import { NextRequest, NextResponse } from 'next/server'
 
-type SupabaseUserResponse = {
-  id?: string
-  email?: string | null
+type SessionCookieBody = {
+  accessToken?: unknown
+  refreshToken?: unknown
 }
 
 function getSupabaseEnv() {
@@ -32,16 +33,32 @@ function getBearerToken(request: NextRequest) {
   return authorization.slice('Bearer '.length).trim() || null
 }
 
-async function getUser(token: string, supabaseUrl: string, anonKey: string) {
-  const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
-    headers: {
-      apikey: anonKey,
-      Authorization: `Bearer ${token}`,
+async function readSessionBody(request: NextRequest): Promise<SessionCookieBody> {
+  try {
+    return (await request.json()) as SessionCookieBody
+  } catch {
+    return {}
+  }
+}
+
+function createCookieResponse(request: NextRequest, supabaseUrl: string, anonKey: string) {
+  let response = NextResponse.json({ ok: true })
+
+  const supabase = createServerClient(supabaseUrl, anonKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll()
+      },
+      setAll(cookiesToSet) {
+        response = NextResponse.json({ ok: true })
+        cookiesToSet.forEach(({ name, value, options }) => {
+          response.cookies.set(name, value, options)
+        })
+      },
     },
   })
 
-  if (!response.ok) return null
-  return (await response.json()) as SupabaseUserResponse
+  return { response: () => response, supabase }
 }
 
 export async function POST(request: NextRequest) {
@@ -50,45 +67,48 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Supabase environment is not configured' }, { status: 500 })
   }
 
-  const token = getBearerToken(request)
-  if (!token) {
-    return NextResponse.json({ error: 'Missing auth token' }, { status: 401 })
+  const body = await readSessionBody(request)
+  const accessToken = typeof body.accessToken === 'string' ? body.accessToken : getBearerToken(request)
+  const refreshToken = typeof body.refreshToken === 'string' ? body.refreshToken : null
+
+  if (!accessToken || !refreshToken) {
+    return NextResponse.json({ error: 'Missing auth session tokens' }, { status: 401 })
   }
 
-  const user = await getUser(token, env.supabaseUrl, env.anonKey)
-  if (!user?.email) {
-    return NextResponse.json({ error: 'Invalid auth token' }, { status: 401 })
-  }
+  const { response, supabase } = createCookieResponse(request, env.supabaseUrl, env.anonKey)
 
-  const response = NextResponse.json({ ok: true })
-  response.cookies.set({
-    name: env.authCookieName,
-    value: JSON.stringify({ access_token: token }),
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 60 * 60 * 24 * 7,
+  const { data, error } = await supabase.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
   })
 
-  return response
+  if (error || !data.user?.email) {
+    console.error('[session-cookie] setSession failed:', error?.message || 'No authenticated user')
+    return NextResponse.json({ error: 'Invalid auth session' }, { status: 401 })
+  }
+
+  console.log('[session-cookie] session cookie set for:', data.user.email)
+  return response()
 }
 
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
   const env = getSupabaseEnv()
   if (!env) {
     return NextResponse.json({ ok: true })
   }
 
   const response = NextResponse.json({ ok: true })
-  response.cookies.set({
-    name: env.authCookieName,
-    value: '',
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 0,
+  const cookiesToClear = request.cookies
+    .getAll()
+    .filter((cookie) => cookie.name === env.authCookieName || cookie.name.startsWith(`${env.authCookieName}.`))
+
+  cookiesToClear.forEach((cookie) => {
+    response.cookies.set({
+      name: cookie.name,
+      value: '',
+      path: '/',
+      maxAge: 0,
+    })
   })
 
   return response

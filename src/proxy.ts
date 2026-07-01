@@ -1,15 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
 
 type SupabaseEnv = {
   supabaseUrl: string
   anonKey: string
-  serviceRoleKey: string
-  authCookieName: string
-}
-
-type SupabaseUser = {
-  id?: string
-  email?: string | null
+  serviceRoleKey?: string
 }
 
 type AdminUserRow = {
@@ -26,103 +21,13 @@ function getSupabaseEnv(): SupabaseEnv | null {
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-  if (!supabaseUrl || !anonKey || !serviceRoleKey) return null
-
-  const projectRef = (() => {
-    try {
-      return new URL(supabaseUrl).hostname.split('.')[0]
-    } catch {
-      return 'xayiwdexbykvbvcgudne'
-    }
-  })()
+  if (!supabaseUrl || !anonKey) return null
 
   return {
     supabaseUrl,
     anonKey,
-    serviceRoleKey,
-    authCookieName: `sb-${projectRef}-auth-token`,
+    serviceRoleKey: serviceRoleKey || undefined,
   }
-}
-
-function decodeCookieValue(rawValue: string) {
-  let value = rawValue
-
-  try {
-    value = decodeURIComponent(value)
-  } catch {
-    // Leave the original cookie value intact if it is not URI encoded.
-  }
-
-  if (value.startsWith('base64-')) {
-    try {
-      return atob(value.slice('base64-'.length))
-    } catch {
-      return value
-    }
-  }
-
-  return value
-}
-
-function readAccessTokenFromObject(value: Record<string, unknown>) {
-  if (typeof value.access_token === 'string') return value.access_token
-
-  const currentSession = value.currentSession
-  if (currentSession && typeof currentSession === 'object') {
-    const record = currentSession as Record<string, unknown>
-    if (typeof record.access_token === 'string') return record.access_token
-  }
-
-  const session = value.session
-  if (session && typeof session === 'object') {
-    const record = session as Record<string, unknown>
-    if (typeof record.access_token === 'string') return record.access_token
-  }
-
-  return null
-}
-
-function readAccessTokenFromCookieValue(rawValue: string) {
-  const decoded = decodeCookieValue(rawValue)
-
-  try {
-    const parsed = JSON.parse(decoded) as unknown
-
-    if (Array.isArray(parsed)) {
-      return typeof parsed[0] === 'string' ? parsed[0] : null
-    }
-
-    if (parsed && typeof parsed === 'object') {
-      return readAccessTokenFromObject(parsed as Record<string, unknown>)
-    }
-  } catch {
-    if (decoded.split('.').length === 3) return decoded
-  }
-
-  return null
-}
-
-function readAuthCookie(request: NextRequest, cookieName: string) {
-  const direct = request.cookies.get(cookieName)?.value
-  if (direct) return direct
-
-  const chunks = request.cookies
-    .getAll()
-    .filter((cookie) => cookie.name.startsWith(`${cookieName}.`))
-    .sort((left, right) => left.name.localeCompare(right.name, undefined, { numeric: true }))
-
-  if (!chunks.length) return null
-  return chunks.map((chunk) => chunk.value).join('')
-}
-
-function getRequestToken(request: NextRequest, cookieName: string) {
-  const authorization = request.headers.get('authorization')
-  if (authorization?.startsWith('Bearer ')) {
-    return authorization.slice('Bearer '.length).trim() || null
-  }
-
-  const authCookie = readAuthCookie(request, cookieName)
-  return authCookie ? readAccessTokenFromCookieValue(authCookie) : null
 }
 
 function redirectToLogin(request: NextRequest) {
@@ -131,19 +36,12 @@ function redirectToLogin(request: NextRequest) {
   return NextResponse.redirect(redirectUrl)
 }
 
-async function getUser(token: string, env: SupabaseEnv) {
-  const response = await fetch(`${env.supabaseUrl}/auth/v1/user`, {
-    headers: {
-      apikey: env.anonKey,
-      Authorization: `Bearer ${token}`,
-    },
-  })
-
-  if (!response.ok) return null
-  return (await response.json()) as SupabaseUser
-}
-
 async function checkAdminUser(email: string, env: SupabaseEnv): Promise<AdminCheck> {
+  if (!env.serviceRoleKey) {
+    console.error('[proxy] SUPABASE_SERVICE_ROLE_KEY missing during admin check')
+    return { isAdmin: false, role: null }
+  }
+
   const response = await fetch(
     `${env.supabaseUrl}/rest/v1/AdminUser?select=role&email=eq.${encodeURIComponent(email.toLowerCase())}&limit=1`,
     {
@@ -154,7 +52,10 @@ async function checkAdminUser(email: string, env: SupabaseEnv): Promise<AdminChe
     }
   )
 
-  if (!response.ok) return { isAdmin: false, role: null }
+  if (!response.ok) {
+    console.error('[proxy] admin role check failed:', response.status)
+    return { isAdmin: false, role: null }
+  }
 
   const rows = (await response.json()) as AdminUserRow[]
   const role = rows[0]?.role
@@ -170,40 +71,63 @@ export async function proxy(request: NextRequest) {
   const accountPath = pathname === '/account' || pathname.startsWith('/account/')
   const checkoutPath = pathname === '/checkout'
 
-  if (adminPath) {
-    console.log('[proxy] path:', pathname)
-  }
-
   if (!adminPath && !accountPath && !checkoutPath) {
     return NextResponse.next()
   }
 
+  console.log('[proxy] checking path:', pathname)
+
   const env = getSupabaseEnv()
   if (!env) {
+    console.error('[proxy] Supabase auth environment is not configured')
     return new NextResponse('Authentication environment is not configured', { status: 500 })
   }
 
-  const token = getRequestToken(request, env.authCookieName)
-  if (!token) {
+  let supabaseResponse = NextResponse.next({ request })
+
+  const supabase = createServerClient(env.supabaseUrl, env.anonKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll()
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) => {
+          request.cookies.set(name, value)
+        })
+        supabaseResponse = NextResponse.next({ request })
+        cookiesToSet.forEach(({ name, value, options }) => {
+          supabaseResponse.cookies.set(name, value, options)
+        })
+      },
+    },
+  })
+
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser()
+
+  if (error) {
+    console.error('[proxy] getUser failed:', error.message)
+  }
+
+  if (!user?.email) {
+    console.log('[proxy] no active session for path:', pathname)
     return redirectToLogin(request)
   }
 
-  const user = await getUser(token, env)
-  if (!user?.email) {
-    return redirectToLogin(request)
-  }
+  console.log('[proxy] session user:', user.email)
 
   if (adminPath) {
     const adminCheck = await checkAdminUser(user.email, env)
-    console.log('[proxy] user:', user.email)
-    console.log('[proxy] role check result:', adminCheck.role)
+    console.log('[proxy] admin role check:', adminCheck.role || 'none')
 
     if (!adminCheck.isAdmin) {
       return new NextResponse('Admin access required', { status: 403 })
     }
   }
 
-  return NextResponse.next()
+  return supabaseResponse
 }
 
 export const config = {
