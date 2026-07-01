@@ -1,6 +1,6 @@
 'use client'
 
-import { FormEvent, Suspense, useEffect, useMemo, useState } from 'react'
+import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -51,6 +51,7 @@ function NewMessageContent() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isChecking, setIsChecking] = useState(true)
   const [userEmail, setUserEmail] = useState('')
+  const checkedUserRef = useRef(false)
   const draftState = useMemo(() => ({ subject, message }), [message, subject])
   const clearPersistedMessage = useFormPersistence('support_message_form_v1', draftState, (updater) => {
     const next = typeof updater === 'function' ? updater(draftState) : updater
@@ -75,19 +76,32 @@ function NewMessageContent() {
     : "Tell us what's on your mind..."
 
   useEffect(() => {
+    let cancelled = false
+
     const checkUser = async () => {
       const session = await getSettledBrowserSession()
       const user = session?.user
       if (!user) {
-        const currentPath = `/account/messages/new?${searchParams.toString()}`
-        router.replace(`/login?redirect=${encodeURIComponent(currentPath)}`)
         return
       }
+      checkedUserRef.current = true
+      if (cancelled) return
       setUserEmail(user.email || '')
       setIsChecking(false)
     }
 
     void checkUser()
+
+    const fallbackTimer = window.setTimeout(() => {
+      if (cancelled || checkedUserRef.current) return
+      const currentPath = `/account/messages/new?${searchParams.toString()}`
+      router.replace(`/login?redirect=${encodeURIComponent(currentPath)}`)
+    }, 5000)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(fallbackTimer)
+    }
   }, [router, searchParams])
 
   useEffect(() => {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Gem } from 'lucide-react'
@@ -35,26 +35,40 @@ export default function MessagesPage() {
   const router = useRouter()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const loadedRef = useRef(false)
 
   useEffect(() => {
+    let cancelled = false
+
     const load = async () => {
       const session = await getSettledBrowserSession()
       const user = session?.user
 
       if (!user || !session?.access_token) {
-        router.replace('/login?redirect=/account/messages')
         return
       }
 
+      loadedRef.current = true
       const response = await fetch('/api/conversations', {
         headers: { Authorization: `Bearer ${session.access_token}` },
       })
       const payload = (await response.json()) as { conversations?: Conversation[] }
+      if (cancelled) return
       setConversations(payload.conversations || [])
       setIsLoading(false)
     }
 
     void load()
+
+    const fallbackTimer = window.setTimeout(() => {
+      if (cancelled || loadedRef.current) return
+      router.replace('/login?redirect=/account/messages')
+    }, 5000)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(fallbackTimer)
+    }
   }, [router])
 
   return (

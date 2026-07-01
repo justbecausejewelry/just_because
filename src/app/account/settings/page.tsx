@@ -84,7 +84,6 @@ export default function AccountSettingsPage() {
 
     const loadForUser = async (currentUser: User) => {
       if (loadedUserIdRef.current === currentUser.id) return
-      loadedUserIdRef.current = currentUser.id
 
       try {
         setIsLoading(true)
@@ -96,6 +95,8 @@ export default function AccountSettingsPage() {
         )
 
         if (cancelled) return
+
+        loadedUserIdRef.current = currentUser.id
 
         setProfileForm({
           fullName: `${currentProfile?.firstName || ''} ${currentProfile?.lastName || ''}`.trim(),
@@ -133,7 +134,7 @@ export default function AccountSettingsPage() {
     const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange((event, session) => {
       if (cancelled) return
 
-      if (event === 'SIGNED_OUT' || !session?.user) {
+      if (event === 'SIGNED_OUT') {
         void getSettledBrowserSession().then((settledSession) => {
           if (cancelled) return
           if (settledSession?.user) {
@@ -142,6 +143,10 @@ export default function AccountSettingsPage() {
           }
           router.replace('/login?redirect=/account/settings')
         })
+        return
+      }
+
+      if (!session?.user) {
         return
       }
 

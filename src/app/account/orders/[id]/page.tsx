@@ -186,7 +186,6 @@ export default function AccountOrderDetailPage() {
 
     const loadOrder = async (user: User) => {
       if (loadedUserId === user.id) return
-      loadedUserId = user.id
 
       if (!user.email) {
         router.replace('/login?redirect=/account/orders')
@@ -199,9 +198,10 @@ export default function AccountOrderDetailPage() {
         const token = session?.access_token
 
         if (!token) {
-          router.replace(`/login?redirect=/account/orders/${orderId}`)
           return
         }
+
+        loadedUserId = user.id
 
         const response = await fetch(`/api/account/orders/${orderId}`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -242,15 +242,13 @@ export default function AccountOrderDetailPage() {
       if (cancelled) return
       if (session?.user) {
         void loadOrder(session.user)
-      } else {
-        router.replace(`/login?redirect=/account/orders/${orderId}`)
       }
     })
 
     const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange((event, session) => {
       if (cancelled) return
 
-      if (event === 'SIGNED_OUT' || !session?.user) {
+      if (event === 'SIGNED_OUT') {
         void getSettledBrowserSession().then((settledSession) => {
           if (cancelled) return
           if (settledSession?.user) {
@@ -262,11 +260,21 @@ export default function AccountOrderDetailPage() {
         return
       }
 
+      if (!session?.user) {
+        return
+      }
+
       void loadOrder(session.user)
     })
 
+    const fallbackTimer = window.setTimeout(() => {
+      if (cancelled || loadedUserId) return
+      router.replace(`/login?redirect=/account/orders/${orderId}`)
+    }, 5000)
+
     return () => {
       cancelled = true
+      window.clearTimeout(fallbackTimer)
       subscription.unsubscribe()
     }
   }, [orderId, router])

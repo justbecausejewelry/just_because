@@ -71,7 +71,6 @@ export default function AccountOrdersPage() {
 
     const loadForUser = async (user: User) => {
       if (loadedUserIdRef.current === user.id) return
-      loadedUserIdRef.current = user.id
 
       try {
         setIsLoading(true)
@@ -79,9 +78,10 @@ export default function AccountOrdersPage() {
         const token = session?.access_token
 
         if (!token) {
-          router.replace('/login?redirect=/account/orders')
           return
         }
+
+        loadedUserIdRef.current = user.id
 
         const response = await fetch('/api/account/orders', {
           headers: { Authorization: `Bearer ${token}` },
@@ -114,15 +114,13 @@ export default function AccountOrdersPage() {
 
       if (session?.user) {
         void loadForUser(session.user)
-      } else {
-        router.replace('/login?redirect=/account/orders')
       }
     })
 
     const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange((event, session) => {
       if (cancelled) return
 
-      if (event === 'SIGNED_OUT' || !session?.user) {
+      if (event === 'SIGNED_OUT') {
         void getSettledBrowserSession().then((settledSession) => {
           if (cancelled) return
           if (settledSession?.user) {
@@ -131,6 +129,10 @@ export default function AccountOrdersPage() {
           }
           router.replace('/login?redirect=/account/orders')
         })
+        return
+      }
+
+      if (!session?.user) {
         return
       }
 

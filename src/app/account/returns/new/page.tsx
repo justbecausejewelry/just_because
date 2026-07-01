@@ -134,7 +134,7 @@ function ReturnRequestContent() {
     const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange((event, session) => {
       if (cancelled) return
 
-      if (event === 'SIGNED_OUT' || !session?.user) {
+      if (event === 'SIGNED_OUT') {
         void getSettledBrowserSession().then((settledSession) => {
           if (cancelled) return
           if (settledSession?.user) {
@@ -144,6 +144,10 @@ function ReturnRequestContent() {
           }
           router.replace(`/login?redirect=/account/returns/new?order=${orderId}`)
         })
+        return
+      }
+
+      if (!session?.user) {
         return
       }
 

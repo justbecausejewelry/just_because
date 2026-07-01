@@ -52,10 +52,7 @@ export default function AccountReturnsPage() {
         const session = await getSettledBrowserSession()
         const token = session?.access_token
 
-        if (!token) {
-          router.replace('/login?redirect=/account/returns')
-          return
-        }
+        if (!token) return
 
         const response = await fetch('/api/returns', {
           headers: { Authorization: `Bearer ${token}` },
@@ -87,7 +84,7 @@ export default function AccountReturnsPage() {
     void loadReturns()
 
     const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT' || !session?.user) {
+      if (event === 'SIGNED_OUT') {
         void getSettledBrowserSession().then((settledSession) => {
           if (cancelled) return
           if (settledSession?.user) {

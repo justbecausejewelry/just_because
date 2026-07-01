@@ -1,6 +1,6 @@
 'use client'
 
-import { FormEvent, useCallback, useEffect, useState } from 'react'
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
@@ -36,16 +36,17 @@ export default function MessageThreadPage() {
   const [reply, setReply] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSending, setIsSending] = useState(false)
+  const loadedRef = useRef(false)
 
   const loadConversation = useCallback(async () => {
     const session = await getSettledBrowserSession()
     const user = session?.user
 
     if (!user || !session?.access_token) {
-      router.replace(`/login?redirect=/account/messages/${params.id}`)
       return
     }
 
+    loadedRef.current = true
     const response = await fetch(`/api/conversations/${params.id}`, {
       headers: { Authorization: `Bearer ${session.access_token}` },
     })
@@ -63,8 +64,15 @@ export default function MessageThreadPage() {
     const interval = window.setInterval(() => {
       void loadConversation()
     }, 30000)
-    return () => window.clearInterval(interval)
-  }, [loadConversation])
+    const fallbackTimer = window.setTimeout(() => {
+      if (loadedRef.current) return
+      router.replace(`/login?redirect=/account/messages/${params.id}`)
+    }, 5000)
+    return () => {
+      window.clearInterval(interval)
+      window.clearTimeout(fallbackTimer)
+    }
+  }, [loadConversation, params.id, router])
 
   const handleReply = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
