@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { DollarSign, Gem, Package, ShoppingBag } from 'lucide-react'
+import { Archive, DollarSign, Gem, Package, ShoppingBag } from 'lucide-react'
+import { useToast } from '@/context/ToastContext'
 import { supabaseAuth } from '@/lib/auth'
 import { normalizeOrderStatus, orderStatusLabel } from '@/lib/tracking'
 
@@ -15,6 +16,17 @@ type Order = {
   total: number
   createdAt: string
   items?: { id: string }[]
+}
+type BackupStatus = {
+  lastBackup?: {
+    createdAt?: string | null
+    message?: string | null
+    metadata?: Record<string, unknown> | null
+    status?: string | null
+  } | null
+  nextBackup?: string
+  status?: string
+  warning?: string
 }
 
 const cardStyle = {
@@ -42,9 +54,12 @@ async function getAdminToken() {
 }
 
 export default function AdminDashboardPage() {
+  const { showToast } = useToast()
   const [products, setProducts] = useState<Product[]>([])
   const [diamonds, setDiamonds] = useState<Diamond[]>([])
   const [orders, setOrders] = useState<Order[]>([])
+  const [backupStatus, setBackupStatus] = useState<BackupStatus | null>(null)
+  const [backupLoading, setBackupLoading] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -72,6 +87,12 @@ export default function AdminDashboardPage() {
         const payload = (await ordersResponse.json()) as { orders?: Order[] }
         setOrders(payload.orders || [])
       }
+
+      const backupResponse = await fetch('/api/admin/backup/status', { headers: adminHeaders }).catch(() => null)
+      if (backupResponse?.ok) {
+        const payload = (await backupResponse.json()) as BackupStatus
+        setBackupStatus(payload)
+      }
     }
     void load()
   }, [])
@@ -85,6 +106,67 @@ export default function AdminDashboardPage() {
     { label: 'Active Orders', value: activeOrders.toLocaleString(), icon: ShoppingBag, trend: '+12% this month' },
     { label: 'Total Diamonds', value: diamonds.length.toLocaleString(), icon: Gem, trend: '+12% this month' },
   ]
+
+  const lastBackupLabel = backupStatus?.lastBackup?.createdAt
+    ? new Date(backupStatus.lastBackup.createdAt).toLocaleString('en-US', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      })
+    : 'Not run yet'
+  const backupState = backupLoading ? 'Running' : backupStatus?.status === 'failed' ? 'Failed' : backupStatus?.status === 'success' ? 'Running' : 'Not configured'
+  const backupColor = backupLoading || backupStatus?.status === 'success' ? '#7A8F72' : backupStatus?.status === 'failed' ? '#A85C6A' : '#B8A090'
+
+  const runBackupNow = async () => {
+    const token = await getAdminToken()
+    if (!token) {
+      showToast('Admin session expired. Please sign in again.', 'error')
+      return
+    }
+
+    setBackupLoading(true)
+    try {
+      const response = await fetch('/api/backup/orders', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const payload = (await response.json()) as {
+        details?: string
+        error?: string
+        message?: string
+        stats?: {
+          todayOrders?: number
+          totalOrders?: number
+        }
+        success?: boolean
+      }
+
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.details || payload.error || 'Backup failed.')
+      }
+
+      showToast(`Backup sent. ${payload.stats?.todayOrders || 0} orders today.`, 'success')
+      setBackupStatus({
+        lastBackup: {
+          createdAt: new Date().toISOString(),
+          message: payload.message || 'Backup sent successfully',
+          metadata: payload.stats || {},
+          status: 'success',
+        },
+        nextBackup: 'Tonight at 9:00 PM CST',
+        status: 'success',
+      })
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : 'Backup failed.'
+      showToast(message, 'error')
+      setBackupStatus((current) => ({
+        ...current,
+        lastBackup: current?.lastBackup || null,
+        nextBackup: current?.nextBackup || 'Tonight at 9:00 PM CST',
+        status: 'failed',
+      }))
+    } finally {
+      setBackupLoading(false)
+    }
+  }
 
   return (
     <main className="p-6 lg:p-8">
@@ -103,6 +185,53 @@ export default function AdminDashboardPage() {
           )
         })}
       </div>
+
+      <section className="mt-8" style={{ ...cardStyle, padding: '24px' }}>
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-start gap-4">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full" style={{ backgroundColor: 'rgba(201,169,97,0.14)' }}>
+              <Archive color="#C9A961" size={20} />
+            </span>
+            <div>
+              <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '11px', letterSpacing: '0.16em', marginBottom: '8px', textTransform: 'uppercase' }}>Backup Status</p>
+              <h2 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '24px', fontWeight: 400, margin: '0 0 10px' }}>Daily order backup</h2>
+              <div className="grid gap-2 md:grid-cols-3">
+                <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', margin: 0 }}>
+                  Last backup: <span style={{ color: '#1A1014' }}>{lastBackupLabel}</span>
+                </p>
+                <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', margin: 0 }}>
+                  Next backup: <span style={{ color: '#1A1014' }}>{backupStatus?.nextBackup || 'Tonight at 9:00 PM CST'}</span>
+                </p>
+                <p style={{ color: '#B8A090', fontFamily: 'var(--font-inter)', fontSize: '12px', margin: 0 }}>
+                  Status: <span style={{ color: backupColor }}>{backupState}</span>
+                </p>
+              </div>
+              {backupStatus?.warning ? (
+                <p style={{ color: '#A85C6A', fontFamily: 'var(--font-inter)', fontSize: '12px', lineHeight: 1.6, margin: '12px 0 0' }}>
+                  {backupStatus.warning}
+                </p>
+              ) : null}
+            </div>
+          </div>
+          <button
+            disabled={backupLoading}
+            onClick={runBackupNow}
+            style={{
+              backgroundColor: '#1A1014',
+              color: '#FBF5F0',
+              fontFamily: 'var(--font-inter)',
+              fontSize: '11px',
+              letterSpacing: '0.18em',
+              opacity: backupLoading ? 0.65 : 1,
+              padding: '13px 18px',
+              textTransform: 'uppercase',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {backupLoading ? 'RUNNING...' : 'RUN BACKUP NOW'}
+          </button>
+        </div>
+      </section>
 
       <section className="mt-8" style={{ ...cardStyle, padding: '24px' }}>
         <h2 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '20px', fontWeight: 400, marginBottom: '18px' }}>Recent Orders</h2>
