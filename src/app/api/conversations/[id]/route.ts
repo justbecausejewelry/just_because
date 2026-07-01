@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAuthedUserOrGuest } from '@/lib/auth/getAuthedUserOrGuest'
 import { sendSupportNotificationEmail } from '@/lib/email/supportNotification'
+import { getGeneralErrorMessage } from '@/lib/errors'
 import { requireAdmin, requireUser } from '@/lib/server/security'
 
 type ConversationParams = {
@@ -49,7 +50,8 @@ export async function GET(request: NextRequest, { params }: ConversationParams) 
     .order('createdAt', { ascending: true })
 
   if (messageError) {
-    return NextResponse.json({ error: messageError.message }, { status: 500 })
+    console.error('[conversations/id] messages load failed:', messageError)
+    return NextResponse.json({ error: getGeneralErrorMessage(messageError) }, { status: 500 })
   }
 
   await auth.admin
@@ -72,7 +74,7 @@ export async function POST(request: NextRequest, { params }: ConversationParams)
   if ('error' in auth) return auth.error
   const identity = adminReply ? null : await getAuthedUserOrGuest(request)
   if (!adminReply && (!identity || !identity.authed)) {
-    return NextResponse.json({ error: 'Missing auth token' }, { status: 401 })
+    return NextResponse.json({ error: 'Please sign in to continue.' }, { status: 401 })
   }
 
   let conversationQuery = auth.admin
@@ -103,7 +105,8 @@ export async function POST(request: NextRequest, { params }: ConversationParams)
     })
 
   if (msgError) {
-    return NextResponse.json({ error: msgError.message }, { status: 500 })
+    console.error('[conversations/id] reply insert failed:', msgError)
+    return NextResponse.json({ error: getGeneralErrorMessage(msgError) }, { status: 500 })
   }
 
   const { error: updateError } = await auth.admin
@@ -117,7 +120,8 @@ export async function POST(request: NextRequest, { params }: ConversationParams)
     .eq('id', id)
 
   if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 })
+    console.error('[conversations/id] conversation update failed:', updateError)
+    return NextResponse.json({ error: getGeneralErrorMessage(updateError) }, { status: 500 })
   }
 
   if (!adminReply && identity?.authed) {
@@ -158,7 +162,8 @@ export async function PATCH(request: NextRequest, { params }: ConversationParams
     .eq('id', id)
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error('[conversations/id] status update failed:', error)
+    return NextResponse.json({ error: getGeneralErrorMessage(error) }, { status: 500 })
   }
 
   return NextResponse.json({ success: true })

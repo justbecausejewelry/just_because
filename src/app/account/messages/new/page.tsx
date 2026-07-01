@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { supabaseAuth } from '@/lib/auth'
+import { getGeneralErrorMessage } from '@/lib/errors'
 import { useToast } from '@/context/ToastContext'
 import { useFormPersistence } from '@/hooks/useFormPersistence'
 
@@ -136,14 +137,16 @@ function NewMessageContent() {
 
       const payload = (await response.json()) as { error?: string }
       if (!response.ok) {
-        throw new Error(payload.error || 'Unable to send message')
+        console.error('[account/messages/new] send failed:', payload.error)
+        throw new Error('Unable to send message')
       }
 
       showToast(isProductChat ? 'Question sent! Our expert will reply soon *' : "Message sent! We'll reply soon *", 'success')
       clearPersistedMessage()
       router.push('/account/messages')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to send message')
+      console.error('[account/messages/new] request failed:', err)
+      setError(getGeneralErrorMessage(err))
     } finally {
       setIsSubmitting(false)
     }

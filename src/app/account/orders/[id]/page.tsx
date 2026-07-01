@@ -8,6 +8,7 @@ import { Check, Download, ExternalLink, Package, Printer, ShoppingBag } from 'lu
 import type { User } from '@supabase/supabase-js'
 import { getMetalLabel } from '@/config/productOptions'
 import { supabaseAuth } from '@/lib/auth'
+import { getGeneralErrorMessage } from '@/lib/errors'
 import { getCarrierLabel, normalizeOrderStatus, orderStatusLabel, orderStatusStyle, type OrderStatus } from '@/lib/tracking'
 
 type ShippingAddress = {
@@ -209,19 +210,26 @@ export default function AccountOrderDetailPage() {
         if (cancelled) return
 
         if (!response.ok) {
-          setError(payload.error || 'Order not found.')
+          console.error('[account/order-detail] load failed:', payload.error)
+          setError('We could not find that order. Please check your orders or contact us for help.')
           setOrder(null)
           return
         }
 
         if (!payload.order) {
-          setError('Order not found.')
+          setError('We could not find that order. Please check your orders or contact us for help.')
           setOrder(null)
           return
         }
 
         setOrder(payload.order)
         setEvents(payload.events || [])
+      } catch (caught) {
+        console.error('[account/order-detail] request failed:', caught)
+        if (!cancelled) {
+          setError(getGeneralErrorMessage(caught))
+          setOrder(null)
+        }
       } finally {
         if (!cancelled) {
           setIsLoading(false)
@@ -286,8 +294,8 @@ export default function AccountOrderDetailPage() {
       link.remove()
       URL.revokeObjectURL(url)
     } catch (downloadError) {
-      const message = downloadError instanceof Error ? downloadError.message : 'Unable to download invoice.'
-      setError(message)
+      console.error('[account/order-detail] invoice download failed:', downloadError)
+      setError('We could not download your invoice right now. Please try again in a moment.')
     } finally {
       setIsDownloadingInvoice(false)
     }

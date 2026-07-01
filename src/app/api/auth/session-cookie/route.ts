@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextRequest, NextResponse } from 'next/server'
+import { getAuthErrorMessage, getGeneralErrorMessage } from '@/lib/errors'
 
 type SessionCookieBody = {
   accessToken?: unknown
@@ -64,7 +65,7 @@ function createCookieResponse(request: NextRequest, supabaseUrl: string, anonKey
 export async function POST(request: NextRequest) {
   const env = getSupabaseEnv()
   if (!env) {
-    return NextResponse.json({ error: 'Supabase environment is not configured' }, { status: 500 })
+    return NextResponse.json({ error: getGeneralErrorMessage() }, { status: 500 })
   }
 
   const body = await readSessionBody(request)
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
   const refreshToken = typeof body.refreshToken === 'string' ? body.refreshToken : null
 
   if (!accessToken || !refreshToken) {
-    return NextResponse.json({ error: 'Missing auth session tokens' }, { status: 401 })
+    return NextResponse.json({ error: 'Please sign in to continue.' }, { status: 401 })
   }
 
   const { response, supabase } = createCookieResponse(request, env.supabaseUrl, env.anonKey)
@@ -84,7 +85,7 @@ export async function POST(request: NextRequest) {
 
   if (error || !data.user?.email) {
     console.error('[session-cookie] setSession failed:', error?.message || 'No authenticated user')
-    return NextResponse.json({ error: 'Invalid auth session' }, { status: 401 })
+    return NextResponse.json({ error: getAuthErrorMessage(error) }, { status: 401 })
   }
 
   console.log('[session-cookie] session cookie set for:', data.user.email)

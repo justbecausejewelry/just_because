@@ -8,6 +8,7 @@ import {
   HomeProductSkeletonCard,
   type HomeMerchProduct,
 } from '@/components/home/HomeProductCard'
+import { getGeneralErrorMessage } from '@/lib/errors'
 
 type BestSellerFilter = {
   label: string
@@ -50,7 +51,8 @@ export function BestSellers() {
         const payload = (await response.json()) as { products?: HomeMerchProduct[]; error?: string }
 
         if (!response.ok) {
-          throw new Error(payload.error || 'Unable to load best sellers.')
+          console.error('[home/best-sellers] load failed:', payload.error)
+          throw new Error('Unable to load best sellers.')
         }
 
         if (!cancelled) {
@@ -59,7 +61,7 @@ export function BestSellers() {
       } catch (caught) {
         if (!cancelled) {
           setProducts([])
-          setError(caught instanceof Error ? caught.message : 'Unable to load best sellers.')
+          setError(getGeneralErrorMessage(caught))
         }
       } finally {
         if (!cancelled) {

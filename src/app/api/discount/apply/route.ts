@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { validateDiscountCode, type DiscountCartItem } from '@/lib/discountValidation'
+import { getGeneralErrorMessage } from '@/lib/errors'
 import { CheckoutValidationError, computeCheckoutLines, type CheckoutLineInput } from '@/lib/server/orderPricing'
 import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/server/rateLimit'
 import { requireUser } from '@/lib/server/security'
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest) {
 
   const parsed = applySchema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.issues[0]?.message || 'Invalid discount payload' }, { status: 400 })
+    return NextResponse.json({ error: 'Please enter a valid discount code.' }, { status: 400 })
   }
 
   const { data: cartData, error: cartError } = await auth.admin
@@ -91,7 +92,8 @@ export async function POST(request: NextRequest) {
     .eq('userId', auth.user.id)
 
   if (cartError) {
-    return NextResponse.json({ error: 'Unable to load cart' }, { status: 500 })
+    console.error('[discount/apply] cart load failed:', cartError)
+    return NextResponse.json({ error: getGeneralErrorMessage(cartError) }, { status: 500 })
   }
 
   const cartRows = (cartData || []) as UserCartRow[]
@@ -136,7 +138,8 @@ export async function POST(request: NextRequest) {
       }, { onConflict: 'userId' })
 
     if (saveError) {
-      return NextResponse.json({ error: 'Unable to apply discount code' }, { status: 500 })
+      console.error('[discount/apply] save failed:', saveError)
+      return NextResponse.json({ error: 'We could not apply that code. Please check it and try again.' }, { status: 500 })
     }
 
     return NextResponse.json({
@@ -151,8 +154,9 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to apply discount code'
     if (error instanceof CheckoutValidationError) {
-      return NextResponse.json({ error: message, code: error.code, field: error.field }, { status: 400 })
+      return NextResponse.json({ error: 'We could not apply that code. Please check it and try again.', code: error.code, field: error.field }, { status: 400 })
     }
-    return NextResponse.json({ error: message }, { status: 500 })
+    console.error('[discount/apply] failed:', error)
+    return NextResponse.json({ error: getGeneralErrorMessage(message) }, { status: 500 })
   }
 }

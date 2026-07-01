@@ -8,6 +8,7 @@ import {
   HomeProductSkeletonCard,
   type HomeMerchProduct,
 } from '@/components/home/HomeProductCard'
+import { getGeneralErrorMessage } from '@/lib/errors'
 
 export function NewArrivals() {
   const [products, setProducts] = useState<HomeMerchProduct[]>([])
@@ -26,7 +27,8 @@ export function NewArrivals() {
         const payload = (await response.json()) as { products?: HomeMerchProduct[]; error?: string }
 
         if (!response.ok) {
-          throw new Error(payload.error || 'Unable to load new arrivals.')
+          console.error('[home/new-arrivals] load failed:', payload.error)
+          throw new Error('Unable to load new arrivals.')
         }
 
         if (!cancelled) {
@@ -35,7 +37,7 @@ export function NewArrivals() {
       } catch (caught) {
         if (!cancelled) {
           setProducts([])
-          setError(caught instanceof Error ? caught.message : 'Unable to load new arrivals.')
+          setError(getGeneralErrorMessage(caught))
         }
       } finally {
         if (!cancelled) {

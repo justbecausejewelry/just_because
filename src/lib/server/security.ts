@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { getGeneralErrorMessage } from '@/lib/errors'
 
 type AuthResult =
   | { user: User; admin: SupabaseClient }
@@ -41,12 +42,12 @@ export function createServiceRoleClient() {
 export async function requireUser(request: NextRequest | Request): Promise<AuthResult> {
   const env = getSupabaseEnv()
   if (!env) {
-    return { error: NextResponse.json({ error: 'Supabase environment is not configured' }, { status: 500 }) }
+    return { error: NextResponse.json({ error: getGeneralErrorMessage() }, { status: 500 }) }
   }
 
   const token = getBearerToken(request)
   if (!token) {
-    return { error: NextResponse.json({ error: 'Missing auth token' }, { status: 401 }) }
+    return { error: NextResponse.json({ error: 'Please sign in to continue.' }, { status: 401 }) }
   }
 
   const auth = createClient(env.supabaseUrl, env.supabaseAnonKey, {
@@ -58,12 +59,12 @@ export async function requireUser(request: NextRequest | Request): Promise<AuthR
 
   const { data, error } = await auth.auth.getUser(token)
   if (error || !data.user) {
-    return { error: NextResponse.json({ error: 'Invalid auth token' }, { status: 401 }) }
+    return { error: NextResponse.json({ error: 'Please sign in to continue.' }, { status: 401 }) }
   }
 
   const admin = createServiceRoleClient()
   if (!admin) {
-    return { error: NextResponse.json({ error: 'Supabase admin environment is not configured' }, { status: 500 }) }
+    return { error: NextResponse.json({ error: getGeneralErrorMessage() }, { status: 500 }) }
   }
 
   return { user: data.user, admin }

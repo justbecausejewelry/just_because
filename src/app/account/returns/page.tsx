@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { RotateCcw } from 'lucide-react'
 import { supabaseAuth } from '@/lib/auth'
+import { getGeneralErrorMessage } from '@/lib/errors'
 import { RETURN_STATUS_LABELS, normalizeReturnStatus, returnReasonLabel } from '@/lib/returnEligibility'
 
 type ReturnRequest = {
@@ -64,7 +65,8 @@ export default function AccountReturnsPage() {
         }
 
         if (!response.ok) {
-          throw new Error(payload.error || 'Unable to load returns.')
+          console.error('[account/returns] load failed:', payload.error)
+          throw new Error('Unable to load returns.')
         }
 
         if (!cancelled) {
@@ -74,7 +76,7 @@ export default function AccountReturnsPage() {
       } catch (caught) {
         if (!cancelled) {
           setReturns([])
-          setError(caught instanceof Error ? caught.message : 'Unable to load returns.')
+          setError(getGeneralErrorMessage(caught))
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -151,4 +153,3 @@ export default function AccountReturnsPage() {
     </main>
   )
 }
-

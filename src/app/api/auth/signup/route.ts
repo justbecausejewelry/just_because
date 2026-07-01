@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
+import { getAuthErrorMessage, getGeneralErrorMessage } from '@/lib/errors'
 import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/server/rateLimit'
 
 export const runtime = 'nodejs'
@@ -49,7 +50,7 @@ async function readApiError(response: Response) {
     if (typeof message === 'string' && message.trim()) return message
   }
 
-  return 'Unable to send verification code'
+  return getGeneralErrorMessage()
 }
 
 export async function POST(req: Request) {
@@ -89,7 +90,7 @@ export async function POST(req: Request) {
     if (!parsed.success) {
       const issue = parsed.error.issues[0]
       console.log('[signup]', step, 'invalid payload', issue?.path.join('.') || 'signup')
-      return NextResponse.json({ error: issue?.message || 'Invalid signup payload' }, { status: 400 })
+      return NextResponse.json({ error: getAuthErrorMessage(issue?.message) }, { status: 400 })
     }
 
     const email = normalizeEmail(parsed.data.email)
@@ -125,7 +126,7 @@ export async function POST(req: Request) {
         full_name: name,
       },
     })
-    if (createError) throw new Error(`createUser failed: ${createError.message}`)
+    if (createError) throw createError
     console.log('[signup]', step, 'OK', {
       userId: createdUserData.user?.id,
       email: createdUserData.user?.email,
@@ -164,7 +165,7 @@ export async function POST(req: Request) {
         console.log('[signup]', step, 'OK')
       }
 
-      throw new Error(`UserProfile upsert failed: ${profileError.message}`)
+      throw profileError
     }
     console.log('[signup]', step, 'OK', { userId: user.id })
 
@@ -212,7 +213,7 @@ export async function POST(req: Request) {
         console.log('[signup]', step, 'OK')
       }
 
-      throw new Error(`send-otp failed: ${otpError}`)
+      throw new Error(otpError)
     }
     console.log('[signup] call-send-otp OK')
 
@@ -225,6 +226,6 @@ export async function POST(req: Request) {
     console.error('[signup] Message:', err instanceof Error ? err.message : 'Unknown')
     console.error('[signup] Stack:', err instanceof Error ? err.stack : '')
     console.error('[signup] Full error:', err)
-    return Response.json({ error: String(err) }, { status: 500 })
+    return Response.json({ error: getAuthErrorMessage(err) }, { status: 500 })
   }
 }

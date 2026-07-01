@@ -89,7 +89,8 @@ export default function AccountOrdersPage() {
         const payload = await response.json().catch(() => ({})) as OrdersResponse
 
         if (!response.ok) {
-          throw new Error(payload.error || 'Unable to load orders')
+          console.error('[account/orders] load failed:', payload.error)
+          throw new Error('Unable to load orders')
         }
 
         if (!cancelled) {

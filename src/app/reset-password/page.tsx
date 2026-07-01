@@ -4,7 +4,9 @@ import { FormEvent, Suspense, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, Sparkles } from 'lucide-react'
+import { getAuthErrorMessage, readFriendlyApiError } from '@/lib/errors'
 import { BrandLogo } from '@/components/ui/BrandLogo'
+import ErrorMessage from '@/components/ui/ErrorMessage'
 
 function getStrength(password: string) {
   if (password.length === 0) {
@@ -24,16 +26,6 @@ function getStrength(password: string) {
   }
 
   return { label: 'Weak', level: 2 }
-}
-
-async function readApiError(response: Response, fallback: string) {
-  const body: unknown = await response.json().catch(() => null)
-  if (typeof body === 'object' && body !== null && 'error' in body) {
-    const message = (body as { error?: unknown }).error
-    if (typeof message === 'string' && message.trim()) return message
-  }
-
-  return fallback
 }
 
 function ResetPasswordContent() {
@@ -84,7 +76,7 @@ function ResetPasswordContent() {
     }
 
     if (password.length < 8) {
-      setError('Password must be at least 8 characters.')
+      setError('Please choose a password that is at least 8 characters long.')
       return
     }
 
@@ -104,10 +96,13 @@ function ResetPasswordContent() {
         code: normalizedCode,
         password,
       }),
+    }).catch((caught: unknown) => {
+      console.error('[reset-password] reset request failed:', caught)
+      return null
     })
 
-    if (!resetResponse.ok) {
-      setError(await readApiError(resetResponse, 'Unable to reset your password. Please try again.'))
+    if (!resetResponse?.ok) {
+      setError(resetResponse ? await readFriendlyApiError(resetResponse, getAuthErrorMessage) : getAuthErrorMessage('network'))
       setLoading(false)
       return
     }
@@ -238,22 +233,7 @@ function ResetPasswordContent() {
                   Enter the 4-digit code from your email and choose a new password.
                 </p>
 
-                {error && (
-                  <div
-                    role="alert"
-                    style={{
-                      background: '#FCF0F4',
-                      border: '0.5px solid #E8C4D0',
-                      padding: '12px 16px',
-                      marginBottom: '20px',
-                      fontSize: '13px',
-                      color: '#1A1014',
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    {error}
-                  </div>
-                )}
+                {error && <ErrorMessage message={error} />}
 
                 <div style={{ marginBottom: '16px' }}>
                   <label

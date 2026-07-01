@@ -1,6 +1,7 @@
 "use client"
 
 import { FormEvent, useMemo, useState } from 'react'
+import { getGeneralErrorMessage } from '@/lib/errors'
 
 const subjectOptions = [
   'General Inquiry',
@@ -119,7 +120,7 @@ export function ContactForm() {
       const payload = (await response.json().catch(() => null)) as ContactResponse | null
 
       if (!response.ok || !payload?.success) {
-        setErrors({ form: payload?.error || `Submission failed with status ${response.status}. Please try again.` })
+        setErrors({ form: payload?.error || 'We could not send your message. Please try again or email support@justbecausejewelry.com.' })
         return
       }
 
@@ -127,7 +128,7 @@ export function ContactForm() {
       setSuccessMessage(payload.message || 'Thank you. Your message was sent, and we will be in touch within 24 hours.')
     } catch (error) {
       console.error('[contact-form] submission failed:', error)
-      setErrors({ form: 'Submission failed. Please try again or email support@justbecausejewelry.com.' })
+      setErrors({ form: getGeneralErrorMessage(error) })
     } finally {
       setIsSubmitting(false)
     }

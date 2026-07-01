@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Gem } from 'lucide-react'
 import { ProductBadges } from '@/components/products/ProductBadges'
+import { getGeneralErrorMessage } from '@/lib/errors'
 
 type Product = {
   id: string
@@ -188,12 +189,14 @@ export function ProductCollectionPage({
       const payload = (await response.json()) as { products?: Product[]; error?: string }
 
       if (!response.ok) {
-        throw new Error(payload.error || 'Unable to load products.')
+        console.error('[products] product collection failed:', payload.error)
+        throw new Error('Unable to load products.')
       }
 
       setProducts(payload.products || [])
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Unable to load products.')
+      console.error('[products] product collection request failed:', caught)
+      setError(getGeneralErrorMessage(caught))
       setProducts([])
     } finally {
       setIsLoading(false)

@@ -2,6 +2,7 @@ import { randomInt } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
+import { getAuthErrorMessage, getGeneralErrorMessage } from '@/lib/errors'
 import { OTP_WINDOW_MINUTES, sendBrandedOtpEmail } from '@/lib/otpEmail'
 import { checkRateLimit, rateLimitResponse } from '@/lib/server/rateLimit'
 
@@ -76,7 +77,7 @@ export async function POST(req: Request) {
     if (!parsed.success) {
       const issue = parsed.error.issues[0]
       console.log('[send-otp]', step, 'invalid payload', issue?.path.join('.') || 'send-otp')
-      return NextResponse.json({ error: issue?.message || 'Invalid OTP payload' }, { status: 400 })
+      return NextResponse.json({ error: getAuthErrorMessage(issue?.message) }, { status: 400 })
     }
 
     const email = normalizeEmail(parsed.data.email)
@@ -175,7 +176,7 @@ export async function POST(req: Request) {
 
     if ((count || 0) >= RESEND_LIMIT) {
       console.log('[send-otp]', step, 'resend limit reached', count)
-      return NextResponse.json({ error: 'Too many codes requested. Please try again later.' }, { status: 429 })
+      return NextResponse.json({ error: getAuthErrorMessage('too many requests') }, { status: 429 })
     }
 
     step = 'mark-old-otps-used'
@@ -241,6 +242,6 @@ export async function POST(req: Request) {
     console.error('[send-otp] Message:', err instanceof Error ? err.message : 'Unknown')
     console.error('[send-otp] Stack:', err instanceof Error ? err.stack : '')
     console.error('[send-otp] Full error:', err)
-    return Response.json({ error: String(err) }, { status: 500 })
+    return Response.json({ error: getGeneralErrorMessage(err) }, { status: 500 })
   }
 }

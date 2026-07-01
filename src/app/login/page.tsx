@@ -6,8 +6,10 @@ import Image from 'next/image'
 import { Eye, EyeOff } from 'lucide-react'
 import { supabaseAuth } from '@/lib/auth'
 import { clearCart, getCart } from '@/lib/cart'
+import { getAuthErrorMessage, getGeneralErrorMessage } from '@/lib/errors'
 import { mergeGuestCart } from '@/lib/mergeGuestCart'
 import { BrandLogo } from '@/components/ui/BrandLogo'
+import ErrorMessage from '@/components/ui/ErrorMessage'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -34,30 +36,35 @@ export default function LoginPage() {
     const normalizedEmail = email.trim().toLowerCase()
 
     if (!normalizedEmail || !password) {
-      setError('Please fill in all fields')
+      setError('Please enter your email and password.')
       return
     }
     setLoading(true)
     setError('')
     setNotice('')
-    const { data, error: signInError } = await supabaseAuth.auth.signInWithPassword({
-      email: normalizedEmail,
-      password,
-    })
-    if (signInError) {
-      const message = signInError.message.toLowerCase()
-      if (message.includes('email not confirmed') || message.includes('not confirmed')) {
-        setError('Please verify your email before signing in.')
+
+    try {
+      const { data, error: signInError } = await supabaseAuth.auth.signInWithPassword({
+        email: normalizedEmail,
+        password,
+      })
+
+      if (signInError) {
+        const message = signInError.message.toLowerCase()
+        if (message.includes('email not confirmed') || message.includes('not confirmed')) {
+          setError(getAuthErrorMessage(signInError))
+          setLoading(false)
+          router.push(`/signup?verifyEmail=${encodeURIComponent(normalizedEmail)}`)
+          return
+        }
+
+        setError(getAuthErrorMessage(signInError))
         setLoading(false)
-        router.push(`/signup?verifyEmail=${encodeURIComponent(normalizedEmail)}`)
         return
       }
 
-      setError('Invalid email or password')
-      setLoading(false)
-    } else {
       if (!data.user) {
-        setError('Invalid email or password')
+        setError('The email or password you entered is incorrect. Please try again.')
         setLoading(false)
         return
       }
@@ -69,14 +76,15 @@ export default function LoginPage() {
         .maybeSingle()
 
       if (profileError) {
-        setError(profileError.message)
+        console.error('[login] profile lookup failed:', profileError)
+        setError(getGeneralErrorMessage(profileError))
         setLoading(false)
         return
       }
 
       if (!profile || (profile as { email_verified?: boolean | null }).email_verified !== true) {
         await supabaseAuth.auth.signOut()
-        setError('Please verify your email before signing in.')
+        setError('Please check your email and click the confirmation link we sent you before signing in.')
         setLoading(false)
         router.push(`/signup?verifyEmail=${encodeURIComponent(normalizedEmail)}`)
         return
@@ -85,7 +93,7 @@ export default function LoginPage() {
       const accessToken = data.session?.access_token
       const refreshToken = data.session?.refresh_token
       if (!accessToken || !refreshToken) {
-        setError('Unable to create a secure session. Please try again.')
+        setError('We could not finish signing you in. Please try again.')
         setLoading(false)
         return
       }
@@ -101,7 +109,7 @@ export default function LoginPage() {
 
       if (!cookieResponse.ok) {
         await supabaseAuth.auth.signOut()
-        setError('Unable to create a secure session. Please try again.')
+        setError('We could not finish signing you in. Please try again.')
         setLoading(false)
         return
       }
@@ -115,6 +123,10 @@ export default function LoginPage() {
       const redirect = new URLSearchParams(window.location.search).get('redirect')
       await new Promise((resolve) => globalThis.setTimeout(resolve, 300))
       router.replace(redirect || '/')
+    } catch (caught) {
+      console.error('[login] sign in failed:', caught)
+      setError(getAuthErrorMessage(caught))
+      setLoading(false)
     }
   }
 
@@ -364,17 +376,7 @@ export default function LoginPage() {
               }}>Create one →</Link>
             </p>
 
-            {error && (
-              <div style={{
-                background: '#FFF0F0',
-                border: '1px solid #A85C6A',
-                padding: '12px 16px',
-                marginBottom: '20px',
-                fontSize: '13px',
-                color: '#A85C6A',
-                fontFamily: 'Inter, sans-serif',
-              }}>{error}</div>
-            )}
+            {error && <ErrorMessage message={error} />}
 
             {notice && (
               <div style={{

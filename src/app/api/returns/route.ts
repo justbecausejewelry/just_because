@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAuthedUserOrGuest } from '@/lib/auth/getAuthedUserOrGuest'
+import { getGeneralErrorMessage } from '@/lib/errors'
 import { checkReturnEligibility, isReturnReason } from '@/lib/returnEligibility'
 import { sendReturnRequestEmail } from '@/lib/sendReturnEmail'
 
@@ -83,21 +84,21 @@ async function requireUser(request: NextRequest) {
   const clients = getClients()
   if (!clients) {
     return {
-      error: NextResponse.json({ error: 'Supabase environment is not configured' }, { status: 500 }),
+      error: NextResponse.json({ error: getGeneralErrorMessage() }, { status: 500 }),
     }
   }
 
   const token = getBearerToken(request)
   if (!token) {
     return {
-      error: NextResponse.json({ error: 'Missing auth token' }, { status: 401 }),
+      error: NextResponse.json({ error: 'Please sign in to continue.' }, { status: 401 }),
     }
   }
 
   const { data, error } = await clients.auth.auth.getUser(token)
   if (error || !data.user?.email) {
     return {
-      error: NextResponse.json({ error: 'Invalid auth token' }, { status: 401 }),
+      error: NextResponse.json({ error: 'Please sign in to continue.' }, { status: 401 }),
     }
   }
 
@@ -162,7 +163,8 @@ export async function GET(request: NextRequest) {
     .order('created_at', { ascending: false })
 
   if (error) {
-    return NextResponse.json({ error: error.message, returns: [] }, { status: 500 })
+    console.error('[returns] load failed:', error)
+    return NextResponse.json({ error: getGeneralErrorMessage(error), returns: [] }, { status: 500 })
   }
 
   return NextResponse.json({
@@ -175,7 +177,7 @@ export async function POST(request: NextRequest) {
   if ('error' in auth) return auth.error
   const identity = await getAuthedUserOrGuest(request)
   if (!identity.authed) {
-    return NextResponse.json({ error: 'Missing auth token' }, { status: 401 })
+    return NextResponse.json({ error: 'Please sign in to continue.' }, { status: 401 })
   }
 
   const parsed = createReturnSchema.safeParse(await request.json().catch(() => null))
@@ -240,7 +242,8 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error('[returns] create failed:', error)
+    return NextResponse.json({ error: getGeneralErrorMessage(error) }, { status: 500 })
   }
 
   const returnRow = data as ReturnRow

@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { LockKeyhole } from 'lucide-react'
 import { supabaseAuth } from '@/lib/auth'
+import { getAuthErrorMessage, getErrorText, isAlreadyRegisteredError, readFriendlyApiError } from '@/lib/errors'
+import ErrorMessage from '@/components/ui/ErrorMessage'
 
 type AuthMode = 'choice' | 'signin' | 'create'
 
@@ -23,16 +25,6 @@ const inputStyle = {
   outline: 'none',
   padding: '13px 15px',
   width: '100%',
-}
-
-async function readApiError(response: Response, fallback: string) {
-  const body: unknown = await response.json().catch(() => null)
-  if (typeof body === 'object' && body !== null && 'error' in body) {
-    const message = (body as { error?: unknown }).error
-    if (typeof message === 'string' && message.trim()) return message
-  }
-
-  return fallback
 }
 
 export function CheckoutAuthWall({ email, name, phone = '', onSuccess }: Props) {
@@ -65,21 +57,24 @@ export function CheckoutAuthWall({ email, name, phone = '', onSuccess }: Props) 
     const { data, error: signInError } = await supabaseAuth.auth.signInWithPassword({
       email: cleanEmail,
       password,
+    }).catch((caught: unknown) => {
+      console.error('[checkout-auth] sign in failed:', caught)
+      return { data: { user: null }, error: caught }
     })
 
     if (signInError) {
-      const message = signInError.message.toLowerCase()
+      const message = getErrorText(signInError).toLowerCase()
       if (message.includes('email not confirmed') || message.includes('not confirmed')) {
-        setError('Please verify your email before continuing to payment.')
+        setError('Please check your email and click the confirmation link we sent you before continuing.')
         router.push(`/signup?verifyEmail=${encodeURIComponent(cleanEmail)}`)
         setLoading(false)
         return
       }
 
-      setError('Incorrect email or password. Try again or create a new account.')
+      setError(getAuthErrorMessage(signInError))
     } else {
       if (!data.user) {
-        setError('Incorrect email or password. Try again or create a new account.')
+        setError('The email or password you entered is incorrect. Please try again.')
         setLoading(false)
         return
       }
@@ -91,7 +86,8 @@ export function CheckoutAuthWall({ email, name, phone = '', onSuccess }: Props) 
         .maybeSingle()
 
       if (profileError) {
-        setError(profileError.message)
+        console.error('[checkout-auth] profile lookup failed:', profileError)
+        setError(getAuthErrorMessage(profileError))
         setLoading(false)
         return
       }
@@ -131,7 +127,7 @@ export function CheckoutAuthWall({ email, name, phone = '', onSuccess }: Props) 
     }
 
     if (password.length < 8) {
-      setError('Password must be at least 8 characters.')
+      setError('Please choose a password that is at least 8 characters long.')
       return
     }
 
@@ -153,11 +149,16 @@ export function CheckoutAuthWall({ email, name, phone = '', onSuccess }: Props) 
         phone: cleanPhone,
         signupSource: 'checkout',
       }),
+    }).catch((caught: unknown) => {
+      console.error('[checkout-auth] create account request failed:', caught)
+      return null
     })
 
-    if (!signupResponse.ok) {
-      const message = await readApiError(signupResponse, 'Unable to create account. Please try again.')
-      if (message.toLowerCase().includes('already')) {
+    if (!signupResponse?.ok) {
+      const message = signupResponse
+        ? await readFriendlyApiError(signupResponse, getAuthErrorMessage)
+        : getAuthErrorMessage('network')
+      if (isAlreadyRegisteredError(message) || message.toLowerCase().includes('already have an account')) {
         setMode('signin')
       }
       setError(message)
@@ -225,7 +226,7 @@ export function CheckoutAuthWall({ email, name, phone = '', onSuccess }: Props) 
               <input type="password" placeholder="Create Password * (min 8 characters)" value={password} onChange={(event) => setPassword(event.target.value)} className="input-luxury" style={inputStyle} />
               <input type="password" placeholder="Confirm Password *" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="input-luxury" style={inputStyle} />
             </div>
-            {error ? <p style={{ color: '#A85C6A', fontSize: '13px', marginTop: '12px', padding: '10px', background: 'rgba(168,92,106,0.08)' }}>{error}</p> : null}
+            {error ? <ErrorMessage message={error} /> : null}
             <button type="button" onClick={() => void handleCreateAccount()} disabled={loading} className="btn-primary" style={{ width: '100%', marginTop: '16px', height: '52px', fontSize: '12px', letterSpacing: '0.12em', justifyContent: 'center', opacity: loading ? 0.72 : 1 }}>
               {loading ? 'Creating Account...' : 'Create Account & Continue'}
             </button>
@@ -255,7 +256,7 @@ export function CheckoutAuthWall({ email, name, phone = '', onSuccess }: Props) 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
               <a href="/forgot-password" style={{ fontSize: '12px', color: '#C9A961' }}>Forgot password?</a>
             </div>
-            {error ? <p style={{ color: '#A85C6A', fontSize: '13px', marginTop: '12px', padding: '10px', background: 'rgba(168,92,106,0.08)' }}>{error}</p> : null}
+            {error ? <ErrorMessage message={error} /> : null}
             <button type="button" onClick={() => void handleSignIn()} disabled={loading} className="btn-primary" style={{ width: '100%', marginTop: '16px', height: '52px', fontSize: '12px', letterSpacing: '0.12em', justifyContent: 'center', opacity: loading ? 0.72 : 1 }}>
               {loading ? 'Signing In...' : 'Sign In & Continue'}
             </button>

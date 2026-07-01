@@ -8,11 +8,13 @@ import { motion } from 'framer-motion'
 import { Gem } from 'lucide-react'
 import { CheckoutAuthWall } from '@/components/checkout/CheckoutAuthWall'
 import { BrandLogo } from '@/components/ui/BrandLogo'
+import ErrorMessage from '@/components/ui/ErrorMessage'
 import { useCart } from '@/context/CartContext'
 import { getMetalLabel, normalizeMetalSelection } from '@/config/productOptions'
 import { useFormPersistence } from '@/hooks/useFormPersistence'
 import { supabaseAuth } from '@/lib/auth'
 import { trackCartEvent, type CartItem as AnalyticsCartItem } from '@/lib/cart'
+import { getCheckoutErrorMessage } from '@/lib/errors'
 
 type SavedAddress = {
   id: string
@@ -261,16 +263,19 @@ export default function CheckoutPage() {
       body: JSON.stringify(session?.access_token
         ? { code: normalizedPromo, country: form.country }
         : { code: normalizedPromo, cartItems: discountCartItems, country: form.country }),
+    }).catch((caught: unknown) => {
+      console.error('[checkout] discount request failed:', caught)
+      return null
     })
-    const payload = await response.json() as {
+    const payload = response ? await response.json() as {
       code?: string
       discountAmount?: number
       freeShipping?: boolean
       error?: string
-    }
+    } : null
 
-    if (!response.ok) {
-      setPromoError(payload.error || 'Invalid code')
+    if (!response?.ok || !payload) {
+      setPromoError(payload?.error || 'We could not apply that code. Please check it and try again.')
       setAppliedDiscount({ code: '', amount: 0, freeShipping: false })
       return
     }
@@ -397,7 +402,7 @@ export default function CheckoutPage() {
 
       if (!response.ok || !payload.order?.id) {
         if (typeof payload.error === 'object' && payload.error?.field) {
-          const apiMessage = payload.error.message || 'Please review this field.'
+          const apiMessage = 'Please review this field.'
           setFieldErrors({ [payload.error.field]: apiMessage })
           throw new Error(apiMessage)
         }
@@ -432,9 +437,8 @@ export default function CheckoutPage() {
       })
       router.push(`/order-confirmed?${confirmationParams.toString()}`)
     } catch (orderError) {
-      const message = orderError instanceof Error ? orderError.message : 'Unable to place order.'
       console.error('Order error:', orderError)
-      setError(message)
+      setError(getCheckoutErrorMessage(orderError))
       setIsPlacing(false)
     }
   }
@@ -600,7 +604,7 @@ export default function CheckoutPage() {
                     Save this address for future orders
                   </label>
                 )}
-                {error && <p style={{ color: '#A85C6A', fontFamily: 'var(--font-inter)', fontSize: '12px' }}>{error}</p>}
+                {error && <ErrorMessage message={error} />}
                 <button disabled={!canPlaceOrder} style={{ background: '#1A1014', color: '#FBF5F0', cursor: canPlaceOrder ? 'pointer' : 'not-allowed', fontFamily: 'var(--font-inter)', fontSize: '13px', height: '60px', letterSpacing: '0.25em', opacity: canPlaceOrder ? 1 : 0.55 }}>{isPlacing ? 'PROCESSING...' : `PLACE ORDER — ${formatPrice(total)}`}</button>
                 <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '12px', textAlign: 'center' }}>SSL Encrypted | PCI Compliant | 256-bit Security</p>
               </div>

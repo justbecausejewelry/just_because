@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
+import { getAuthErrorMessage, getGeneralErrorMessage } from '@/lib/errors'
 import { checkRateLimit, rateLimitResponse } from '@/lib/server/rateLimit'
 
 export const runtime = 'nodejs'
@@ -44,14 +45,14 @@ export async function POST(request: Request) {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
   if (!supabaseUrl || !serviceRoleKey) {
-    return NextResponse.json({ error: 'Password reset service is not configured' }, { status: 500 })
+    return NextResponse.json({ error: getGeneralErrorMessage() }, { status: 500 })
   }
 
   const body: unknown = await request.json().catch(() => null)
   const parsed = passwordResetConfirmSchema.safeParse(isRecord(body) ? body : {})
   if (!parsed.success) {
     const issue = parsed.error.issues[0]
-    return NextResponse.json({ error: issue?.message || 'Invalid password reset payload' }, { status: 400 })
+    return NextResponse.json({ error: getAuthErrorMessage(issue?.message) }, { status: 400 })
   }
   const email = normalizeEmail(parsed.data.email)
   const code = normalizeCode(parsed.data.code)
@@ -84,7 +85,8 @@ export async function POST(request: Request) {
     .maybeSingle()
 
   if (otpError) {
-    return NextResponse.json({ error: otpError.message }, { status: 500 })
+    console.error('[password-reset/confirm] OTP lookup failed:', otpError)
+    return NextResponse.json({ error: getGeneralErrorMessage(otpError) }, { status: 500 })
   }
 
   if (!otpData) {
@@ -98,7 +100,8 @@ export async function POST(request: Request) {
     .maybeSingle()
 
   if (profileError) {
-    return NextResponse.json({ error: profileError.message }, { status: 500 })
+    console.error('[password-reset/confirm] profile lookup failed:', profileError)
+    return NextResponse.json({ error: getGeneralErrorMessage(profileError) }, { status: 500 })
   }
 
   const profile = profileData as ProfileRow | null
@@ -111,7 +114,8 @@ export async function POST(request: Request) {
   })
 
   if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 })
+    console.error('[password-reset/confirm] password update failed:', updateError)
+    return NextResponse.json({ error: getAuthErrorMessage(updateError) }, { status: 500 })
   }
 
   const { error: markUsedError } = await supabaseAdmin
@@ -121,7 +125,8 @@ export async function POST(request: Request) {
     .eq('used', false)
 
   if (markUsedError) {
-    return NextResponse.json({ error: markUsedError.message }, { status: 500 })
+    console.error('[password-reset/confirm] mark used failed:', markUsedError)
+    return NextResponse.json({ error: getGeneralErrorMessage(markUsedError) }, { status: 500 })
   }
 
   return NextResponse.json({ ok: true })

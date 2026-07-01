@@ -85,15 +85,18 @@ export default function CartPage() {
       method: 'POST',
       headers,
       body: JSON.stringify(body),
+    }).catch((caught: unknown) => {
+      console.error('[cart] discount request failed:', caught)
+      return null
     })
-    const payload = (await response.json()) as {
+    const payload = response ? (await response.json()) as {
       code?: string
       discountAmount?: number
       freeShipping?: boolean
       error?: string
-    }
-    if (!response.ok) {
-      setPromoError(payload.error || 'Invalid code')
+    } : null
+    if (!response?.ok || !payload) {
+      setPromoError(payload?.error || 'We could not apply that code. Please check it and try again.')
       setDiscount({ code: '', amount: 0, freeShipping: false })
       return
     }

@@ -4,6 +4,7 @@ import { sendAdminOrderNotificationEmail } from '@/lib/email/templates/adminOrde
 import { sendOrderConfirmationEmail } from '@/lib/email/templates/orderConfirmation'
 import { ADMIN_INBOX } from '@/lib/email/senders'
 import { validateDiscountCode, type DiscountCartItem } from '@/lib/discountValidation'
+import { getCheckoutErrorMessage, getGeneralErrorMessage } from '@/lib/errors'
 import { CheckoutValidationError, computeCheckoutLines } from '@/lib/server/orderPricing'
 import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/server/rateLimit'
 import { requireUser } from '@/lib/server/security'
@@ -92,7 +93,7 @@ export async function POST(request: NextRequest) {
   if ('error' in auth) return auth.error
   const identity = await getAuthedUserOrGuest(request)
   if (!identity.authed) {
-    return NextResponse.json({ error: 'Missing auth token' }, { status: 401 })
+    return NextResponse.json({ error: 'Please sign in to continue.' }, { status: 401 })
   }
 
   const limit = checkRateLimit({
@@ -222,15 +223,16 @@ export async function POST(request: NextRequest) {
         error: {
           code: error.code,
           field: error.field,
-          message,
+          message: getCheckoutErrorMessage(message),
         },
       }, { status: 400 })
     }
+    console.error('[order-create] pricing failed:', error)
     return NextResponse.json({
       error: {
         code: 'CHECKOUT_PRICING_FAILED',
         field: 'cart_items',
-        message,
+        message: getCheckoutErrorMessage(message),
       },
     }, { status: 400 })
   }
@@ -283,7 +285,7 @@ export async function POST(request: NextRequest) {
 
   if (orderError) {
     console.error('[order-create] order insert failed:', orderError)
-    return NextResponse.json({ error: orderError.message }, { status: 500 })
+    return NextResponse.json({ error: getCheckoutErrorMessage(orderError) }, { status: 500 })
   }
 
   const orderId = (order as CreatedOrder).id
@@ -308,7 +310,7 @@ export async function POST(request: NextRequest) {
   const { error: itemsError } = await auth.admin.from('OrderItem').insert(orderItems)
   if (itemsError) {
     console.error('[order-create] order item insert failed:', itemsError)
-    return NextResponse.json({ error: itemsError.message }, { status: 500 })
+    return NextResponse.json({ error: getGeneralErrorMessage(itemsError) }, { status: 500 })
   }
 
   if (discount.id) {

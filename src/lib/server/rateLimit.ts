@@ -40,7 +40,7 @@ export function rateLimitResponse(resetAt: number) {
   const retryAfter = Math.max(1, Math.ceil((resetAt - Date.now()) / 1000))
 
   return NextResponse.json(
-    { error: 'Too many requests. Please try again later.' },
+    { error: 'Too many attempts. Please wait a few minutes before trying again.' },
     {
       status: 429,
       headers: {

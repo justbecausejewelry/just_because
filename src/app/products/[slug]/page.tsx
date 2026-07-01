@@ -15,6 +15,7 @@ import { useToast } from '@/context/ToastContext'
 import { useWishlist } from '@/context/WishlistContext'
 import { getMetalLabel, normalizeMetalSelection } from '@/config/productOptions'
 import { supabaseAuth } from '@/lib/auth'
+import { getGeneralErrorMessage } from '@/lib/errors'
 
 type PricingMap = Record<string, { enabled?: boolean; modifier?: number }>
 type MetalImages = Record<string, string[] | undefined>
@@ -279,7 +280,8 @@ export default function ProductDetailPage() {
       }
 
       if (!response.ok || !payload.product) {
-        throw new Error(payload.error || 'Product not found.')
+        console.error('[product-detail] load failed:', payload.error)
+        throw new Error('Product not found.')
       }
 
       const incoming = payload.product
@@ -295,7 +297,8 @@ export default function ProductDetailPage() {
       setSelectedImage(0)
       setIsZoomed(false)
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Unable to load product.')
+      console.error('[product-detail] request failed:', caught)
+      setError(getGeneralErrorMessage(caught))
     } finally {
       setIsLoading(false)
     }
@@ -323,7 +326,8 @@ export default function ProductDetailPage() {
       .then(async (response) => {
         const payload = (await response.json()) as { products?: Product[]; error?: string }
         if (!response.ok) {
-          throw new Error(payload.error || 'Unable to load recommendations.')
+          console.error('[product-detail] recommendations failed:', payload.error)
+          throw new Error('Unable to load recommendations.')
         }
         if (!cancelled) {
           setRecommendations(payload.products || [])
@@ -332,7 +336,7 @@ export default function ProductDetailPage() {
       .catch((caught) => {
         if (!cancelled) {
           setRecommendations([])
-          setRecommendationsError(caught instanceof Error ? caught.message : 'Unable to load recommendations.')
+          setRecommendationsError(getGeneralErrorMessage(caught))
         }
       })
       .finally(() => {

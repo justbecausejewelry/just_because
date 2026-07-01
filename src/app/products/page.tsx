@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { BrandLogo } from '@/components/ui/BrandLogo'
+import { getGeneralErrorMessage } from '@/lib/errors'
 
 const TYPE_MAP: Record<string, string[]> = {
   engagement_ring: ['engagement_ring'],
@@ -399,12 +400,14 @@ function ProductsContent() {
       const payload = (await response.json()) as { products?: Product[]; error?: string }
 
       if (!response.ok) {
-        throw new Error(payload.error || 'Unable to load products.')
+        console.error('[products] load failed:', payload.error)
+        throw new Error('Unable to load products.')
       }
 
       setProducts(payload.products || [])
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Unable to load products.')
+      console.error('[products] request failed:', caught)
+      setError(getGeneralErrorMessage(caught))
       setProducts([])
     } finally {
       setIsLoading(false)

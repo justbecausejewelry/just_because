@@ -7,6 +7,7 @@ import { CheckCircle } from 'lucide-react'
 import type { User } from '@supabase/supabase-js'
 import { useFormPersistence } from '@/hooks/useFormPersistence'
 import { supabaseAuth } from '@/lib/auth'
+import { getGeneralErrorMessage } from '@/lib/errors'
 import {
   RETURN_REASONS,
   checkReturnEligibility,
@@ -112,7 +113,8 @@ function ReturnRequestContent() {
         }
       } catch (caught) {
         if (!cancelled) {
-          setError(caught instanceof Error ? caught.message : 'Unable to load order.')
+          console.error('[account/returns/new] order load failed:', caught)
+          setError(getGeneralErrorMessage(caught))
           setOrder(null)
         }
       } finally {
@@ -184,7 +186,8 @@ function ReturnRequestContent() {
       }
 
       if (!response.ok || !payload.returnRequest) {
-        throw new Error(payload.error || 'Unable to submit return request.')
+        console.error('[account/returns/new] submit failed:', payload.error)
+        throw new Error('Unable to submit return request.')
       }
 
       setReturnReference(payload.returnRequest.id)
@@ -192,7 +195,8 @@ function ReturnRequestContent() {
       clearPersistedReturn()
       setStep(4)
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Unable to submit return request.')
+      console.error('[account/returns/new] request failed:', caught)
+      setError(getGeneralErrorMessage(caught))
     } finally {
       setSubmitting(false)
     }

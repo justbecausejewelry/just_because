@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAuthedUserOrGuest } from '@/lib/auth/getAuthedUserOrGuest'
 import { sendSupportNotificationEmail } from '@/lib/email/supportNotification'
+import { getGeneralErrorMessage } from '@/lib/errors'
 import { checkRateLimit, rateLimitResponse } from '@/lib/server/rateLimit'
 import { requireUser } from '@/lib/server/security'
 
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
   if ('error' in auth) return auth.error
   const identity = await getAuthedUserOrGuest(request)
   if (!identity.authed) {
-    return NextResponse.json({ error: 'Missing auth token' }, { status: 401 })
+    return NextResponse.json({ error: 'Please sign in to continue.' }, { status: 401 })
   }
 
   const { data, error } = await auth.admin
@@ -31,7 +32,8 @@ export async function GET(request: NextRequest) {
     .order('updatedAt', { ascending: false })
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error('[conversations] load failed:', error)
+    return NextResponse.json({ error: getGeneralErrorMessage(error) }, { status: 500 })
   }
 
   return NextResponse.json({ conversations: data || [] })
@@ -42,7 +44,7 @@ export async function POST(request: NextRequest) {
   if ('error' in auth) return auth.error
   const identity = await getAuthedUserOrGuest(request)
   if (!identity.authed) {
-    return NextResponse.json({ error: 'Missing auth token' }, { status: 401 })
+    return NextResponse.json({ error: 'Please sign in to continue.' }, { status: 401 })
   }
 
   const limit = checkRateLimit({
@@ -78,7 +80,8 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (convError) {
-    return NextResponse.json({ error: convError.message }, { status: 500 })
+    console.error('[conversations] create failed:', convError)
+    return NextResponse.json({ error: getGeneralErrorMessage(convError) }, { status: 500 })
   }
 
   const { error: msgError } = await auth.admin
@@ -91,7 +94,8 @@ export async function POST(request: NextRequest) {
     })
 
   if (msgError) {
-    return NextResponse.json({ error: msgError.message }, { status: 500 })
+    console.error('[conversations] message insert failed:', msgError)
+    return NextResponse.json({ error: getGeneralErrorMessage(msgError) }, { status: 500 })
   }
 
   try {

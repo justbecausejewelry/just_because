@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAuthedUserOrGuest } from '@/lib/auth/getAuthedUserOrGuest'
 import { validateDiscountCode, type DiscountCartItem } from '@/lib/discountValidation'
+import { getGeneralErrorMessage } from '@/lib/errors'
 import { CheckoutValidationError, computeCheckoutLines } from '@/lib/server/orderPricing'
 import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/server/rateLimit'
 import { createServiceRoleClient } from '@/lib/server/security'
@@ -30,7 +31,7 @@ const validateSchema = z.object({
 export async function POST(request: NextRequest) {
   const admin = createServiceRoleClient()
   if (!admin) {
-    return NextResponse.json({ error: 'Supabase environment is not configured' }, { status: 500 })
+    return NextResponse.json({ error: getGeneralErrorMessage() }, { status: 500 })
   }
 
   const identity = await getAuthedUserOrGuest(request)
@@ -88,8 +89,9 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to validate discount code'
     if (error instanceof CheckoutValidationError) {
-      return NextResponse.json({ error: message, code: error.code, field: error.field }, { status: 400 })
+      return NextResponse.json({ error: 'We could not apply that code. Please check it and try again.', code: error.code, field: error.field }, { status: 400 })
     }
-    return NextResponse.json({ error: message, code: 'SERVER_ERROR' }, { status: 500 })
+    console.error('[discount/validate] failed:', error)
+    return NextResponse.json({ error: getGeneralErrorMessage(message), code: 'SERVER_ERROR' }, { status: 500 })
   }
 }

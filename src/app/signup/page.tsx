@@ -7,9 +7,11 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { supabaseAuth } from '@/lib/auth'
+import { getAuthErrorMessage, isAlreadyRegisteredError, readFriendlyApiError } from '@/lib/errors'
 import { useToast } from '@/context/ToastContext'
 import { useFormPersistence } from '@/hooks/useFormPersistence'
 import { BrandLogo } from '@/components/ui/BrandLogo'
+import ErrorMessage from '@/components/ui/ErrorMessage'
 
 function strengthFor(password: string) {
   let score = 0
@@ -51,7 +53,7 @@ function validateSignupFields({
   if (!password) {
     errors.password = 'Enter a password.'
   } else if (password.length < 8) {
-    errors.password = 'Password must be at least 8 characters.'
+    errors.password = 'Please choose a password that is at least 8 characters long.'
   }
 
   if (!confirmPassword) {
@@ -67,16 +69,6 @@ function validateSignupFields({
   return errors
 }
 
-async function readApiError(response: Response, fallback: string) {
-  const body: unknown = await response.json().catch(() => null)
-  if (typeof body === 'object' && body !== null && 'error' in body) {
-    const message = (body as { error?: unknown }).error
-    if (typeof message === 'string' && message.trim()) return message
-  }
-
-  return fallback
-}
-
 export default function SignupPage() {
   const router = useRouter()
   const { showToast } = useToast()
@@ -88,6 +80,7 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [alreadyRegistered, setAlreadyRegistered] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<SignupFieldErrors>({})
   const [showVerifyScreen, setShowVerifyScreen] = useState(false)
   const [verificationCode, setVerificationCode] = useState('')
@@ -116,11 +109,13 @@ export default function SignupPage() {
     setShowVerifyScreen(true)
     setFieldErrors({})
     setError('Please verify your email before signing in.')
+    setAlreadyRegistered(false)
   }, [])
 
   const handleSubmit = async (event?: FormEvent<HTMLFormElement>) => {
     event?.preventDefault()
     setError('')
+    setAlreadyRegistered(false)
     setResendMessage('')
     const normalizedEmail = email.trim().toLowerCase()
     const validationErrors = validateSignupFields({
@@ -139,28 +134,39 @@ export default function SignupPage() {
 
     setLoading(true)
 
-    const signupResponse = await fetch('/api/auth/signup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: normalizedEmail,
-        password,
-        name: name.trim(),
-        signupSource: 'direct',
-      }),
-    })
+    try {
+      const signupResponse = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: normalizedEmail,
+          password,
+          name: name.trim(),
+          signupSource: 'direct',
+        }),
+      })
 
-    setLoading(false)
+      setLoading(false)
 
-    if (!signupResponse.ok) {
-      setError(await readApiError(signupResponse, 'Unable to create account. Please try again.'))
-      return
+      if (!signupResponse.ok) {
+        const body: unknown = await signupResponse.json().catch(() => null)
+        const rawError = body && typeof body === 'object' && 'error' in body
+          ? (body as { error?: unknown }).error
+          : body
+        setAlreadyRegistered(isAlreadyRegisteredError(rawError))
+        setError(getAuthErrorMessage(rawError))
+        return
+      }
+
+      setEmail(normalizedEmail)
+      setVerificationCode('')
+      setShowVerifyScreen(true)
+      showToast('A 4-digit verification code was sent to your email.', 'success')
+    } catch (caught) {
+      console.error('[signup] account creation failed:', caught)
+      setLoading(false)
+      setError(getAuthErrorMessage(caught))
     }
-
-    setEmail(normalizedEmail)
-    setVerificationCode('')
-    setShowVerifyScreen(true)
-    showToast('A 4-digit verification code was sent to your email.', 'success')
   }
 
   const handleVerifyEmail = async (event?: FormEvent<HTMLFormElement>) => {
@@ -169,6 +175,7 @@ export default function SignupPage() {
     const code = verificationCode.replace(/\D/g, '')
 
     setError('')
+    setAlreadyRegistered(false)
     setResendMessage('')
 
     if (!normalizedEmail || code.length !== 4) {
@@ -185,10 +192,13 @@ export default function SignupPage() {
         email: normalizedEmail,
         code,
       }),
+    }).catch((caught: unknown) => {
+      console.error('[signup] verification request failed:', caught)
+      return null
     })
 
-    if (!verifyResponse.ok) {
-      setError(await readApiError(verifyResponse, 'Invalid or expired verification code.'))
+    if (!verifyResponse?.ok) {
+      setError(verifyResponse ? await readFriendlyApiError(verifyResponse, getAuthErrorMessage) : getAuthErrorMessage('network'))
       setLoading(false)
       return
     }
@@ -221,6 +231,7 @@ export default function SignupPage() {
     const normalizedEmail = email.trim().toLowerCase()
 
     setError('')
+    setAlreadyRegistered(false)
     setResendMessage('')
 
     if (!normalizedEmail) {
@@ -237,12 +248,15 @@ export default function SignupPage() {
         email: normalizedEmail,
         name: name.trim(),
       }),
+    }).catch((caught: unknown) => {
+      console.error('[signup] resend code request failed:', caught)
+      return null
     })
 
     setLoading(false)
 
-    if (!resendResponse.ok) {
-      setError(await readApiError(resendResponse, 'Unable to resend a verification code.'))
+    if (!resendResponse?.ok) {
+      setError(resendResponse ? await readFriendlyApiError(resendResponse, getAuthErrorMessage) : getAuthErrorMessage('network'))
       return
     }
 
@@ -505,19 +519,7 @@ export default function SignupPage() {
               </p>
             </div>
 
-            {error && (
-              <div style={{
-                background: '#FCF0F4',
-                border: '1px solid #A85C6A',
-                padding: '10px 14px',
-                marginBottom: '14px',
-                fontSize: '12px',
-                color: '#A85C6A',
-                fontFamily: 'var(--font-inter)',
-              }}>
-                {error}
-              </div>
-            )}
+            {error && <ErrorMessage message={error} />}
 
             {resendMessage && (
               <div style={{
@@ -670,19 +672,26 @@ export default function SignupPage() {
             </p>
           </div>
 
-          {error && (
-            <div style={{
-              background: '#FFF0F0',
-              border: '1px solid #A85C6A',
-              padding: '10px 14px',
-              marginBottom: '14px',
-              fontSize: '12px',
-              color: '#A85C6A',
-              fontFamily: 'var(--font-inter)',
-            }}>
-              {error}
-            </div>
-          )}
+          {alreadyRegistered ? (
+            <>
+              <ErrorMessage
+                message="It looks like you already have an account with us."
+                action={{
+                  label: 'Sign in instead ->',
+                  href: '/login',
+                }}
+              />
+              <ErrorMessage
+                message="Forgot your password?"
+                action={{
+                  label: 'Reset it here ->',
+                  href: '/forgot-password',
+                }}
+              />
+            </>
+          ) : error ? (
+            <ErrorMessage message={error} />
+          ) : null}
 
           <AuthInput
             label="FULL NAME"

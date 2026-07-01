@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { getGeneralErrorMessage } from '@/lib/errors'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -282,10 +283,12 @@ export async function GET(request: NextRequest) {
         })
       }
 
-      return NextResponse.json({ error: fallback.error.message }, { status: 500 })
+      console.error('[api/products] fallback load failed:', fallback.error)
+      return NextResponse.json({ error: getGeneralErrorMessage(fallback.error) }, { status: 500 })
     }
 
-    return NextResponse.json({ error: result.error.message }, { status: 500 })
+    console.error('[api/products] load failed:', result.error)
+    return NextResponse.json({ error: getGeneralErrorMessage(result.error) }, { status: 500 })
   }
 
   return NextResponse.json(result)

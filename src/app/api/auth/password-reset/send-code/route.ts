@@ -2,6 +2,7 @@ import { randomInt } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
+import { getAuthErrorMessage, getPasswordResetMessage } from '@/lib/errors'
 import { OTP_WINDOW_MINUTES, sendBrandedOtpEmail } from '@/lib/otpEmail'
 import { checkRateLimit, rateLimitResponse } from '@/lib/server/rateLimit'
 
@@ -47,14 +48,15 @@ export async function POST(request: Request) {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
   if (!supabaseUrl || !serviceRoleKey) {
-    return NextResponse.json({ error: 'Password reset service is not configured' }, { status: 500 })
+    console.error('[password-reset/send-code] service is not configured')
+    return NextResponse.json({ ok: true })
   }
 
   const body: unknown = await request.json().catch(() => null)
   const parsed = passwordResetSendSchema.safeParse(isRecord(body) ? body : {})
   if (!parsed.success) {
     const issue = parsed.error.issues[0]
-    return NextResponse.json({ error: issue?.message || 'Invalid password reset payload' }, { status: 400 })
+    return NextResponse.json({ error: getAuthErrorMessage(issue?.message) }, { status: 400 })
   }
   const email = normalizeEmail(parsed.data.email)
 
@@ -79,7 +81,8 @@ export async function POST(request: Request) {
     .maybeSingle()
 
   if (profileError) {
-    return NextResponse.json({ error: profileError.message }, { status: 500 })
+    console.error('[password-reset/send-code] profile lookup failed:', profileError)
+    return NextResponse.json({ ok: true })
   }
 
   const profile = profileData as ProfileRow | null
@@ -96,11 +99,12 @@ export async function POST(request: Request) {
     .gte('created_at', oneHourAgo)
 
   if (countError) {
-    return NextResponse.json({ error: countError.message }, { status: 500 })
+    console.error('[password-reset/send-code] OTP count failed:', countError)
+    return NextResponse.json({ ok: true })
   }
 
   if ((count || 0) >= RESEND_LIMIT) {
-    return NextResponse.json({ error: 'Too many reset codes requested. Please try again later.' }, { status: 429 })
+    return NextResponse.json({ error: getPasswordResetMessage() }, { status: 429 })
   }
 
   await supabaseAdmin
@@ -125,7 +129,8 @@ export async function POST(request: Request) {
     .single()
 
   if (insertError) {
-    return NextResponse.json({ error: insertError.message }, { status: 500 })
+    console.error('[password-reset/send-code] OTP insert failed:', insertError)
+    return NextResponse.json({ ok: true })
   }
 
   const sendResult = await sendBrandedOtpEmail({
@@ -144,7 +149,8 @@ export async function POST(request: Request) {
       .update({ used: true })
       .eq('id', (otpData as { id: string }).id)
 
-    return NextResponse.json({ error: sendResult.error }, { status: 500 })
+    console.error('[password-reset/send-code] email send failed:', sendResult.error)
+    return NextResponse.json({ ok: true })
   }
 
   return NextResponse.json({ ok: true, expiresAt })

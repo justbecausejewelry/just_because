@@ -3,17 +3,9 @@
 import { FormEvent, useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, ArrowRight, Mail, Sparkles } from 'lucide-react'
+import { getAuthErrorMessage, getPasswordResetMessage } from '@/lib/errors'
 import { BrandLogo } from '@/components/ui/BrandLogo'
-
-async function readApiError(response: Response, fallback: string) {
-  const body: unknown = await response.json().catch(() => null)
-  if (typeof body === 'object' && body !== null && 'error' in body) {
-    const message = (body as { error?: unknown }).error
-    if (typeof message === 'string' && message.trim()) return message
-  }
-
-  return fallback
-}
+import ErrorMessage from '@/components/ui/ErrorMessage'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -26,21 +18,26 @@ export default function ForgotPasswordPage() {
 
     const trimmedEmail = email.trim()
     if (!trimmedEmail) {
-      setError('Please enter your email')
+      setError('Please enter a valid email address.')
       return
     }
 
     setLoading(true)
     setError('')
 
-    const resetResponse = await fetch('/api/auth/password-reset/send-code', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: trimmedEmail }),
-    })
+    try {
+      const resetResponse = await fetch('/api/auth/password-reset/send-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: trimmedEmail }),
+      })
 
-    if (!resetResponse.ok) {
-      setError(await readApiError(resetResponse, 'Unable to send a reset code. Please try again.'))
+      if (!resetResponse.ok) {
+        console.error('[forgot-password] reset request returned a friendly neutral response')
+      }
+    } catch (caught) {
+      console.error('[forgot-password] reset request failed:', caught)
+      setError(getAuthErrorMessage(caught))
       setLoading(false)
       return
     }
@@ -192,22 +189,7 @@ export default function ForgotPasswordPage() {
                   Enter your email and we will send you a 4-digit code to reset your password.
                 </p>
 
-                {error && (
-                  <div
-                    role="alert"
-                    style={{
-                      background: '#FCF0F4',
-                      border: '0.5px solid #E8C4D0',
-                      padding: '12px 16px',
-                      marginBottom: '20px',
-                      fontSize: '13px',
-                      color: '#1A1014',
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    {error}
-                  </div>
-                )}
+                {error && <ErrorMessage message={error} />}
 
                 <div style={{ marginBottom: '24px' }}>
                   <label
@@ -299,7 +281,7 @@ export default function ForgotPasswordPage() {
                     marginBottom: '8px',
                   }}
                 >
-                  We sent a 4-digit reset code to
+                  {getPasswordResetMessage()}
                 </p>
                 <p
                   style={{
