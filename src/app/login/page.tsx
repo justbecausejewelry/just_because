@@ -8,7 +8,7 @@ import { supabaseAuth } from '@/lib/auth'
 import { clearCart, getCart } from '@/lib/cart'
 import { getAuthErrorMessage } from '@/lib/errors'
 import { mergeGuestCart } from '@/lib/mergeGuestCart'
-import { persistBrowserSession } from '@/lib/supabase'
+import { getSettledBrowserSession, persistBrowserSession } from '@/lib/supabase'
 import { BrandLogo } from '@/components/ui/BrandLogo'
 import ErrorMessage from '@/components/ui/ErrorMessage'
 
@@ -122,7 +122,20 @@ export default function LoginPage() {
         return
       }
 
-      persistBrowserSession(data.session)
+      const { data: restoredData, error: restoreError } = await withTimeout(
+        supabaseAuth.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        }),
+        'Session setup timed out. Please try again.'
+      )
+
+      if (restoreError) {
+        console.error('[login] setSession failed:', restoreError)
+      }
+
+      persistBrowserSession(restoredData.session || data.session)
+      await getSettledBrowserSession(500)
       saveLoginHandoff(data.user)
 
       const guestCart = getCart()

@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Heart, MessageSquare, RotateCcw, Settings, ShoppingBag } from 'lucide-react'
 import type { User } from '@supabase/supabase-js'
-import { getStoredAccountUser, supabase, SUPABASE_AUTH_STORAGE_KEY } from '@/lib/supabase'
+import { getSettledBrowserSession, getStoredAccountUser, supabase, SUPABASE_AUTH_STORAGE_KEY } from '@/lib/supabase'
 import { forceSignOut } from '@/lib/forceSignOut'
 import { getOrCreateProfile, type UserProfile } from '@/lib/userProfile'
 import { useRole } from '@/hooks/useRole'
@@ -83,16 +83,20 @@ function getSessionFromStorage(): StoredAuthSession | null {
       console.log('Looking for auth session...')
     }
 
-    const authKey = keys.find(isAuthStorageKey)
-    if (!authKey) return null
+    const authKeys = [
+      SUPABASE_AUTH_STORAGE_KEY,
+      ...keys.filter((key) => key !== SUPABASE_AUTH_STORAGE_KEY && isAuthStorageKey(key)),
+    ]
 
-    const raw = window.localStorage.getItem(authKey)
-    if (!raw) return null
+    for (const authKey of authKeys) {
+      const raw = window.localStorage.getItem(authKey)
+      if (!raw) continue
 
-    const session = sessionFromUnknown(JSON.parse(raw))
-    if (!session) return null
+      const session = sessionFromUnknown(JSON.parse(raw))
+      if (session) return session
+    }
 
-    return session
+    return null
   } catch {
     return null
   }
@@ -289,16 +293,7 @@ export default function AccountPage() {
         return
       }
 
-      const { data: { session: firstSession } } = await supabase.auth.getSession()
-      if (cancelled) return
-
-      if (firstSession?.user) {
-        hydrateAccount(firstSession.user)
-        return
-      }
-
-      await new Promise((resolve) => globalThis.setTimeout(resolve, 1000))
-      const { data: { session: settledSession } } = await supabase.auth.getSession()
+      const settledSession = await getSettledBrowserSession(1000)
       if (cancelled) return
 
       if (settledSession?.user) {
@@ -317,9 +312,26 @@ export default function AccountPage() {
       if (cancelled) return
 
       if (event === 'SIGNED_OUT') {
-        clearLoginRedirect()
-        setUser(null)
-        setProfile(null)
+        void (async () => {
+          const settledSession = await getSettledBrowserSession(1000)
+          if (cancelled) return
+
+          if (settledSession?.user) {
+            hydrateAccount(settledSession.user)
+            return
+          }
+
+          const storedUser = getStoredAccountUser()
+          if (storedUser) {
+            hydrateAccount(storedUser)
+            return
+          }
+
+          clearLoginRedirect()
+          setUser(null)
+          setProfile(null)
+          setPageLoading(false)
+        })()
         return
       }
 

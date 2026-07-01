@@ -8,6 +8,7 @@ import type { User } from '@supabase/supabase-js'
 import { getMetalLabel } from '@/config/productOptions'
 import { supabaseAuth } from '@/lib/auth'
 import { checkReturnEligibility } from '@/lib/returnEligibility'
+import { getSettledBrowserSession } from '@/lib/supabase'
 import { getCarrierLabel, orderStatusLabel, orderStatusStyle } from '@/lib/tracking'
 
 type OrderItem = {
@@ -74,8 +75,8 @@ export default function AccountOrdersPage() {
 
       try {
         setIsLoading(true)
-        const { data: sessionData } = await supabaseAuth.auth.getSession()
-        const token = sessionData.session?.access_token
+        const session = await getSettledBrowserSession()
+        const token = session?.access_token
 
         if (!token) {
           router.replace('/login?redirect=/account/orders')
@@ -108,11 +109,11 @@ export default function AccountOrdersPage() {
       }
     }
 
-    void supabaseAuth.auth.getSession().then(({ data }) => {
+    void getSettledBrowserSession().then((session) => {
       if (cancelled) return
 
-      if (data.session?.user) {
-        void loadForUser(data.session.user)
+      if (session?.user) {
+        void loadForUser(session.user)
       } else {
         router.replace('/login?redirect=/account/orders')
       }
@@ -122,7 +123,14 @@ export default function AccountOrdersPage() {
       if (cancelled) return
 
       if (event === 'SIGNED_OUT' || !session?.user) {
-        router.replace('/login?redirect=/account/orders')
+        void getSettledBrowserSession().then((settledSession) => {
+          if (cancelled) return
+          if (settledSession?.user) {
+            void loadForUser(settledSession.user)
+            return
+          }
+          router.replace('/login?redirect=/account/orders')
+        })
         return
       }
 
@@ -131,7 +139,14 @@ export default function AccountOrdersPage() {
 
     const fallbackTimer = window.setTimeout(() => {
       if (!cancelled && !loadedUserIdRef.current) {
-        router.replace('/login?redirect=/account/orders')
+        void getSettledBrowserSession().then((session) => {
+          if (cancelled || loadedUserIdRef.current) return
+          if (session?.user) {
+            void loadForUser(session.user)
+            return
+          }
+          router.replace('/login?redirect=/account/orders')
+        })
       }
     }, 5000)
 

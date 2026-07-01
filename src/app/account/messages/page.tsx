@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Gem } from 'lucide-react'
 import { supabaseAuth } from '@/lib/auth'
+import { getSettledBrowserSession } from '@/lib/supabase'
 
 type Conversation = {
   id: string
@@ -37,9 +38,7 @@ export default function MessagesPage() {
 
   useEffect(() => {
     const load = async () => {
-      const {
-        data: { session },
-      } = await supabaseAuth.auth.getSession()
+      const session = await getSettledBrowserSession()
       const user = session?.user
 
       if (!user || !session?.access_token) {

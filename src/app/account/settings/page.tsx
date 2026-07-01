@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Pencil, Trash2 } from 'lucide-react'
 import type { User } from '@supabase/supabase-js'
 import { supabaseAuth } from '@/lib/auth'
+import { getSettledBrowserSession } from '@/lib/supabase'
 import { getOrCreateProfile } from '@/lib/userProfile'
 import { useToast } from '@/context/ToastContext'
 
@@ -122,11 +123,25 @@ export default function AccountSettingsPage() {
       }
     }
 
+    void getSettledBrowserSession().then((session) => {
+      if (cancelled) return
+      if (session?.user) {
+        void loadForUser(session.user)
+      }
+    })
+
     const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange((event, session) => {
       if (cancelled) return
 
       if (event === 'SIGNED_OUT' || !session?.user) {
-        router.replace('/login?redirect=/account/settings')
+        void getSettledBrowserSession().then((settledSession) => {
+          if (cancelled) return
+          if (settledSession?.user) {
+            void loadForUser(settledSession.user)
+            return
+          }
+          router.replace('/login?redirect=/account/settings')
+        })
         return
       }
 
@@ -135,7 +150,14 @@ export default function AccountSettingsPage() {
 
     const fallbackTimer = window.setTimeout(() => {
       if (!cancelled && !loadedUserIdRef.current) {
-        router.replace('/login?redirect=/account/settings')
+        void getSettledBrowserSession().then((session) => {
+          if (cancelled || loadedUserIdRef.current) return
+          if (session?.user) {
+            void loadForUser(session.user)
+            return
+          }
+          router.replace('/login?redirect=/account/settings')
+        })
       }
     }, 5000)
 

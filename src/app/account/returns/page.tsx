@@ -7,6 +7,7 @@ import { RotateCcw } from 'lucide-react'
 import { supabaseAuth } from '@/lib/auth'
 import { getGeneralErrorMessage } from '@/lib/errors'
 import { RETURN_STATUS_LABELS, normalizeReturnStatus, returnReasonLabel } from '@/lib/returnEligibility'
+import { getSettledBrowserSession } from '@/lib/supabase'
 
 type ReturnRequest = {
   id: string
@@ -48,8 +49,8 @@ export default function AccountReturnsPage() {
     const loadReturns = async () => {
       try {
         setLoading(true)
-        const { data: sessionData } = await supabaseAuth.auth.getSession()
-        const token = sessionData.session?.access_token
+        const session = await getSettledBrowserSession()
+        const token = session?.access_token
 
         if (!token) {
           router.replace('/login?redirect=/account/returns')
@@ -87,7 +88,14 @@ export default function AccountReturnsPage() {
 
     const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT' || !session?.user) {
-        router.replace('/login?redirect=/account/returns')
+        void getSettledBrowserSession().then((settledSession) => {
+          if (cancelled) return
+          if (settledSession?.user) {
+            void loadReturns()
+            return
+          }
+          router.replace('/login?redirect=/account/returns')
+        })
       }
     })
 

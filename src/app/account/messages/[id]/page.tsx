@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { supabaseAuth } from '@/lib/auth'
+import { getSettledBrowserSession } from '@/lib/supabase'
 import { useToast } from '@/context/ToastContext'
 
 type Conversation = {
@@ -37,9 +38,7 @@ export default function MessageThreadPage() {
   const [isSending, setIsSending] = useState(false)
 
   const loadConversation = useCallback(async () => {
-    const {
-      data: { session },
-    } = await supabaseAuth.auth.getSession()
+    const session = await getSettledBrowserSession()
     const user = session?.user
 
     if (!user || !session?.access_token) {
@@ -74,9 +73,7 @@ export default function MessageThreadPage() {
 
     setIsSending(true)
     try {
-      const {
-        data: { session },
-      } = await supabaseAuth.auth.getSession()
+      const session = await getSettledBrowserSession()
       const user = session?.user
 
       if (!user || !session?.access_token) {

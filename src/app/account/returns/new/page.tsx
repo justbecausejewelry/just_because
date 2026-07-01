@@ -14,6 +14,7 @@ import {
   returnReasonLabel,
   type ReturnReason,
 } from '@/lib/returnEligibility'
+import { getSettledBrowserSession } from '@/lib/supabase'
 
 type OrderItem = {
   id: string
@@ -122,11 +123,27 @@ function ReturnRequestContent() {
       }
     }
 
+    void getSettledBrowserSession().then((session) => {
+      if (cancelled) return
+      if (session?.user) {
+        setUser(session.user)
+        void loadOrder(session.user)
+      }
+    })
+
     const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange((event, session) => {
       if (cancelled) return
 
       if (event === 'SIGNED_OUT' || !session?.user) {
-        router.replace(`/login?redirect=/account/returns/new?order=${orderId}`)
+        void getSettledBrowserSession().then((settledSession) => {
+          if (cancelled) return
+          if (settledSession?.user) {
+            setUser(settledSession.user)
+            void loadOrder(settledSession.user)
+            return
+          }
+          router.replace(`/login?redirect=/account/returns/new?order=${orderId}`)
+        })
         return
       }
 
@@ -136,7 +153,15 @@ function ReturnRequestContent() {
 
     const fallbackTimer = window.setTimeout(() => {
       if (!cancelled && !user) {
-        router.replace(`/login?redirect=/account/returns/new?order=${orderId}`)
+        void getSettledBrowserSession().then((session) => {
+          if (cancelled || user) return
+          if (session?.user) {
+            setUser(session.user)
+            void loadOrder(session.user)
+            return
+          }
+          router.replace(`/login?redirect=/account/returns/new?order=${orderId}`)
+        })
       }
     }, 5000)
 
@@ -164,8 +189,8 @@ function ReturnRequestContent() {
     setError('')
 
     try {
-      const { data: sessionData } = await supabaseAuth.auth.getSession()
-      const token = sessionData.session?.access_token
+      const session = await getSettledBrowserSession()
+      const token = session?.access_token
       if (!token) throw new Error('Please sign in again before submitting your request.')
 
       const response = await fetch('/api/returns', {

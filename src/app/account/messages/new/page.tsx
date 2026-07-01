@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { supabaseAuth } from '@/lib/auth'
 import { getGeneralErrorMessage } from '@/lib/errors'
+import { getSettledBrowserSession } from '@/lib/supabase'
 import { useToast } from '@/context/ToastContext'
 import { useFormPersistence } from '@/hooks/useFormPersistence'
 
@@ -75,9 +76,8 @@ function NewMessageContent() {
 
   useEffect(() => {
     const checkUser = async () => {
-      const {
-        data: { user },
-      } = await supabaseAuth.auth.getUser()
+      const session = await getSettledBrowserSession()
+      const user = session?.user
       if (!user) {
         const currentPath = `/account/messages/new?${searchParams.toString()}`
         router.replace(`/login?redirect=${encodeURIComponent(currentPath)}`)
@@ -106,9 +106,7 @@ function NewMessageContent() {
 
     setIsSubmitting(true)
     try {
-      const {
-        data: { session },
-      } = await supabaseAuth.auth.getSession()
+      const session = await getSettledBrowserSession()
       const user = session?.user
 
       if (!user || !session?.access_token) {

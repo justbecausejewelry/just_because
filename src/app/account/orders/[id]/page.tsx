@@ -9,6 +9,7 @@ import type { User } from '@supabase/supabase-js'
 import { getMetalLabel } from '@/config/productOptions'
 import { supabaseAuth } from '@/lib/auth'
 import { getGeneralErrorMessage } from '@/lib/errors'
+import { getSettledBrowserSession } from '@/lib/supabase'
 import { getCarrierLabel, normalizeOrderStatus, orderStatusLabel, orderStatusStyle, type OrderStatus } from '@/lib/tracking'
 
 type ShippingAddress = {
@@ -194,8 +195,8 @@ export default function AccountOrderDetailPage() {
 
       try {
         setIsLoading(true)
-        const { data: sessionData } = await supabaseAuth.auth.getSession()
-        const token = sessionData.session?.access_token
+        const session = await getSettledBrowserSession()
+        const token = session?.access_token
 
         if (!token) {
           router.replace(`/login?redirect=/account/orders/${orderId}`)
@@ -237,10 +238,10 @@ export default function AccountOrderDetailPage() {
       }
     }
 
-    void supabaseAuth.auth.getSession().then(({ data }) => {
+    void getSettledBrowserSession().then((session) => {
       if (cancelled) return
-      if (data.session?.user) {
-        void loadOrder(data.session.user)
+      if (session?.user) {
+        void loadOrder(session.user)
       } else {
         router.replace(`/login?redirect=/account/orders/${orderId}`)
       }
@@ -250,7 +251,14 @@ export default function AccountOrderDetailPage() {
       if (cancelled) return
 
       if (event === 'SIGNED_OUT' || !session?.user) {
-        router.replace(`/login?redirect=/account/orders/${orderId}`)
+        void getSettledBrowserSession().then((settledSession) => {
+          if (cancelled) return
+          if (settledSession?.user) {
+            void loadOrder(settledSession.user)
+            return
+          }
+          router.replace(`/login?redirect=/account/orders/${orderId}`)
+        })
         return
       }
 
@@ -268,8 +276,8 @@ export default function AccountOrderDetailPage() {
   const handleDownloadInvoice = async () => {
     try {
       setIsDownloadingInvoice(true)
-      const { data } = await supabaseAuth.auth.getSession()
-      const token = data.session?.access_token
+      const session = await getSettledBrowserSession()
+      const token = session?.access_token
 
       if (!token) {
         router.replace(`/login?redirect=/account/orders/${orderId}`)
