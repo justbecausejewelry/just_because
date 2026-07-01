@@ -102,29 +102,26 @@ export default function LoginPage() {
         return
       }
 
-      const accessToken = data.session?.access_token
-      const refreshToken = data.session?.refresh_token
-      if (!accessToken || !refreshToken) {
+      if (!data.session?.access_token || !data.session.refresh_token) {
         setError('We could not finish signing you in. Please try again.')
         return
       }
 
-      const cookieResponse = await withTimeout(fetch('/api/auth/session-cookie', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ accessToken, refreshToken }),
-      }), 'Saving your session timed out. Please try again.')
+      const { error: setSessionError } = await withTimeout(
+        supabaseAuth.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        }),
+        'Saving your session timed out. Please try again.'
+      )
 
-      if (!cookieResponse.ok) {
-        console.error('[login] session cookie route failed:', await cookieResponse.text().catch(() => 'No response body'))
+      if (setSessionError) {
+        console.error('[login] browser session save failed:', setSessionError)
         setError('We could not finish signing you in. Please try again.')
         return
       }
 
-      await delay(600)
+      await delay(500)
 
       const { data: sessionData, error: sessionError } = await withTimeout(
         supabaseAuth.auth.getSession(),
