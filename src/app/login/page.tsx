@@ -13,10 +13,6 @@ import ErrorMessage from '@/components/ui/ErrorMessage'
 
 const AUTH_TIMEOUT_MS = 8000
 
-function delay(ms: number) {
-  return new Promise((resolve) => globalThis.setTimeout(resolve, ms))
-}
-
 function withTimeout<T>(promise: PromiseLike<T>, label: string, timeoutMs = AUTH_TIMEOUT_MS): Promise<T> {
   let timeoutId: ReturnType<typeof globalThis.setTimeout> | null = null
 
@@ -107,23 +103,13 @@ export default function LoginPage() {
         return
       }
 
-      await delay(500)
-
-      const { data: sessionData, error: sessionError } = await withTimeout(
-        supabaseAuth.auth.getSession(),
-        'Checking your session timed out. Please try again.'
-      )
-
-      if (sessionError || !sessionData.session) {
-        console.error('[login] session check failed:', sessionError)
-        setError('We could not keep you signed in. Please try again.')
-        return
-      }
-
       const guestCart = getCart()
       if (guestCart.length > 0) {
         await withTimeout(mergeGuestCart(data.user.id, guestCart), 'Cart sync timed out. Please try again.')
-        clearCart()
+          .then(() => clearCart())
+          .catch((cartError: unknown) => {
+            console.warn('[login] cart sync skipped:', cartError)
+          })
       }
 
       const redirect = new URLSearchParams(window.location.search).get('redirect')
