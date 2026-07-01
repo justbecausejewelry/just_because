@@ -12,6 +12,7 @@ import { BrandLogo } from '@/components/ui/BrandLogo'
 import ErrorMessage from '@/components/ui/ErrorMessage'
 
 const AUTH_TIMEOUT_MS = 8000
+const LOGIN_HANDOFF_KEY = 'jb_login_handoff_v1'
 
 function withTimeout<T>(promise: PromiseLike<T>, label: string, timeoutMs = AUTH_TIMEOUT_MS): Promise<T> {
   let timeoutId: ReturnType<typeof globalThis.setTimeout> | null = null
@@ -27,6 +28,23 @@ function withTimeout<T>(promise: PromiseLike<T>, label: string, timeoutMs = AUTH
       globalThis.clearTimeout(timeoutId)
     }
   })
+}
+
+function saveLoginHandoff(user: { id: string; email?: string | null; user_metadata?: unknown }) {
+  if (typeof window === 'undefined') return
+
+  try {
+    window.sessionStorage.setItem(LOGIN_HANDOFF_KEY, JSON.stringify({
+      expiresAt: Date.now() + 60 * 1000,
+      user: {
+        id: user.id,
+        email: user.email || '',
+        user_metadata: user.user_metadata || {},
+      },
+    }))
+  } catch {
+    // Session storage can be unavailable; Supabase still owns the real auth state.
+  }
 }
 
 export default function LoginPage() {
@@ -102,6 +120,8 @@ export default function LoginPage() {
         setError('We could not finish signing you in. Please try again.')
         return
       }
+
+      saveLoginHandoff(data.user)
 
       const guestCart = getCart()
       if (guestCart.length > 0) {

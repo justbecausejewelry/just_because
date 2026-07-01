@@ -25,6 +25,8 @@ type AccountStats = {
   unreadMessages: number | null
 }
 
+const LOGIN_HANDOFF_KEY = 'jb_login_handoff_v1'
+
 type StoredAuthSession = {
   access_token: string
   refresh_token?: string
@@ -91,6 +93,36 @@ function getSessionFromStorage(): StoredAuthSession | null {
     if (!session) return null
 
     return session
+  } catch {
+    return null
+  }
+}
+
+function getLoginHandoff(): StoredAuthSession | null {
+  if (typeof window === 'undefined') return null
+
+  try {
+    const raw = window.sessionStorage.getItem(LOGIN_HANDOFF_KEY)
+    if (!raw) return null
+
+    const parsed: unknown = JSON.parse(raw)
+    if (!isRecord(parsed)) return null
+
+    const expiresAt = parsed.expiresAt
+    if (typeof expiresAt !== 'number' || expiresAt < Date.now()) {
+      window.sessionStorage.removeItem(LOGIN_HANDOFF_KEY)
+      return null
+    }
+
+    const user = parsed.user
+    if (!isRecord(user) || typeof user.id !== 'string' || typeof user.email !== 'string') {
+      return null
+    }
+
+    return {
+      access_token: '',
+      user: user as unknown as User,
+    }
   } catch {
     return null
   }
@@ -188,8 +220,7 @@ export default function AccountPage() {
       loginRedirectTimer = globalThis.setTimeout(() => {
         if (cancelled || loadedUserIdRef.current || isRedirectingRef.current) return
 
-        isRedirectingRef.current = true
-        router.replace('/login?redirect=/account')
+        setPageLoading(false)
       }, 0)
     }
 
@@ -244,7 +275,7 @@ export default function AccountPage() {
       ])
     }
 
-    const storedSession = getSessionFromStorage()
+    const storedSession = getSessionFromStorage() || getLoginHandoff()
     if (storedSession?.user) {
       hydrateAccount(storedSession.user)
     }
@@ -317,6 +348,39 @@ export default function AccountPage() {
           }
         `}</style>
       </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <main style={{ alignItems: 'center', background: '#FBF5F0', color: '#1A1014', display: 'flex', justifyContent: 'center', minHeight: '100vh', padding: '40px 20px' }}>
+        <section style={{ background: '#FDF8F2', border: '0.5px solid #EDD9AF', borderRadius: '4px', maxWidth: '420px', padding: '36px 28px', textAlign: 'center' }}>
+          <p style={{ color: '#C9A961', fontFamily: 'var(--font-inter)', fontSize: '10px', letterSpacing: '0.3em', margin: '0 0 18px' }}>
+            ACCOUNT
+          </p>
+          <h1 style={{ color: '#1A1014', fontFamily: 'var(--font-playfair)', fontSize: '30px', fontWeight: 400, margin: '0 0 12px' }}>
+            Sign in to continue
+          </h1>
+          <p style={{ color: 'var(--color-muted-text)', fontFamily: 'var(--font-inter)', fontSize: '13px', lineHeight: 1.7, margin: '0 0 24px' }}>
+            Your account session was not found in this browser.
+          </p>
+          <Link
+            href="/login?redirect=/account"
+            style={{
+              background: '#1A1014',
+              color: '#FBF5F0',
+              display: 'inline-block',
+              fontFamily: 'var(--font-inter)',
+              fontSize: '11px',
+              letterSpacing: '0.18em',
+              padding: '14px 22px',
+              textDecoration: 'none',
+            }}
+          >
+            SIGN IN
+          </Link>
+        </section>
+      </main>
     )
   }
 
