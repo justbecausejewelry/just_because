@@ -115,11 +115,9 @@ export default function LoginPage() {
       }
 
       if (!profile || (profile as { email_verified?: boolean | null }).email_verified !== true) {
-        await withTimeout(supabaseAuth.auth.signOut(), 'Sign out timed out. Please refresh and try again.').catch((caught: unknown) => {
-          console.error('[login] signOut after unverified profile failed:', caught)
-        })
-        setError('Please verify your email first.')
-        setUnverifiedEmail(normalizedEmail)
+        window.localStorage.setItem('pendingVerifyEmail', normalizedEmail)
+        setIsRedirecting(true)
+        router.replace(`/verify?email=${encodeURIComponent(normalizedEmail)}`)
         return
       }
 
@@ -141,9 +139,6 @@ export default function LoginPage() {
 
       if (!cookieResponse.ok) {
         console.error('[login] session cookie route failed:', await cookieResponse.text().catch(() => 'No response body'))
-        await withTimeout(supabaseAuth.auth.signOut(), 'Sign out timed out. Please refresh and try again.').catch((caught: unknown) => {
-          console.error('[login] signOut after cookie failure failed:', caught)
-        })
         setError('We could not finish signing you in. Please try again.')
         return
       }

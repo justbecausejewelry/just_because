@@ -128,6 +128,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: getGeneralErrorMessage(profileError) }, { status: 500 })
   }
 
+  if (!profile.userId) {
+    console.error('[verify-otp] profile missing userId for Supabase confirmation')
+    return NextResponse.json({ error: getGeneralErrorMessage() }, { status: 500 })
+  }
+
+  const { error: confirmError } = await supabaseAdmin.auth.admin.updateUserById(profile.userId, {
+    email_confirm: true,
+  })
+
+  if (confirmError) {
+    console.error('[verify-otp] Supabase email confirmation failed:', confirmError)
+    return NextResponse.json({ error: getGeneralErrorMessage(confirmError) }, { status: 500 })
+  }
+
   const { data: magicData, error: magicError } = await supabaseAdmin.auth.admin.generateLink({
     type: 'magiclink',
     email,

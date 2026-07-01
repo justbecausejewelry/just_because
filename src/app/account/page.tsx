@@ -189,9 +189,8 @@ export default function AccountPage() {
         if (cancelled || loadedUserIdRef.current || isRedirectingRef.current) return
 
         isRedirectingRef.current = true
-        setPageLoading(false)
         router.replace('/login?redirect=/account')
-      }, 3000)
+      }, 0)
     }
 
     const loadStats = async (userId: string, email: string) => {
@@ -257,12 +256,20 @@ export default function AccountPage() {
     }
 
     const verifyCurrentSession = async () => {
-      await new Promise((resolve) => globalThis.setTimeout(resolve, 1000))
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data: { session: firstSession } } = await supabase.auth.getSession()
       if (cancelled) return
 
-      if (session?.user) {
-        hydrateAccount(session.user)
+      if (firstSession?.user) {
+        hydrateAccount(firstSession.user)
+        return
+      }
+
+      await new Promise((resolve) => globalThis.setTimeout(resolve, 1000))
+      const { data: { session: settledSession } } = await supabase.auth.getSession()
+      if (cancelled) return
+
+      if (settledSession?.user) {
+        hydrateAccount(settledSession.user)
         return
       }
 

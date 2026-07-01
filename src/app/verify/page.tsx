@@ -5,14 +5,16 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { BrandLogo } from '@/components/ui/BrandLogo'
 import ErrorMessage from '@/components/ui/ErrorMessage'
-import { supabaseAuth } from '@/lib/auth'
 import { getAuthErrorMessage, readFriendlyApiError } from '@/lib/errors'
+import { supabase } from '@/lib/supabase'
 
 const AUTH_TIMEOUT_MS = 10000
 
 type VerifyResponse = {
   ok?: unknown
+  email?: unknown
   magicToken?: unknown
+  magicType?: unknown
 }
 
 function delay(ms: number) {
@@ -96,6 +98,7 @@ function VerifyContent() {
 
       const verifyBody = (await verifyResponse.json().catch(() => ({}))) as VerifyResponse
       const magicToken = typeof verifyBody.magicToken === 'string' ? verifyBody.magicToken : ''
+      const verifiedEmail = typeof verifyBody.email === 'string' ? verifyBody.email.trim().toLowerCase() : normalizedEmail
 
       if (!magicToken) {
         console.error('[verify] missing magic token after OTP validation')
@@ -103,51 +106,24 @@ function VerifyContent() {
         return
       }
 
-      const { data, error: otpError } = await withTimeout(
-        supabaseAuth.auth.verifyOtp({
-          email: normalizedEmail,
+      const { error: otpError } = await withTimeout(
+        supabase.auth.verifyOtp({
+          email: verifiedEmail,
           token: magicToken,
           type: 'magiclink',
         }),
         'Session creation timed out. Please try again.'
       )
 
-      if (otpError || !data.session?.access_token || !data.session.refresh_token) {
+      if (otpError) {
         console.error('[verify] magic token exchange failed:', otpError)
-        setError('We verified your code, but could not finish signing you in. Please try again.')
+        setError('Verification succeeded but sign-in failed. Please sign in.')
+        setIsRedirecting(true)
+        router.replace('/login')
         return
       }
 
-      const cookieResponse = await withTimeout(fetch('/api/auth/session-cookie', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${data.session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          accessToken: data.session.access_token,
-          refreshToken: data.session.refresh_token,
-        }),
-      }), 'Saving your session timed out. Please try again.')
-
-      if (!cookieResponse.ok) {
-        console.error('[verify] session cookie route failed:', await cookieResponse.text().catch(() => 'No response body'))
-        setError('We verified your code, but could not keep you signed in. Please try again.')
-        return
-      }
-
-      await delay(600)
-
-      const { data: sessionData, error: sessionError } = await withTimeout(
-        supabaseAuth.auth.getSession(),
-        'Checking your session timed out. Please try again.'
-      )
-
-      if (sessionError || !sessionData.session) {
-        console.error('[verify] session check failed:', sessionError)
-        setError('We verified your code, but your session did not persist. Please try signing in.')
-        return
-      }
+      await delay(500)
 
       window.localStorage.removeItem('pendingVerifyEmail')
       setIsRedirecting(true)
