@@ -16,6 +16,17 @@ type AdminCheck = {
   role: string | null
 }
 
+type StoredAuthSession = {
+  access_token?: unknown
+  expires_at?: unknown
+}
+
+type SupabaseUserResponse = {
+  email?: string | null
+}
+
+const AUTH_SESSION_COOKIE = 'jb_auth_session_v1'
+
 function getSupabaseEnv(): SupabaseEnv | null {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -38,6 +49,44 @@ function redirectToLogin(request: NextRequest) {
 
 function wait(ms: number) {
   return new Promise((resolve) => globalThis.setTimeout(resolve, ms))
+}
+
+function parseStoredSessionCookie(request: NextRequest): string | null {
+  const rawCookie = request.cookies.get(AUTH_SESSION_COOKIE)?.value
+  if (!rawCookie) return null
+
+  try {
+    const decoded = decodeURIComponent(rawCookie)
+    const parsed = JSON.parse(decoded) as StoredAuthSession
+
+    if (typeof parsed.expires_at === 'number' && parsed.expires_at < Date.now() / 1000 - 60) {
+      return null
+    }
+
+    return typeof parsed.access_token === 'string' && parsed.access_token
+      ? parsed.access_token
+      : null
+  } catch (error) {
+    console.error('[proxy] stored auth cookie parse failed:', error)
+    return null
+  }
+}
+
+async function getUserEmailFromAccessToken(token: string, env: SupabaseEnv): Promise<string | null> {
+  const response = await fetch(`${env.supabaseUrl}/auth/v1/user`, {
+    headers: {
+      apikey: env.anonKey,
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  if (!response.ok) {
+    console.error('[proxy] stored auth token validation failed:', response.status)
+    return null
+  }
+
+  const user = (await response.json()) as SupabaseUserResponse
+  return typeof user.email === 'string' && user.email ? user.email : null
 }
 
 async function checkAdminUser(email: string, env: SupabaseEnv): Promise<AdminCheck> {
@@ -126,15 +175,23 @@ export async function proxy(request: NextRequest) {
     console.error('[proxy] getUser failed:', error.message)
   }
 
-  if (!user?.email) {
+  let userEmail = user?.email || null
+  if (!userEmail) {
+    const storedAccessToken = parseStoredSessionCookie(request)
+    if (storedAccessToken) {
+      userEmail = await getUserEmailFromAccessToken(storedAccessToken, env)
+    }
+  }
+
+  if (!userEmail) {
     console.log('[proxy] no active session for path:', pathname)
     return redirectToLogin(request)
   }
 
-  console.log('[proxy] session user:', user.email)
+  console.log('[proxy] session user:', userEmail)
 
   if (adminPath) {
-    const adminCheck = await checkAdminUser(user.email, env)
+    const adminCheck = await checkAdminUser(userEmail, env)
     console.log('[proxy] admin role check:', adminCheck.role || 'none')
 
     if (!adminCheck.isAdmin) {
@@ -146,5 +203,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/checkout', '/admin/:path*'],
+  matcher: ['/checkout'],
 }
